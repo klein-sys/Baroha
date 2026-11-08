@@ -7,4 +7,5 @@ desktop.ini
 *.log
 *.tmp
 node_modules/
+.vercel
 

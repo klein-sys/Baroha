@@ -185,3 +185,4 @@ class WorldMapManager {
 }
 
 window.WorldMapManager = WorldMapManager;
+

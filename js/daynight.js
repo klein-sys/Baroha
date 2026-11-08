@@ -261,3 +261,4 @@ class DayNightManager {
 }
 
 window.DayNightManager = DayNightManager;
+

@@ -4,6 +4,7 @@
 
 [![GitHub Repository](https://img.shields.io/badge/GitHub-klein--sys%2FBaroha-blue?style=for-the-badge&logo=github)](https://github.com/klein-sys/Baroha)
 [![Live Demo](https://img.shields.io/badge/Play%20Online-GitHub%20Pages-success?style=for-the-badge&logo=googlechrome)](https://klein-sys.github.io/Baroha/)
+[![Deploy to Vercel](https://img.shields.io/badge/Deploy%20to-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fklein-sys%2FBaroha)
 [![Course](https://img.shields.io/badge/Course-MATH%20101%20Differential%20Calculus-orange?style=for-the-badge)](https://www.batstate-u.edu.ph/)
 [![Engine](https://img.shields.io/badge/Engine-Three.js%20WebGL%203D-purple?style=for-the-badge)](https://threejs.org/)
 [![Style](https://img.shields.io/badge/Style-Roblox%20RPG%203D-red?style=for-the-badge)](https://www.roblox.com/)
@@ -133,87 +134,6 @@ flowchart TD
 
 ---
 
-## 💖 6. Survival Rules & The 5 Hearts System
-
-- The player begins with exactly **5 Hearts (Lives)**.
-- Normal minion attacks deplete your green Health Bar (HP). If your HP falls to 0, you lose **1 Heart** and respawn at the Sanctuary Checkpoint with full HP.
-- **Boss Combat Calculus Curses:** An **incorrect answer immediately costs 1 Heart**! A **correct answer deals massive counter-damage** to the boss!
-- **Golden Hearts:** Rare collectibles hidden in ruins and mystery chests that restore lost heart containers up to the maximum of 5.
-- **Randomized Answer Distribution:** Answer options are strictly shuffled using the Fisher-Yates algorithm, ensuring correct answers appear across **A, B, C, and D** rather than any fixed position. Duplicate questions in the same encounter are automatically prevented.
-
----
-
-## 💻 7. Technical Architecture & File Directory
-
-```
-klein-sys/Baroha/
-├── index.html                  # Master entry point, Roblox top bar, themed boss bars, modals
-├── README.md                   # Full academic report, lore, controls & defense guide
-├── .gitignore                  # Git ignore rules for clean repository
-├── TheForbiddenRealm3D.zip     # Complete offline distributable bundle
-├── css/
-│   └── style.css               # Roblox RPG styles, boss bar themes, map modal, sliders
-└── js/
-    ├── three.min.js            # Three.js r128 3D WebGL engine
-    ├── audio.js                # Web Audio API procedural synthesizer (music & SFX)
-    ├── calculus.js             # Calculus problem generator with Fisher-Yates choice shuffling
-    ├── daynight.js             # 24-hr day/night cycle, orbital lighting, and bed sleeping
-    ├── player.js               # Player physics, Runeblade viewmodel, stat leveling
-    ├── character.js            # 3D Roblox character model, limb animations, orbit camera
-    ├── abilities.js            # Magic spells (Bolt, Fireball, Lightning, Shield, Nova)
-    ├── bosses.js               # 3D Bosses: Dark Witch, The Lich, and Eternal Dragon
-    ├── world.js                # 3D procedural realms, village houses, bed, and terrain
-    ├── enemies.js              # Minion AI, night stalkers, and boss combat manager
-    ├── missions.js             # Quest journal, keys tracker & achievements
-    ├── inventory.js            # Potions, mana crystals, golden hearts, artifacts
-    ├── progression.js          # LocalStorage save/load & level scaling
-    ├── settings.js             # Dedicated Settings Manager (graphics, resolution, audio)
-    ├── map.js                  # Interactive World Map canvas with GPS player locator
-    ├── interface.js            # HUD updates, Roblox status cards, themed boss frames
-    ├── game.js                 # Core game loop, combat hit detection & scene manager
-    └── main.js                 # Event listeners, menu bindings & initialization
-```
-
----
-
-## 🌐 8. How to Enable GitHub Pages (Play in Browser)
-
-1. Open your repository on GitHub: [https://github.com/klein-sys/Baroha](https://github.com/klein-sys/Baroha).
-2. Go to **Settings** (tab at the top right).
-3. In the left sidebar, click **Pages** (under the "Code and automation" section).
-4. Under **Build and deployment > Branch**:
-   - Select **Branch:** `main`
-   - Select **Folder:** `/ (root)`
-   - Click **Save**.
-5. Wait 30–60 seconds. Your game will be live worldwide at:  
-   👉 **[https://klein-sys.github.io/Baroha/](https://klein-sys.github.io/Baroha/)**!
-- **Particle & Spell Explosions:** Toggle On/Off for glowing torches, spell projectile trails, and combat embers.
-- **Framerate Limiter (FPS Cap):** `30 FPS (Power Saver)`, `60 FPS (Smooth)`, or `Uncapped (Max Display Refresh)`.
-- **Controls & Sensitivity:** Mouse sensitivity slider (0.5x to 3.0x), Invert Y-axis toggle, and Mobile UI visibility.
-- **Audio System:** Sliders for Master, Music, and SFX volumes + Mute toggle.
-- **Persistence:** All preferences are saved automatically in `localStorage`.
-
----
-
-## 💖 5. Survival & RPG Progression Mechanics
-
-### The Five Hearts (Lives) System
-- The player begins with exactly **5 Hearts (Lives)**, visible on the top-left HUD.
-- **Physical Damage:** Normal minion attacks deplete your green Health Bar (HP). If your HP falls to 0, you lose **1 Heart** and respawn at the Sanctuary Checkpoint with full HP.
-- **Boss Combat Calculus Curses:** In boss encounters, the boss periodically casts mathematical attack spells. An **incorrect answer immediately costs 1 Heart**! A **correct answer deals massive counter-damage** to the boss!
-- **Golden Hearts:** Rare collectibles hidden in ruins and mystery chests that restore lost heart containers up to the maximum of 5.
-- **Game Over & Checkpoints:** If all 5 Hearts are depleted, you enter the Game Over screen with a **Retry from Checkpoint** option.
-
-### RPG Leveling & Stat Scaling
-- Defeating monsters, solving calculus trials, opening mystery chests, and vanquishing bosses awards **Experience Points (XP)**.
-- **Level Curve:**
-  - **Level 1 (Novice Adventurer):** 100 HP, 100 MP, 35 Attack. Spells: *Magic Bolt*, *Magical Shield*, *Healing Aura*.
-  - **Level 2 (Apprentice Mage):** 125 HP, 120 MP, 45 Attack. Unlocks: *Fireball*.
-  - **Level 3 (Lich Hunter):** 150 HP, 140 MP, 55 Attack. Unlocks: *Lightning Strike*.
-  - **Level 4 (Legendary Guardian):** 175 HP, 160 MP, 65 Attack. Unlocks: *Eternal Nova*.
-
----
-
 ## 🏰 6. The Three Progressive Realms & Boss Encounters
 
 ```mermaid
@@ -258,7 +178,34 @@ flowchart TD
 
 ---
 
-## 📐 7. Semestral Project Worked Examples (Defense Guide)
+## 💖 7. Survival Rules, RPG Progression & Settings
+
+### The Five Hearts (Lives) System
+- The player begins with exactly **5 Hearts (Lives)**, visible on the top-left HUD.
+- **Physical Damage:** Normal minion attacks deplete your green Health Bar (HP). If your HP falls to 0, you lose **1 Heart** and respawn at the Sanctuary Checkpoint with full HP.
+- **Boss Combat Calculus Curses:** In boss encounters, the boss periodically casts mathematical attack spells. An **incorrect answer immediately costs 1 Heart**! A **correct answer deals massive counter-damage** to the boss!
+- **Golden Hearts:** Rare collectibles hidden in ruins and mystery chests that restore lost heart containers up to the maximum of 5.
+- **Randomized Answer Distribution:** Answer options are strictly shuffled using the Fisher-Yates algorithm, ensuring correct answers appear across **A, B, C, and D** rather than any fixed position. Duplicate questions in the same encounter are automatically prevented.
+- **Game Over & Checkpoints:** If all 5 Hearts are depleted, you enter the Game Over screen with a **Retry from Checkpoint** option.
+
+### RPG Leveling & Stat Scaling
+- Defeating monsters, solving calculus trials, opening mystery chests, and vanquishing bosses awards **Experience Points (XP)**.
+- **Level Curve:**
+  - **Level 1 (Novice Adventurer):** 100 HP, 100 MP, 35 Attack. Spells: *Magic Bolt*, *Magical Shield*, *Healing Aura*.
+  - **Level 2 (Apprentice Mage):** 125 HP, 120 MP, 45 Attack. Unlocks: *Fireball*.
+  - **Level 3 (Lich Hunter):** 150 HP, 140 MP, 55 Attack. Unlocks: *Lightning Strike*.
+  - **Level 4 (Legendary Guardian):** 175 HP, 160 MP, 65 Attack. Unlocks: *Eternal Nova*.
+
+### Graphics & Performance Settings (`O`)
+- **Atmospheric Fog & View Distance:** Short (Dense Fog / High FPS), Medium (Balanced), Far (Panoramic Vista).
+- **Framerate Limiter (FPS Cap):** `30 FPS (Power Saver)`, `60 FPS (Smooth)`, or `Uncapped (Max Display Refresh)`.
+- **Controls & Sensitivity:** Mouse sensitivity slider (0.5x to 3.0x), Invert Y-axis toggle, and Mobile UI visibility.
+- **Audio System:** Sliders for Master, Music, and SFX volumes + Mute toggle.
+- **Persistence:** All preferences are saved automatically in `localStorage`.
+
+---
+
+## 📐 8. Semestral Project Worked Examples (Defense Guide)
 
 ### Worked Example 1: Energy Bridge Stabilization via Limits
 - **Course Concept:** Limits of Rational Functions & Removable Discontinuities
@@ -302,13 +249,15 @@ $$\left. \frac{dE}{dt} \right|_{t=0}$$
 
 ---
 
-## 💻 8. Technical Architecture & File Directory
+## 💻 9. Technical Architecture & File Directory
 
 ```
 klein-sys/Baroha/
 ├── index.html                  # Master application entry point & HUD layout
 ├── README.md                   # Full academic report, lore, controls & defense guide
 ├── .gitignore                  # Git ignore rules for clean repository
+├── vercel.json                 # Vercel deployment configuration
+├── package.json                # Project metadata & local dev scripts
 ├── TheForbiddenRealm3D.zip     # Complete offline distributable bundle
 ├── css/
 │   └── style.css               # Dark fantasy styling, HUD, modals, KaTeX math cards
@@ -316,14 +265,18 @@ klein-sys/Baroha/
     ├── three.min.js            # Three.js r128 3D WebGL engine
     ├── audio.js                # Web Audio API procedural synthesizer (music & SFX)
     ├── calculus.js             # Calculus problem generator, explanations & worked examples
-    ├── player.js               # 3D First-Person controller, Runeblade viewmodel, survival
+    ├── daynight.js             # 24-hr day/night cycle, orbital lighting, and bed sleeping
+    ├── player.js               # 3D player controller, Runeblade viewmodel, survival
+    ├── character.js            # 3D Roblox character model, limb animations, orbit camera
     ├── abilities.js            # Spells (Magic Bolt, Fireball, Lightning, Shield, Nova)
+    ├── bosses.js               # 3D Bosses: Dark Witch, The Lich, and Eternal Dragon
     ├── world.js                # 3D procedural realms, trees, cathedral ruins, floating islands
     ├── enemies.js              # Minion pathfinding AI, projectile attacks & 3 Boss machines
     ├── missions.js             # Quest journal, keys collection tracker & achievements
     ├── inventory.js            # Potions, mana crystals, golden hearts, artifacts
     ├── progression.js          # LocalStorage save/load & level scaling
     ├── settings.js             # Dedicated Settings Manager (graphics, resolution, audio)
+    ├── map.js                  # Interactive World Map canvas with GPS player locator
     ├── interface.js            # HUD updates, damage numbers, dialogs & touch controls
     ├── game.js                 # Core game loop, combat hit detection & scene manager
     └── main.js                 # Event listeners, menu bindings & initialization
@@ -331,7 +284,7 @@ klein-sys/Baroha/
 
 ---
 
-## 🌐 9. How to Enable GitHub Pages (Play in Browser)
+## 🌐 10. How to Enable GitHub Pages (Play in Browser)
 
 1. Open your repository on GitHub: [https://github.com/klein-sys/Baroha](https://github.com/klein-sys/Baroha).
 2. Go to **Settings** (tab at the top right).
@@ -342,3 +295,23 @@ klein-sys/Baroha/
    - Click **Save**.
 5. Wait 30–60 seconds. Your game will be live worldwide at:  
    👉 **[https://klein-sys.github.io/Baroha/](https://klein-sys.github.io/Baroha/)**!
+
+---
+
+## 🚀 11. How to Publish / Deploy to Vercel
+
+You can publish this project to Vercel in 1 click:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fklein-sys%2FBaroha)
+
+### Step-by-Step Vercel Deployment:
+1. Go to [vercel.com](https://vercel.com/) and sign in with your GitHub account.
+2. Click **"Add New..."** > **"Project"**.
+3. Under **"Import Git Repository"**, locate and click **"Import"** next to **`klein-sys/Baroha`**.
+4. In the Project Configuration screen:
+   - **Framework Preset:** `Other` (Static HTML/JS)
+   - **Root Directory:** `./`
+   - **Build & Output Settings:** Leave default (no build step required)
+5. Click **"Deploy"**.
+6. In ~15 seconds, your game is live with an official Vercel URL (e.g., `https://baroha.vercel.app`), SSL certificate, and automated continuous deployment on every Git push!
+

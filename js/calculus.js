@@ -361,52 +361,52 @@ class CalculusManager {
     this.lastQuestionId = null;
   }
 
-  getQuestionsForRealm(realmId, phase = 1) {
-    const key = `realm${realmId}`;
-    const pool = this.questionBank[key] || this.questionBank.realm1;
-    // Filter by phase or return random subset
-    const filtered = pool.filter(q => q.phase === phase);
-    return filtered.length > 0 ? filtered : pool;
-  }
+getQuestionsForRealm(realmId, phase = 1) {
+  const key = `realm${realmId}`;
+  const pool = this.questionBank[key] || this.questionBank.realm1;
+  // Filter by phase or return random subset
+  const filtered = pool.filter(q => q.phase === phase);
+  return filtered.length > 0 ? filtered : pool;
+}
 
-  getRandomQuestion(realmId, phase = 1) {
-    const list = this.getQuestionsForRealm(realmId, phase);
-    
-    // Avoid duplicate question in same encounter if more than 1 available
-    let available = list.filter(q => q.id !== this.lastQuestionId);
-    if (available.length === 0) available = list;
+getRandomQuestion(realmId, phase = 1) {
+  const list = this.getQuestionsForRealm(realmId, phase);
 
-    const randomIndex = Math.floor(Math.random() * available.length);
-    const selected = available[randomIndex];
-    this.lastQuestionId = selected.id;
+  // Avoid duplicate question in same encounter if more than 1 available
+  let available = list.filter(q => q.id !== this.lastQuestionId);
+  if (available.length === 0) available = list;
 
-    // Deep clone question
-    const qClone = JSON.parse(JSON.stringify(selected));
+  const randomIndex = Math.floor(Math.random() * available.length);
+  const selected = available[randomIndex];
+  this.lastQuestionId = selected.id;
 
-    // Fisher-Yates Shuffle on Multiple Choice Options so correct answer is randomly A, B, C, or D
-    if (qClone.type === 'mcq' && qClone.options && qClone.options.length > 1) {
-      for (let i = qClone.options.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const temp = qClone.options[i];
-        qClone.options[i] = qClone.options[j];
-        qClone.options[j] = temp;
-      }
-    }
+  // Deep clone question
+  const qClone = JSON.parse(JSON.stringify(selected));
 
-    return qClone;
-  }
-
-  recordAnswer(isCorrect) {
-    this.totalQuestionsAnswered++;
-    if (isCorrect) {
-      this.totalQuestionsCorrect++;
+  // Fisher-Yates Shuffle on Multiple Choice Options so correct answer is randomly A, B, C, or D
+  if (qClone.type === 'mcq' && qClone.options && qClone.options.length > 1) {
+    for (let i = qClone.options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const temp = qClone.options[i];
+      qClone.options[i] = qClone.options[j];
+      qClone.options[j] = temp;
     }
   }
 
-  getAccuracy() {
-    if (this.totalQuestionsAnswered === 0) return 100;
-    return Math.round((this.totalQuestionsCorrect / this.totalQuestionsAnswered) * 100);
+  return qClone;
+}
+
+recordAnswer(isCorrect) {
+  this.totalQuestionsAnswered++;
+  if (isCorrect) {
+    this.totalQuestionsCorrect++;
   }
+}
+
+getAccuracy() {
+  if (this.totalQuestionsAnswered === 0) return 100;
+  return Math.round((this.totalQuestionsCorrect / this.totalQuestionsAnswered) * 100);
+}
 }
 
 window.calculusManager = new CalculusManager();

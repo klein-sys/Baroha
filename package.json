@@ -1,0 +1,20 @@
+{
+  "name": "baroha",
+  "version": "1.0.0",
+  "description": "MATHBOUND: The Forbidden Realm - 3D Differential Calculus RPG",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve -s .",
+    "dev": "npx serve -s ."
+  },
+  "keywords": [
+    "threejs",
+    "webgl",
+    "rpg",
+    "calculus",
+    "math-game",
+    "roblox-style"
+  ],
+  "author": "klein-sys",
+  "license": "MIT"
+}
