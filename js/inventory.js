@@ -76,5 +76,6 @@ class InventoryManager {
   }
 }
 
+window.InventoryManager = InventoryManager;
 window.inventoryManager = new InventoryManager();
 

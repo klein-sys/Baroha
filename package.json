@@ -5,7 +5,8 @@
   "main": "index.html",
   "scripts": {
     "start": "npx serve -s .",
-    "dev": "npx serve -s ."
+    "dev": "npx serve -s .",
+    "test": "node tests/run-all-tests.js"
   },
   "keywords": [
     "threejs",
@@ -18,3 +19,4 @@
   "author": "klein-sys",
   "license": "MIT"
 }
+

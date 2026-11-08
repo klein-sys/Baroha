@@ -70,7 +70,11 @@ class ProgressionManager {
       }
 
       if (data.world) {
-        worldManager.loadRealm(data.world.currentRealm || 1);
+        if (window.game) {
+          window.game.transitionToRealm(data.world.currentRealm || 1);
+        } else {
+          worldManager.loadRealm(data.world.currentRealm || 1);
+        }
       }
 
       if (data.missions) {

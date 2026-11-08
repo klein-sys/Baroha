@@ -135,6 +135,7 @@ class BossesManager {
 
     this.activeBoss = {
       type: 'witch',
+      realmId: 1,
       name: 'The Dark Witch',
       level: 50,
       mesh: group,
@@ -247,6 +248,7 @@ class BossesManager {
 
     this.activeBoss = {
       type: 'lich',
+      realmId: 2,
       name: 'The Lich – Undead King',
       level: 100,
       mesh: group,
@@ -430,6 +432,7 @@ class BossesManager {
 
     this.activeBoss = {
       type: 'dragon',
+      realmId: 3,
       name: 'Eternal Dragon',
       subtitle: 'Lv. 1000 (Final Boss)',
       level: 1000,

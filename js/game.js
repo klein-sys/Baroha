@@ -552,6 +552,11 @@ class GameEngine {
         window.interfaceManager.updatePlayerStatsUI();
         window.interfaceManager.updateAbilityCooldowns();
       }
+
+      // 8. Dev Console Telemetry & God Mode
+      if (window.devConsoleManager) {
+        window.devConsoleManager.update(delta);
+      }
     }
 
     // Render Scene

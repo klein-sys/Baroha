@@ -397,7 +397,7 @@ class WorldManager {
     this.worldObjects.push(group);
 
     // Register interactable gate
-    this.interactables.push({
+    const gateObj = {
       type: 'gate',
       name: 'Witch\'s Castle Gate',
       position: new THREE.Vector3(x, y + 1.5, z),
@@ -405,7 +405,12 @@ class WorldManager {
       barrierMesh: barrier,
       isUnlocked: false,
       interact: () => {
+        if (gateObj.isUnlocked) {
+          if (window.interfaceManager) window.interfaceManager.showToast('Castle Gate is already open!', 'info');
+          return;
+        }
         if (window.missionsManager && window.missionsManager.hasAllForestKeys()) {
+          gateObj.isUnlocked = true;
           barrier.visible = false;
           if (window.soundEngine) window.soundEngine.playChestOpen();
           if (window.interfaceManager) {
@@ -418,7 +423,8 @@ class WorldManager {
           }
         }
       }
-    });
+    };
+    this.interactables.push(gateObj);
   }
 
   spawnGothicPillar(x, z) {
@@ -496,15 +502,19 @@ class WorldManager {
     this.worldObjects.push(group);
 
     // Register crypt gate
-    this.interactables.push({
+    const cryptGateObj = {
       type: 'crypt_gate',
       name: 'Throne of the Lich King',
       position: new THREE.Vector3(x, y + 2, z),
       radius: 5.0,
+      isTriggered: false,
       interact: () => {
+        if (cryptGateObj.isTriggered && window.game && window.game.enemies && window.game.enemies.isBossActive) return;
+        cryptGateObj.isTriggered = true;
         if (window.game) window.game.startBossEncounter(2);
       }
-    });
+    };
+    this.interactables.push(cryptGateObj);
   }
 
   // =========================================================================
@@ -683,13 +693,16 @@ class WorldManager {
     this.scene.add(group);
     this.worldObjects.push(group);
 
-    this.interactables.push({
+    const azraelGateObj = {
       type: 'azrael_gate',
       name: 'The Forbidden Equation Core',
       position: new THREE.Vector3(x, 2, z),
       radius: 6.0,
+      isTriggered: false,
       interact: () => {
+        if (azraelGateObj.isTriggered && window.game && window.game.enemies && window.game.enemies.isBossActive) return;
         if (window.missionsManager && window.missionsManager.areAllTowersActive()) {
+          azraelGateObj.isTriggered = true;
           if (window.game) window.game.startBossEncounter(3);
         } else {
           if (window.interfaceManager) {
@@ -697,7 +710,8 @@ class WorldManager {
           }
         }
       }
-    });
+    };
+    this.interactables.push(azraelGateObj);
   }
 
   // =========================================================================

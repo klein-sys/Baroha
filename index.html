@@ -28,6 +28,9 @@
   <!-- Notification Toast Container -->
   <div id="toast-container"></div>
 
+  <!-- Live Dev Debug Overlay Telemetry -->
+  <div id="dev-debug-overlay"></div>
+
   <!-- =========================================================================
        IN-GAME HUD
        ========================================================================= -->
@@ -42,6 +45,7 @@
         <div class="roblox-menu-btn" id="btn-roblox-menu" title="Menu [ESC]">
           <span></span><span></span><span></span>
         </div>
+        <button class="roblox-dev-btn" id="btn-roblox-dev" title="Developer Console [F1 or ~]">🛠️ DEV</button>
         <!-- Roblox RPG Player Profile Card -->
         <div class="roblox-player-frame">
           <div class="roblox-avatar-circle">
@@ -86,6 +90,7 @@
             <div class="boss-jewel-crown" id="boss-jewel-crown">♦</div>
           </div>
           <div class="boss-level-subtitle" id="hud-boss-level-sub">Lv. 50</div>
+          <span id="hud-boss-phase" style="display:none;">PHASE I</span>
         </div>
 
         <div class="boss-star-crest right" id="boss-star-right">✦</div>
@@ -639,11 +644,29 @@
             </div>
             <div class="control-card">
               <div class="key-badge-stack">
-                <span class="key-badge-large">[ O ]</span>
+                <span class="key-badge-large">[ T ]</span>
               </div>
               <div class="control-info">
-                <div class="control-title">Settings & Graphics</div>
-                <div class="control-desc">Adjust resolution scale, FOV, render distance fog, mouse sensitivity, and volume.</div>
+                <div class="control-title">Interactive World Map</div>
+                <div class="control-desc">Open the fullscreen world map showing discovered regions, quests, and your live player GPS locator.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">[ V ]</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Camera Mode Toggle</div>
+                <div class="control-desc">Instantly switch between Roblox Third-Person view and immersive First-Person view.</div>
+              </div>
+            </div>
+            <div class="control-card" style="border-color: #00d4ff;">
+              <div class="key-badge-stack">
+                <span class="key-badge-large" style="background: rgba(0, 212, 255, 0.2); border-color: #00d4ff; color: #00d4ff;">F1 or ~</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title" style="color: #00d4ff;">Developer Console</div>
+                <div class="control-desc">Full dev access: God mode, noclip fly, realm teleportation, boss spawner, calculus tester, and items.</div>
               </div>
             </div>
           </div>
@@ -919,6 +942,7 @@
         <!-- Footer Actions -->
         <div class="settings-footer-actions">
           <button class="btn-fantasy-cta" id="btn-settings-reset">RESET DEFAULTS</button>
+          <button class="btn-fantasy-cta dev-highlight" id="btn-settings-dev" onclick="if(window.devConsoleManager){ if(window.interfaceManager) window.interfaceManager.toggleSettingsModal(); window.devConsoleManager.toggle(); }">🛠️ DEV CONSOLE [F1]</button>
           <button class="btn-fantasy-cta primary" id="btn-settings-save">SAVE & APPLY SETTINGS</button>
         </div>
 
@@ -998,6 +1022,121 @@
   </div>
 
   <!-- =========================================================================
+       DEVELOPER CONSOLE / DEV SUITE MODAL [F1 or ~]
+       ========================================================================= -->
+  <div class="modal-backdrop" id="dev-console-modal">
+    <div class="fantasy-panel dev-panel" style="max-width: 860px; width: 95vw;">
+      <div class="fantasy-panel-header" style="border-bottom: 2px solid #00d4ff;">
+        <div class="panel-title" style="color: #00d4ff;">
+          <span>🛠️ DEVELOPER CONSOLE & GOD SUITE</span>
+          <span style="font-size: 11px; color: #a8dadc; margin-left: 10px; font-family: var(--font-mono); font-weight: normal;">[F1 / ~ to Toggle]</span>
+        </div>
+        <button class="btn-close-modal" id="btn-close-dev">✕</button>
+      </div>
+
+      <div class="fantasy-panel-body" style="padding: 16px;">
+        <!-- Tabs Header -->
+        <div class="tabs-header dev-tabs" style="margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 8px;">
+          <button class="tab-btn active" data-tab="dev-tab-god">⚡ God & Stats</button>
+          <button class="tab-btn" data-tab="dev-tab-teleport">🗺️ Teleport & Realms</button>
+          <button class="tab-btn" data-tab="dev-tab-boss">👑 Boss Controls</button>
+          <button class="tab-btn" data-tab="dev-tab-calculus">📐 Calculus Suite</button>
+          <button class="tab-btn" data-tab="dev-tab-items">🎒 Items & Spells</button>
+          <button class="tab-btn" data-tab="dev-tab-env">🕒 Atmosphere & Time</button>
+          <button class="tab-btn" data-tab="dev-tab-system">💾 Save & System</button>
+        </div>
+
+        <!-- Tab 1: God & Stats -->
+        <div class="tab-content active" id="dev-tab-god">
+          <div class="dev-actions-grid">
+            <button class="btn-dev-action" id="btn-dev-toggle-god" onclick="dev.toggleGodMode()">⚡ GOD MODE: [OFF]</button>
+            <button class="btn-dev-action" id="btn-dev-toggle-noclip" onclick="dev.toggleNoclip()">🕊️ NOCLIP / FLY: [OFF]</button>
+            <button class="btn-dev-action" onclick="dev.healFull()">💖 Restore 100% HP, Mana & 5 Hearts</button>
+            <button class="btn-dev-action" onclick="dev.maxLevel()">👑 Max Level (Lv. 4 Guardian)</button>
+            <button class="btn-dev-action" onclick="dev.addXp(1000)">⭐ Add +1000 XP</button>
+            <button class="btn-dev-action" onclick="dev.setSpeed(1.0)">🚶 Speed: Normal (1x)</button>
+            <button class="btn-dev-action" onclick="dev.setSpeed(2.5)">🏃 Speed: Fast (2.5x)</button>
+            <button class="btn-dev-action" onclick="dev.setSpeed(5.0)">⚡ Speed: Flash (5x)</button>
+          </div>
+        </div>
+
+        <!-- Tab 2: Teleport & Realms -->
+        <div class="tab-content" id="dev-tab-teleport">
+          <p style="font-size: 13px; color: #a8dadc; margin-bottom: 12px;">Instant warp across realms and combat arenas:</p>
+          <div class="dev-actions-grid">
+            <button class="btn-dev-action" onclick="dev.loadRealm(1)">🏰 Switch to Realm 1: Forest</button>
+            <button class="btn-dev-action" onclick="dev.loadRealm(2)">💀 Switch to Realm 2: Crypt</button>
+            <button class="btn-dev-action" onclick="dev.loadRealm(3)">🌌 Switch to Realm 3: Cosmos</button>
+            <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, 25)">🏡 Teleport: Starter Village Inn Bed</button>
+            <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, 12)">🌲 Teleport: Forest Entrance</button>
+            <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, -45)">🔮 Teleport: Witch's Castle Gate</button>
+            <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, -38)">👑 Teleport: Lich King Throne</button>
+            <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, -25)">🐉 Teleport: Eternal Dragon Arena</button>
+          </div>
+        </div>
+
+        <!-- Tab 3: Boss Controls -->
+        <div class="tab-content" id="dev-tab-boss">
+          <div class="dev-actions-grid">
+            <button class="btn-dev-action" onclick="dev.spawnBoss(1)">🧙‍♀️ Spawn Boss: The Dark Witch (Lv. 50)</button>
+            <button class="btn-dev-action" onclick="dev.spawnBoss(2)">💀 Spawn Boss: The Lich King (Lv. 100)</button>
+            <button class="btn-dev-action" onclick="dev.spawnBoss(3)">🐉 Spawn Boss: Eternal Dragon (Lv. 1000)</button>
+            <button class="btn-dev-action danger" onclick="dev.killBoss()">⚔️ One-Hit Kill Active Boss</button>
+            <button class="btn-dev-action" onclick="dev.triggerBossTrial(1)">📝 Trigger Boss Trial (Phase 1)</button>
+            <button class="btn-dev-action" onclick="dev.triggerBossTrial(2)">📝 Trigger Boss Trial (Phase 2)</button>
+            <button class="btn-dev-action" onclick="dev.triggerBossTrial(3)">📝 Trigger Boss Trial (Phase 3)</button>
+            <button class="btn-dev-action" onclick="dev.clearAllMinions()">🧹 Clear All Minion Mobs</button>
+          </div>
+        </div>
+
+        <!-- Tab 4: Calculus Suite -->
+        <div class="tab-content" id="dev-tab-calculus">
+          <p style="font-size: 13px; color: #a8dadc; margin-bottom: 12px;">Differential Calculus testing & interactive solver verification:</p>
+          <div class="dev-actions-grid">
+            <button class="btn-dev-action" onclick="dev.runCalculusDiagnostics()">🔬 Run Question Bank Test Suite</button>
+            <button class="btn-dev-action" onclick="dev.triggerMathQuestion(1, 1)">📝 Test Realm 1 Limit Question</button>
+            <button class="btn-dev-action" onclick="dev.triggerMathQuestion(2, 2)">📝 Test Realm 2 Trig Derivative Question</button>
+            <button class="btn-dev-action" onclick="dev.triggerMathQuestion(3, 3)">📝 Test Realm 3 Higher-Order Question</button>
+            <button class="btn-dev-action success" onclick="dev.solveCurrentTrial()">⚡ Auto-Solve Current Question (100% Accuracy)</button>
+            <button class="btn-dev-action" onclick="if(window.interfaceManager) { dev.toggle(); window.interfaceManager.toggleCalculusCodex(); }">📜 Open BSU Calculus Defense Codex</button>
+          </div>
+        </div>
+
+        <!-- Tab 5: Items & Spells -->
+        <div class="tab-content" id="dev-tab-items">
+          <div class="dev-actions-grid">
+            <button class="btn-dev-action" onclick="dev.giveAllKeys()">🔑 Give 3 Forest Keys of Limits</button>
+            <button class="btn-dev-action" onclick="dev.giveAllItems()">🍷 Give 5 Potions, Mana & Hearts</button>
+            <button class="btn-dev-action" onclick="dev.unlockAllSpells()">🔮 Unlock All 6 Arcane Spells</button>
+            <button class="btn-dev-action" onclick="dev.grantAllCrystals()">💎 Grant All 3 Sacred Crystal Fragments</button>
+          </div>
+        </div>
+
+        <!-- Tab 6: Atmosphere & Time -->
+        <div class="tab-content" id="dev-tab-env">
+          <div class="dev-actions-grid">
+            <button class="btn-dev-action" onclick="dev.setTimeOfDay(6.0)">🌅 Set Time: Sunrise (6:00 AM)</button>
+            <button class="btn-dev-action" onclick="dev.setTimeOfDay(12.0)">☀️ Set Time: Noon (12:00 PM)</button>
+            <button class="btn-dev-action" onclick="dev.setTimeOfDay(18.0)">🌇 Set Time: Sunset (6:00 PM)</button>
+            <button class="btn-dev-action" onclick="dev.setTimeOfDay(0.0)">🌙 Set Time: Midnight (12:00 AM)</button>
+          </div>
+        </div>
+
+        <!-- Tab 7: Save & System -->
+        <div class="tab-content" id="dev-tab-system">
+          <div class="dev-actions-grid">
+            <button class="btn-dev-action" id="btn-dev-toggle-overlay" onclick="dev.toggleDebugOverlay()">📊 DEBUG OVERLAY: [OFF]</button>
+            <button class="btn-dev-action" onclick="dev.forceSave()">💾 Force Save Game (LocalStorage)</button>
+            <button class="btn-dev-action" onclick="dev.testVictory()">🏆 Test Game Victory Screen</button>
+            <button class="btn-dev-action" onclick="dev.testGameOver()">💀 Test Game Over Screen</button>
+            <button class="btn-dev-action danger" onclick="dev.forceReset()">⚠️ Wipe Save & Factory Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
        FULLSCREEN SCREENS (MAIN MENU, PAUSE, GAME OVER, VICTORY)
        ========================================================================= -->
 
@@ -1015,6 +1154,7 @@
       <button class="btn-fantasy-cta" id="btn-how-to-play">HOW TO PLAY / CONTROLS</button>
       <button class="btn-fantasy-cta" id="btn-settings">⚙️ SETTINGS & GRAPHICS</button>
       <button class="btn-fantasy-cta" id="btn-codex">CALCULUS CODEX & REPORT</button>
+      <button class="btn-fantasy-cta dev-highlight" id="btn-main-dev">🛠️ DEV CONSOLE & TESTING</button>
       <button class="btn-fantasy-cta" id="btn-credits">CREDITS</button>
     </div>
   </div>
@@ -1027,6 +1167,7 @@
       <button class="btn-fantasy-cta" id="btn-pause-restart">RESTART REALM</button>
       <button class="btn-fantasy-cta" id="btn-pause-controls">🎮 CONTROLS GUIDE</button>
       <button class="btn-fantasy-cta" id="btn-pause-settings">⚙️ GRAPHICS & SETTINGS</button>
+      <button class="btn-fantasy-cta dev-highlight" id="btn-pause-dev">🛠️ DEVELOPER CONSOLE [F1]</button>
       <button class="btn-fantasy-cta" id="btn-pause-mainmenu">MAIN MENU</button>
     </div>
   </div>
@@ -1080,6 +1221,7 @@
       <button class="btn-touch-action" id="btn-touch-journal">QUEST</button>
       <button class="btn-touch-action" id="btn-touch-controls">GUIDE</button>
       <button class="btn-touch-action" id="btn-touch-settings">OPT</button>
+      <button class="btn-touch-action dev" id="btn-touch-dev">DEV</button>
     </div>
   </div>
 
@@ -1104,6 +1246,7 @@
   <script src="js/progression.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/map.js"></script>
+  <script src="js/dev.js"></script>
   <script src="js/interface.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>

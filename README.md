@@ -59,9 +59,10 @@ The game is designed for desktop keyboard/mouse and touchscreen mobile devices.
 | **M** | Calculus Codex | Study formulas, definitions, and worked examples |
 | **H** | Controls Guide | Open the interactive Controls manual |
 | **O** | Settings | Adjust Graphics, Resolution Scale, FOV, Sensitivity, and Audio |
+| **F1** or **`** | Dev Console | Open Developer Suite: God Mode, Noclip, Teleport, Boss Spawner, Cheats |
 | **Esc** | Pause Menu | Pause game, restart realm, or adjust settings |
 
-> 📱 **Mobile Touch Controls:** On phones or tablets, an on-screen virtual joystick and floating action buttons (`SWORD`, `JUMP`, `CAST`, `USE`, `POTION`, `QUEST`, `GUIDE`, `OPT`) appear automatically.
+> 📱 **Mobile Touch Controls:** On phones or tablets, an on-screen virtual joystick and floating action buttons (`SWORD`, `JUMP`, `CAST`, `USE`, `POTION`, `QUEST`, `GUIDE`, `OPT`, `DEV`) appear automatically.
 
 ---
 
@@ -259,6 +260,8 @@ klein-sys/Baroha/
 ├── vercel.json                 # Vercel deployment configuration
 ├── package.json                # Project metadata & local dev scripts
 ├── TheForbiddenRealm3D.zip     # Complete offline distributable bundle
+├── tests/
+│   └── run-all-tests.js        # Comprehensive automated verification suite (65+ assertions)
 ├── css/
 │   └── style.css               # Dark fantasy styling, HUD, modals, KaTeX math cards
 └── js/
@@ -277,6 +280,7 @@ klein-sys/Baroha/
     ├── progression.js          # LocalStorage save/load & level scaling
     ├── settings.js             # Dedicated Settings Manager (graphics, resolution, audio)
     ├── map.js                  # Interactive World Map canvas with GPS player locator
+    ├── dev.js                  # Complete Developer Console Suite, cheats, telemetry & test harness
     ├── interface.js            # HUD updates, damage numbers, dialogs & touch controls
     ├── game.js                 # Core game loop, combat hit detection & scene manager
     └── main.js                 # Event listeners, menu bindings & initialization
@@ -314,4 +318,47 @@ You can publish this project to Vercel in 1 click:
    - **Build & Output Settings:** Leave default (no build step required)
 5. Click **"Deploy"**.
 6. In ~15 seconds, your game is live with an official Vercel URL (e.g., `https://baroha.vercel.app`), SSL certificate, and automated continuous deployment on every Git push!
+
+---
+
+## 🛠️ 12. Developer Suite & Faculty Evaluation Access
+
+To facilitate effortless academic evaluation and grading without needing to complete 2+ hours of RPG progression, a comprehensive **Developer Console Suite (`js/dev.js`)** is built directly into the engine.
+
+### How to Open the Developer Suite:
+- **Keyboard Shortcut:** Press **`F1`** or **``` ` ```** (Backquote / Tilde).
+- **Roblox Top Bar:** Click the **`🛠️ DEV`** button in the top navigation bar.
+- **Pause Menu (`Esc`):** Click the **`🛠️ DEV CONSOLE`** button.
+- **Mobile Touch Controls:** Tap the **`DEV`** button in the bottom floating controls.
+- **Browser DevTools Console:** Access full programmatic control anytime via `window.dev` or `window.devConsoleManager`.
+
+### Available Developer Capabilities & Evaluation Tools:
+
+| Category | Command / Feature | Function in Evaluation & Testing |
+| :--- | :--- | :--- |
+| **Player Attributes** | **God Mode** | Grants total invulnerability, infinite mana, full hearts, and 0 cooldowns |
+| | **Noclip / Fly Mode** | Disables gravity and collision, allowing free flight through walls and terrain |
+| | **Speed Multiplier** | Toggles speed between **1x (Normal)**, **2.5x (Fast)**, and **5.0x (Hyper)** |
+| | **Max Level & Stats** | Instantly elevates character to **Level 4 (Legendary Guardian)** with +1000 XP |
+| **Teleportation** | **Realm 1: Grasslands** | Instantly warps to Starter Village & Adventurer's Inn Bed |
+| | **Realm 1: Witch Arena** | Warps directly inside Morgathia's Dark Forest circle |
+| | **Realm 2: Crypt Gate** | Warps to Cursed Kingdom gate entrance |
+| | **Realm 2: Lich Arena** | Warps into Lich King Vorthak's necrotic cathedral |
+| | **Realm 3: Dragon Sanctum** | Warps directly to the final celestial throne room |
+| **Boss Controls** | **Instant Boss Spawn** | Manually force-spawns **Dark Witch**, **The Lich**, or **Eternal Dragon** |
+| | **Insta-Kill Boss** | Deals 999,999 lethal damage to test victory transitions and cutscenes |
+| | **Trigger Math Trial** | Force-prompts the active boss's calculus trial without entering combat |
+| | **Clear Minions** | Instantly purges all active skeletons, bats, and forest creatures |
+| **Calculus Suite** | **Diagnostic Test** | Runs an automated verification of all 18 calculus problems |
+| | **Preview Question** | Displays the next mathematical problem in the HUD feed |
+| | **Auto-Solve Problem** | Immediately solves the active calculus problem with 100% accuracy |
+| **Cheats & Items** | **Give 3 Forest Keys** | Gives all 3 Forest Keys and activates all 3 harmonic towers |
+| | **Give Consumables** | Adds +5 Healing Potions, +5 Mana Crystals, and +5 Golden Hearts |
+| | **Grant All Crystals** | Awards all 3 Sacred Calculus Crystal Fragments |
+| | **Unlock All Spells** | Unlocks Magic Bolt, Fireball, Lightning Strike, Shield, and Nova |
+| **World & Time** | **Time of Day** | Slider or instant presets for **Sunrise (6AM)**, **Noon (12PM)**, **Sunset (6PM)**, **Midnight (12AM)** |
+| | **Telemetry HUD** | Real-time debug overlay showing **FPS**, **X/Y/Z Coordinates**, **Yaw**, **Realm**, and **Boss HP** |
+| **Game State** | **Force Save / Reset** | Forces immediate LocalStorage save or wipes progress to factory state |
+| | **Trigger Victory** | Instantly executes the game victory ending cinematic |
+
 

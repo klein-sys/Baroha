@@ -811,6 +811,9 @@ class InterfaceManager {
     bindBtn('btn-touch-journal', () => this.toggleQuestJournal());
     bindBtn('btn-touch-controls', () => this.toggleControlsModal());
     bindBtn('btn-touch-settings', () => this.toggleSettingsModal());
+    bindBtn('btn-touch-dev', () => {
+      if (window.devConsoleManager) window.devConsoleManager.toggle();
+    });
   }
 }
 

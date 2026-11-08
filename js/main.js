@@ -67,6 +67,17 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- DEV ACCESS BUTTONS ---
+  const btnRobloxDev = document.getElementById('btn-roblox-dev');
+  const btnMainDev = document.getElementById('btn-main-dev');
+  const btnPauseDev = document.getElementById('btn-pause-dev');
+  const btnTouchDev = document.getElementById('btn-touch-dev');
+
+  if (btnRobloxDev) btnRobloxDev.addEventListener('click', () => { if (window.devConsoleManager) window.devConsoleManager.toggle(); });
+  if (btnMainDev) btnMainDev.addEventListener('click', () => { if (window.devConsoleManager) window.devConsoleManager.toggle(); });
+  if (btnPauseDev) btnPauseDev.addEventListener('click', () => { if (window.devConsoleManager) window.devConsoleManager.toggle(); });
+  if (btnTouchDev) btnTouchDev.addEventListener('click', () => { if (window.devConsoleManager) window.devConsoleManager.toggle(); });
+
   // --- PAUSE MENU BUTTONS ---
   const btnResume = document.getElementById('btn-pause-resume');
   const btnRestart = document.getElementById('btn-pause-restart');

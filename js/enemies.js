@@ -399,7 +399,8 @@ class EnemiesManager {
     }
 
     if (window.game) {
-      window.game.handleBossDefeated(boss.realmId);
+      const realmId = (boss && boss.realmId) || (window.missionsManager && window.missionsManager.currentRealm) || 1;
+      window.game.handleBossDefeated(realmId);
     }
   }
 
@@ -452,7 +453,8 @@ class EnemiesManager {
       if (this.bossQuestionTimer <= 0) {
         this.bossQuestionTimer = 16.0; // Next challenge in 16 seconds
         if (window.game) {
-          window.game.triggerBossMathTrial(boss.realmId, this.bossPhase);
+          const realmId = (boss && boss.realmId) || (window.missionsManager && window.missionsManager.currentRealm) || 1;
+          window.game.triggerBossMathTrial(realmId, this.bossPhase);
         }
       }
     }

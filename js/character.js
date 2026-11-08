@@ -258,6 +258,10 @@ class RobloxCharacter {
       this.rotationY = moveAngle;
     }
     this.mesh.rotation.y = this.rotationY;
+    if (this.animState !== 'sleeping') {
+      this.mesh.rotation.x = 0;
+      this.mesh.rotation.z = 0;
+    }
 
     // Determine animation state
     const isMoving = playerController.velocity.lengthSq() > 0.5;

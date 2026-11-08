@@ -225,6 +225,16 @@ class PlayerController {
         case 'Digit4':
           if (window.abilitiesManager) window.abilitiesManager.selectAbility(3);
           break;
+        case 'Digit5':
+          if (window.abilitiesManager) window.abilitiesManager.selectAbility(4);
+          break;
+        case 'Digit6':
+          if (window.abilitiesManager) window.abilitiesManager.selectAbility(5);
+          break;
+        case 'Backquote': case 'F1':
+          e.preventDefault();
+          if (window.devConsoleManager) window.devConsoleManager.toggle();
+          break;
         case 'Escape': case 'KeyP':
           if (window.game) window.game.togglePause();
           break;

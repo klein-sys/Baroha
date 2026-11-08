@@ -226,5 +226,6 @@ class MissionsManager {
   }
 }
 
+window.MissionsManager = MissionsManager;
 window.missionsManager = new MissionsManager();
 

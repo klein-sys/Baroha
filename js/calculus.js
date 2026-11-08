@@ -356,7 +356,6 @@ class CalculusManager {
         gameplayEffect: 'The anti-phase harmonic resonance shatters Azrael\'s dimensional tether, allowing the final blow that fuses all three Sacred Crystal Fragments to seal the Forbidden Equation forever!'
       }
     ];
-  }
 
     this.lastQuestionId = null;
   }
@@ -409,5 +408,6 @@ getAccuracy() {
 }
 }
 
+window.CalculusManager = CalculusManager;
 window.calculusManager = new CalculusManager();
 
