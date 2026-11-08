@@ -7,6 +7,7 @@ class EnemiesManager {
   constructor(scene) {
     this.scene = scene;
     this.enemies = [];
+    this.nightEnemies = [];
     this.activeBoss = null;
     this.isBossActive = false;
     this.bossPhase = 1;
@@ -21,11 +22,44 @@ class EnemiesManager {
     });
     this.enemies = [];
 
-    if (this.activeBoss && this.activeBoss.mesh) {
+    this.despawnNightMonsters();
+
+    if (window.bossesManager) {
+      window.bossesManager.clearBoss();
+    } else if (this.activeBoss && this.activeBoss.mesh) {
       this.scene.remove(this.activeBoss.mesh);
       this.activeBoss = null;
     }
     this.isBossActive = false;
+  }
+
+  spawnNightMonsters() {
+    this.despawnNightMonsters();
+
+    // Spawn 4 fierce night stalkers around player
+    const spawnOffsets = [
+      { x: -22, z: 15, name: 'Night Terror Stalker', hp: 95, pwr: 24, type: 'wolf' },
+      { x: 25, z: -10, name: 'Blood Moon Beast', hp: 110, pwr: 26, type: 'wolf' },
+      { x: -15, z: -25, name: 'Nightmare Wraith', hp: 85, pwr: 22, type: 'phantom' },
+      { x: 18, z: 25, name: 'Dread Stalker', hp: 90, pwr: 20, type: 'imp' }
+    ];
+
+    spawnOffsets.forEach(spec => {
+      const enemy = this.spawnEnemy(spec.type, spec.x, spec.z, spec.name, spec.hp, spec.pwr);
+      if (enemy) {
+        enemy.isNightSpawn = true;
+        this.nightEnemies.push(enemy);
+      }
+    });
+  }
+
+  despawnNightMonsters() {
+    this.nightEnemies.forEach(e => {
+      if (e.mesh) this.scene.remove(e.mesh);
+      const idx = this.enemies.indexOf(e);
+      if (idx !== -1) this.enemies.splice(idx, 1);
+    });
+    this.nightEnemies = [];
   }
 
   spawnMinionsForRealm(realmId) {
@@ -134,12 +168,31 @@ class EnemiesManager {
     this.bossPhase = 1;
 
     let bossData = {};
-    if (realmId === 1) {
-      bossData = this.buildWitchBoss();
-    } else if (realmId === 2) {
-      bossData = this.buildLichBoss();
+    let theme = 'witch';
+    let objectiveText = 'Defeat The Dark Witch';
+
+    if (window.bossesManager) {
+      if (realmId === 1) {
+        bossData = window.bossesManager.spawnDarkWitch(0, -45);
+        theme = 'witch';
+        objectiveText = 'Defeat The Dark Witch';
+      } else if (realmId === 2) {
+        bossData = window.bossesManager.spawnLich(0, -38);
+        theme = 'lich';
+        objectiveText = 'Defeat The Lich';
+      } else {
+        bossData = window.bossesManager.spawnEternalDragon(0, -25);
+        theme = 'dragon';
+        objectiveText = 'Defeat The Eternal Dragon';
+      }
     } else {
-      bossData = this.buildAzraelBoss();
+      if (realmId === 1) {
+        bossData = this.buildWitchBoss();
+      } else if (realmId === 2) {
+        bossData = this.buildLichBoss();
+      } else {
+        bossData = this.buildAzraelBoss();
+      }
     }
 
     this.activeBoss = bossData;
@@ -154,7 +207,9 @@ class EnemiesManager {
 
     // Update Boss UI
     if (window.interfaceManager) {
-      window.interfaceManager.showBossBar(bossData.name, 'PHASE I', 1.0);
+      const sub = realmId === 1 ? 'Lv. 50' : (realmId === 2 ? 'Lv. 100' : 'Lv. 1000 (Final Boss)');
+      window.interfaceManager.showBossBar(bossData.name, sub, 1.0, theme);
+      window.interfaceManager.updateRobloxObjective(objectiveText, '0 / 1');
       window.interfaceManager.showToast(`BOSS BATTLE: ${bossData.name} emerges!`, 'error');
     }
   }

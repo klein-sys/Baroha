@@ -32,6 +32,15 @@ class InterfaceManager {
     this.xpBar = document.getElementById('hud-xp-bar');
     this.xpNum = document.getElementById('hud-xp-num');
 
+    // Roblox Top Bar RPG Elements
+    this.robloxLevel = document.getElementById('roblox-level-display');
+    this.robloxHpFill = document.getElementById('roblox-hp-fill');
+    this.robloxHpNum = document.getElementById('roblox-hp-display');
+    this.robloxMpFill = document.getElementById('roblox-mp-fill');
+    this.robloxMpNum = document.getElementById('roblox-mp-display');
+    this.robloxObjText = document.getElementById('roblox-obj-text');
+    this.robloxObjCount = document.getElementById('roblox-obj-count');
+
     // Player Badge
     this.playerLevelBadge = document.getElementById('hud-player-level');
     this.playerTitle = document.getElementById('hud-player-title');
@@ -43,6 +52,7 @@ class InterfaceManager {
     this.bossName = document.getElementById('hud-boss-name');
     this.bossPhase = document.getElementById('hud-boss-phase');
     this.bossHpBar = document.getElementById('hud-boss-hp-bar');
+    this.bossLevelSub = document.getElementById('hud-boss-level-sub');
 
     // Quest Tracker HUD
     this.questTitle = document.getElementById('hud-quest-name');
@@ -55,6 +65,63 @@ class InterfaceManager {
 
     // Hitmarker
     this.hitmarker = document.getElementById('hitmarker');
+
+    // Setup action buttons
+    this.bindHUDButtons();
+  }
+
+  bindHUDButtons() {
+    // Camera toggle
+    const camBtn = document.getElementById('btn-cam-toggle');
+    if (camBtn) {
+      camBtn.onclick = () => {
+        if (window.robloxCharacter) window.robloxCharacter.toggleCameraMode();
+      };
+    }
+
+    // World map toggle
+    const mapBtn = document.getElementById('btn-hud-map');
+    if (mapBtn) {
+      mapBtn.onclick = () => {
+        if (window.worldMapManager) window.worldMapManager.toggleMap();
+      };
+    }
+
+    const closeMapBtn = document.getElementById('btn-close-map');
+    if (closeMapBtn) {
+      closeMapBtn.onclick = () => {
+        if (window.worldMapManager) window.worldMapManager.toggleMap();
+      };
+    }
+
+    // Roblox pause menu button
+    const robloxMenuBtn = document.getElementById('btn-roblox-menu');
+    if (robloxMenuBtn) {
+      robloxMenuBtn.onclick = () => {
+        if (window.game) window.game.togglePause();
+      };
+    }
+
+    // Sleep Modal buttons
+    const sleepMorningBtn = document.getElementById('btn-sleep-morning');
+    if (sleepMorningBtn) {
+      sleepMorningBtn.onclick = () => {
+        this.hideSleepModal();
+        if (window.dayNightManager) {
+          window.dayNightManager.sleepUntilMorning();
+        }
+      };
+    }
+
+    const sleepCancelBtn = document.getElementById('btn-sleep-cancel');
+    if (sleepCancelBtn) {
+      sleepCancelBtn.onclick = () => this.hideSleepModal();
+    }
+
+    const closeSleepBtn = document.getElementById('btn-close-sleep');
+    if (closeSleepBtn) {
+      closeSleepBtn.onclick = () => this.hideSleepModal();
+    }
   }
 
   updatePlayerStatsUI() {
@@ -65,11 +132,15 @@ class InterfaceManager {
     const hpRatio = Math.max(0, Math.min(1, p.hp / p.maxHp));
     if (this.hpBar) this.hpBar.style.width = `${hpRatio * 100}%`;
     if (this.hpNum) this.hpNum.innerText = `${Math.ceil(p.hp)}/${p.maxHp}`;
+    if (this.robloxHpFill) this.robloxHpFill.style.width = `${hpRatio * 100}%`;
+    if (this.robloxHpNum) this.robloxHpNum.innerText = `${Math.ceil(p.hp)} / ${p.maxHp}`;
 
     // MP Bar
     const mpRatio = Math.max(0, Math.min(1, p.mana / p.maxMana));
     if (this.mpBar) this.mpBar.style.width = `${mpRatio * 100}%`;
     if (this.mpNum) this.mpNum.innerText = `${Math.ceil(p.mana)}/${p.maxMana}`;
+    if (this.robloxMpFill) this.robloxMpFill.style.width = `${mpRatio * 100}%`;
+    if (this.robloxMpNum) this.robloxMpNum.innerText = `${Math.ceil(p.mana)} / ${p.maxMana}`;
 
     // XP Bar
     const xpRatio = Math.max(0, Math.min(1, p.xp / p.xpNeeded));
@@ -78,6 +149,10 @@ class InterfaceManager {
 
     // Level & Title
     if (this.playerLevelBadge) this.playerLevelBadge.innerText = p.level;
+    if (this.robloxLevel) {
+      const displayLv = p.level === 1 ? 25 : (p.level === 2 ? 50 : 100);
+      this.robloxLevel.innerText = `Lv. ${displayLv}`;
+    }
     if (this.playerClass) this.playerClass.innerText = p.rankTitle;
 
     // Hearts UI
@@ -126,12 +201,53 @@ class InterfaceManager {
     if (s3 && crystals.fragment3) s3.classList.add('found');
   }
 
-  showBossBar(name, phase, hpRatio = 1.0) {
+  showBossBar(name, subtitle = 'Lv. 50', hpRatio = 1.0, theme = 'witch') {
     if (!this.bossContainer) return;
-    this.bossContainer.classList.add('active');
+    this.bossContainer.className = `boss-banner-container active theme-${theme}`;
     if (this.bossName) this.bossName.innerText = name;
-    if (this.bossPhase) this.bossPhase.innerText = phase;
+    if (this.bossLevelSub) this.bossLevelSub.innerText = subtitle;
+    if (this.bossPhase) this.bossPhase.innerText = subtitle;
     if (this.bossHpBar) this.bossHpBar.style.width = `${hpRatio * 100}%`;
+
+    // Apply color theme to ability dock
+    const dock = document.getElementById('ability-dock');
+    if (dock) {
+      dock.className = `ability-dock theme-${theme}`;
+    }
+  }
+
+  updateRobloxObjective(text, countStr) {
+    if (this.robloxObjText) this.robloxObjText.innerText = text;
+    if (this.robloxObjCount) this.robloxObjCount.innerText = countStr;
+  }
+
+  showSleepModal() {
+    const modal = document.getElementById('sleep-dialog-modal');
+    if (!modal) return;
+    if (document.exitPointerLock) document.exitPointerLock();
+
+    const timeInfo = document.getElementById('sleep-current-time');
+    if (timeInfo && window.dayNightManager) {
+      let hours = Math.floor(window.dayNightManager.timeOfDay);
+      let minutes = Math.floor((window.dayNightManager.timeOfDay % 1) * 60);
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 === 0 ? 12 : hours % 12;
+      const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+      timeInfo.innerText = `Current Time: ${displayHours}:${formattedMinutes} ${ampm} (${window.dayNightManager.isNight ? '🌙 Perilous Night' : '☀️ Peaceful Day'})`;
+    }
+
+    modal.classList.add('open');
+    this.activeModal = modal;
+  }
+
+  hideSleepModal() {
+    const modal = document.getElementById('sleep-dialog-modal');
+    if (modal) modal.classList.remove('open');
+    this.activeModal = null;
+    if (window.game && window.game.isRunning && !window.game.isPaused) {
+      const canvas = document.getElementById('game-canvas');
+      if (canvas) canvas.requestPointerLock();
+    }
   }
 
   updateBossHealth(hp, maxHp, hpRatio) {
@@ -142,6 +258,7 @@ class InterfaceManager {
 
   updateBossPhase(phaseText) {
     if (this.bossPhase) this.bossPhase.innerText = phaseText;
+    if (this.bossLevelSub) this.bossLevelSub.innerText = phaseText;
   }
 
   hideBossBar() {

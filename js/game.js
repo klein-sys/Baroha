@@ -53,10 +53,20 @@ class GameEngine {
     this.enemies = new EnemiesManager(this.scene);
     this.abilities = new AbilitiesManager(this.scene);
 
+    // Day & Night Cycle, Bosses, 3D Character, and World Map
+    this.dayNight = new DayNightManager(this.scene);
+    this.bosses = new BossesManager(this.scene);
+    this.character = new RobloxCharacter(this.scene, this.camera);
+    this.worldMap = new WorldMapManager();
+
     // Expose globally for cross-system calls
     window.game = this;
     window.abilitiesManager = this.abilities;
     window.worldManager = this.world;
+    window.dayNightManager = this.dayNight;
+    window.bossesManager = this.bosses;
+    window.robloxCharacter = this.character;
+    window.worldMapManager = this.worldMap;
 
     // Setup window resize listener
     window.addEventListener('resize', () => this.onWindowResize());
@@ -169,10 +179,30 @@ class GameEngine {
       }
     });
 
-    // 2. Check active Boss
+    // 2. Check summoned Skeletons from Lich
+    if (this.bosses && this.bosses.summonedSkeletons) {
+      this.bosses.summonedSkeletons.forEach(skel => {
+        if (!skel.isDead && skel.position.distanceTo(hitPoint) < 2.5) {
+          skel.hp -= damage;
+          hitSomething = true;
+          if (window.soundEngine) window.soundEngine.playSwordHit();
+          if (window.interfaceManager) {
+            window.interfaceManager.showHitmarker();
+            window.interfaceManager.showFloatingText(`-${damage}`, skel.position, 'damage');
+          }
+          if (skel.hp <= 0) {
+            skel.isDead = true;
+            this.scene.remove(skel.mesh);
+            this.player.addXp(40);
+          }
+        }
+      });
+    }
+
+    // 3. Check active Boss
     if (this.enemies.isBossActive && this.enemies.activeBoss) {
       const boss = this.enemies.activeBoss;
-      if (boss.position.distanceTo(hitPoint) < 4.5) {
+      if (boss.position.distanceTo(hitPoint) < 5.0) {
         hitSomething = true;
         this.enemies.damageBoss(damage);
         if (window.interfaceManager) window.interfaceManager.showHitmarker();
@@ -203,10 +233,31 @@ class GameEngine {
       }
     }
 
-    // 2. Boss check
+    // 2. Summoned Skeletons check
+    if (this.bosses && this.bosses.summonedSkeletons) {
+      for (let i = 0; i < this.bosses.summonedSkeletons.length; i++) {
+        const skel = this.bosses.summonedSkeletons[i];
+        if (!skel.isDead && skel.position.distanceTo(proj.mesh.position) < 1.8) {
+          skel.hp -= proj.damage;
+          if (window.soundEngine) window.soundEngine.playSwordHit();
+          if (window.interfaceManager) {
+            window.interfaceManager.showHitmarker();
+            window.interfaceManager.showFloatingText(`-${proj.damage}`, skel.position, 'crit');
+          }
+          if (skel.hp <= 0) {
+            skel.isDead = true;
+            this.scene.remove(skel.mesh);
+            this.player.addXp(40);
+          }
+          return true;
+        }
+      }
+    }
+
+    // 3. Boss check
     if (this.enemies.isBossActive && this.enemies.activeBoss) {
       const boss = this.enemies.activeBoss;
-      if (boss.position.distanceTo(proj.mesh.position) < 3.8) {
+      if (boss.position.distanceTo(proj.mesh.position) < 4.2) {
         this.enemies.damageBoss(proj.damage);
         if (window.interfaceManager) window.interfaceManager.showHitmarker();
         return true;
@@ -476,22 +527,27 @@ class GameEngine {
     const delta = Math.min(this.clock.getDelta(), 0.1);
 
     if (this.isRunning && !this.isPaused && !this.isGameOver && !this.isVictory) {
-      // 1. Update Player
-      this.player.update(delta);
+      // 1. Day / Night atmosphere & orbital lighting
+      if (this.dayNight) this.dayNight.update(delta);
 
-      // 2. Update World props & animations
+      // 2. Update Player & 3D Third-Person Character
+      this.player.update(delta);
+      if (this.character) this.character.update(delta, this.player);
+
+      // 3. Update World props & animations
       this.world.update(delta);
 
-      // 3. Update Abilities & Projectiles
+      // 4. Update Abilities & Projectiles
       this.abilities.update(delta);
 
-      // 4. Update Enemies & Boss AI
+      // 5. Update Enemies & 3D Bosses
       this.enemies.update(delta, this.player);
+      if (this.bosses) this.bosses.update(delta, this.player);
 
-      // 5. Update Proximity Interactions
+      // 6. Update Proximity Interactions
       this.updateInteractions();
 
-      // 6. Update HUD Stats & Cooldowns
+      // 7. Update HUD Stats & Cooldowns
       if (window.interfaceManager) {
         window.interfaceManager.updatePlayerStatsUI();
         window.interfaceManager.updateAbilityCooldowns();

@@ -33,8 +33,82 @@
        ========================================================================= -->
   <div id="game-hud">
 
-    <!-- Top-Left: Player Vitality & Hearts -->
-    <div class="hud-top-left">
+    <!-- Roblox Top Bar (Icons, Level, HP/MP, Themed Boss Bar, Objectives, Clock) -->
+    <div class="roblox-top-bar">
+      <div class="roblox-header-left">
+        <div class="roblox-logo-btn" title="Roblox Mathbound">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M5.5 2.5L21.5 6.5L18.5 22.5L2.5 18.5L5.5 2.5ZM10.2 10.2L9.2 14.2L13.8 15.2L14.8 11.2L10.2 10.2Z"/></svg>
+        </div>
+        <div class="roblox-menu-btn" id="btn-roblox-menu" title="Menu [ESC]">
+          <span></span><span></span><span></span>
+        </div>
+        <!-- Roblox RPG Player Profile Card -->
+        <div class="roblox-player-frame">
+          <div class="roblox-avatar-circle">
+            <svg viewBox="0 0 40 40" width="36" height="36" class="roblox-avatar-svg">
+              <rect width="40" height="40" fill="#2d1b4e" rx="18"/>
+              <polygon points="8,18 12,6 20,10 28,6 32,18 28,14 20,16 12,14" fill="#141419"/>
+              <rect x="12" y="16" width="16" height="14" rx="2" fill="#ffd1b3"/>
+              <rect x="14" y="21" width="3" height="3" fill="#111"/>
+              <rect x="23" y="21" width="3" height="3" fill="#111"/>
+              <polygon points="8,34 20,28 32,34 32,40 8,40" fill="#1f1f2e"/>
+            </svg>
+          </div>
+          <div class="roblox-stat-stack">
+            <div class="roblox-level-text" id="roblox-level-display">Lv. 25</div>
+            <div class="roblox-bar hp">
+              <span class="roblox-bar-label">HP</span>
+              <div class="roblox-bar-track"><div class="roblox-bar-fill hp" id="roblox-hp-fill" style="width: 100%;"></div></div>
+              <span class="roblox-bar-num" id="roblox-hp-display">100 / 100</span>
+            </div>
+            <div class="roblox-bar mp">
+              <span class="roblox-bar-label">MP</span>
+              <div class="roblox-bar-track"><div class="roblox-bar-fill mp" id="roblox-mp-fill" style="width: 100%;"></div></div>
+              <span class="roblox-bar-num" id="roblox-mp-display">50 / 50</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Center: Grand Themed Boss Bar (Custom Frames for Witch, Lich, and Dragon) -->
+      <div class="boss-banner-container theme-witch" id="boss-banner">
+        <!-- Lich skull medallions -->
+        <div class="boss-skull-medallion left" id="boss-skull-left">💀</div>
+        <!-- Dragon star sunburst crest -->
+        <div class="boss-star-crest left" id="boss-star-left">✦</div>
+
+        <div class="boss-content-wrapper">
+          <div class="boss-title-row">
+            <span class="boss-name" id="hud-boss-name">The Dark Witch</span>
+          </div>
+          <div class="boss-bar-frame">
+            <div class="boss-bar-fill" id="hud-boss-hp-bar" style="width: 100%;"></div>
+            <div class="boss-jewel-crown" id="boss-jewel-crown">♦</div>
+          </div>
+          <div class="boss-level-subtitle" id="hud-boss-level-sub">Lv. 50</div>
+        </div>
+
+        <div class="boss-star-crest right" id="boss-star-right">✦</div>
+        <div class="boss-skull-medallion right" id="boss-skull-right">💀</div>
+      </div>
+
+      <!-- Top Right: Objective Badge, Clock & Quick Controls -->
+      <div class="roblox-header-right">
+        <div class="roblox-objective-pill" id="roblox-objective-pill">
+          <span class="roblox-obj-diamond">◆</span>
+          <span class="roblox-obj-text" id="roblox-obj-text">Defeat The Dark Witch</span>
+          <span class="roblox-obj-count" id="roblox-obj-count">0 / 1</span>
+        </div>
+        <div class="roblox-time-badge" id="roblox-time-badge">
+          <span id="hud-clock-text">☀️ 08:00 AM</span>
+        </div>
+        <button class="btn-roblox-tool" id="btn-cam-toggle" title="Switch 1st/3rd Person [V]">🎥 3RD PERSON [V]</button>
+        <button class="btn-roblox-tool" id="btn-hud-map" title="Open World Map [T]">🗺️ MAP [T]</button>
+      </div>
+    </div>
+
+    <!-- Hidden Legacy Top-Left: Synced for compatibility -->
+    <div class="hud-top-left" style="display: none;">
       <div class="player-ornament-card">
         <div class="player-avatar-frame">
           <span class="player-avatar-icon">🧙‍♂️</span>
@@ -54,7 +128,6 @@
       </div>
 
       <div class="hud-bars">
-        <!-- Health -->
         <div class="stat-row">
           <span class="stat-badge hp">HP</span>
           <div class="bar-outer">
@@ -62,7 +135,6 @@
           </div>
           <span class="stat-values" id="hud-hp-num">100/100</span>
         </div>
-        <!-- Mana -->
         <div class="stat-row">
           <span class="stat-badge mp">MP</span>
           <div class="bar-outer">
@@ -70,7 +142,6 @@
           </div>
           <span class="stat-values" id="hud-mp-num">100/100</span>
         </div>
-        <!-- XP -->
         <div class="stat-row">
           <span class="stat-badge xp">XP</span>
           <div class="bar-outer">
@@ -80,25 +151,12 @@
         </div>
       </div>
 
-      <!-- Sacred Calculus Crystals Tracker -->
       <div class="crystals-tracker">
         <span class="crystals-label">CRYSTALS:</span>
         <div class="crystal-slot" id="crystal-slot-1" title="First Fragment: Limits & Continuity">💎</div>
         <div class="crystal-slot" id="crystal-slot-2" title="Second Fragment: Trig Derivatives">💎</div>
         <div class="crystal-slot" id="crystal-slot-3" title="Final Fragment: The Eternal Equation">💎</div>
       </div>
-    </div>
-
-    <!-- Top-Center: Grand Boss Bar -->
-    <div class="boss-banner-container" id="boss-banner">
-      <div class="boss-title-row">
-        <span class="boss-name" id="hud-boss-name">MORGATHIA, KEEPER OF BROKEN LIMITS</span>
-        <span class="boss-phase-badge" id="hud-boss-phase">PHASE I</span>
-      </div>
-      <div class="boss-bar-frame">
-        <div class="boss-bar-fill" id="hud-boss-hp-bar" style="width: 100%;"></div>
-      </div>
-      <div class="boss-quote-subtitle" id="hud-boss-quote">"Your understanding falters at the boundary of infinity..."</div>
     </div>
 
     <!-- Top-Right: Realm Banner, Controls & Settings Buttons, & Quest Tracker -->
@@ -138,6 +196,43 @@
       </div>
       <div class="hud-bottom-nav">
         <button class="btn-nav-pill" id="nav-pill-journal">[TAB] Quest Journal</button>
+        <button class="btn-nav-pill" id="nav-pill-inventory">[I] Inventory</button>
+        <button class="btn-nav-pill" id="nav-pill-codex">[M] Calculus Codex</button>
+        <button class="btn-nav-pill" id="nav-pill-status">[C] Character Status</button>
+        <button class="btn-nav-pill" id="nav-pill-controls">[H] Controls Guide</button>
+        <button class="btn-nav-pill" id="nav-pill-settings">[O] Settings</button>
+      </div>
+    </div>
+
+    <!-- Roblox Screen Key Hints (Bottom-Left, Matches Uploaded References) -->
+    <div class="roblox-controls-card" id="roblox-controls-card">
+      <div class="roblox-ctrl-row">
+        <div class="roblox-keys"><span class="k">W</span><span class="k">A</span><span class="k">S</span><span class="k">D</span></div>
+        <span class="roblox-ctrl-label">Move</span>
+      </div>
+      <div class="roblox-ctrl-row">
+        <div class="roblox-keys"><span class="k wide">Space</span></div>
+        <span class="roblox-ctrl-label">Jump</span>
+      </div>
+      <div class="roblox-ctrl-row">
+        <div class="roblox-keys"><span class="k">E</span></div>
+        <span class="roblox-ctrl-label">Interact / Bed</span>
+      </div>
+      <div class="roblox-ctrl-row">
+        <div class="roblox-keys"><span class="k wide">Shift</span></div>
+        <span class="roblox-ctrl-label">Sprint / Dash</span>
+      </div>
+      <div class="roblox-ctrl-row">
+        <div class="roblox-keys"><span class="k">T</span></div>
+        <span class="roblox-ctrl-label">World Map</span>
+      </div>
+      <div class="roblox-ctrl-row">
+        <div class="roblox-keys"><span class="k">V</span></div>
+        <span class="roblox-ctrl-label">1st / 3rd Cam</span>
+      </div>
+    </div>
+
+  </div>
         <button class="btn-nav-pill" id="nav-pill-inventory">[I] Inventory</button>
         <button class="btn-nav-pill" id="nav-pill-codex">[M] Calculus Codex</button>
         <button class="btn-nav-pill" id="nav-pill-status">[C] Character Status</button>
@@ -854,6 +949,55 @@
   </div>
 
   <!-- =========================================================================
+       WORLD MAP MODAL (SHORTCUT: T)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="world-map-modal">
+    <div class="fantasy-panel map-panel-container" style="max-width: 720px;">
+      <div class="fantasy-panel-header">
+        <div class="panel-title"><span>🗺️ NUMERIA REALM MAP [T]</span></div>
+        <button class="btn-close-modal" id="btn-close-map">✕</button>
+      </div>
+      <div class="fantasy-panel-body" style="padding: 14px; display: flex; flex-direction: column; align-items: center;">
+        <canvas id="world-map-canvas" width="620" height="380" class="world-map-canvas"></canvas>
+        <div class="world-map-legend">
+          <div class="legend-item"><span class="dot safe"></span> Safe Village & Bed</div>
+          <div class="legend-item"><span class="dot quest"></span> NPCs & Quests</div>
+          <div class="legend-item"><span class="dot danger"></span> Danger Gates</div>
+          <div class="legend-item"><span class="dot boss"></span> 3 Boss Domains</div>
+          <div class="legend-item"><span class="dot treasure"></span> Sacred Relics</div>
+        </div>
+        <div class="map-shortcut-hint" style="margin-top: 10px; font-size: 12px; color: var(--gold-glow);">
+          Press <strong>[T]</strong> or <strong>[ESC]</strong> to close map and resume adventure.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SLEEP DIALOG MODAL (BED AT VILLAGE INN)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="sleep-dialog-modal">
+    <div class="fantasy-panel" style="max-width: 520px; text-align: center;">
+      <div class="fantasy-panel-header">
+        <div class="panel-title"><span>🛏️ ADVENTURER'S INN & BED</span></div>
+        <button class="btn-close-modal" id="btn-close-sleep">✕</button>
+      </div>
+      <div class="fantasy-panel-body" style="padding: 24px 20px;">
+        <div style="font-size: 42px; margin-bottom: 10px;">🌙 ➔ ☀️</div>
+        <h3 style="font-family: var(--font-title); color: #ffd978; font-size: 22px; margin-bottom: 8px;">REST UNTIL MORNING?</h3>
+        <p id="sleep-current-time" style="font-size: 14px; color: #a8dadc; margin-bottom: 12px;">Current Time: 10:45 PM (Dangerous Night)</p>
+        <p style="font-size: 13px; color: #c2b59b; line-height: 1.5; margin-bottom: 22px;">
+          Sleeping will safely skip the perilous night, clear out aggressive monsters, restore your <strong>HP and Mana to 100%</strong>, and advance time directly to <strong>6:00 AM Sunrise</strong>!
+        </p>
+        <div style="display: flex; gap: 14px; justify-content: center;">
+          <button class="btn-fantasy-cta primary" id="btn-sleep-morning">☀️ SLEEP UNTIL MORNING (6:00 AM)</button>
+          <button class="btn-fantasy-cta" id="btn-sleep-cancel">CANCEL</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
        FULLSCREEN SCREENS (MAIN MENU, PAUSE, GAME OVER, VICTORY)
        ========================================================================= -->
 
@@ -948,14 +1092,18 @@
   </script>
   <script src="js/audio.js"></script>
   <script src="js/calculus.js"></script>
+  <script src="js/daynight.js"></script>
   <script src="js/player.js"></script>
+  <script src="js/character.js"></script>
   <script src="js/abilities.js"></script>
+  <script src="js/bosses.js"></script>
   <script src="js/world.js"></script>
   <script src="js/enemies.js"></script>
   <script src="js/missions.js"></script>
   <script src="js/inventory.js"></script>
   <script src="js/progression.js"></script>
   <script src="js/settings.js"></script>
+  <script src="js/map.js"></script>
   <script src="js/interface.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>

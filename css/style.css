@@ -1965,3 +1965,413 @@ input:checked + .toggle-slider:before {
   .hud-top-actions { flex-wrap: wrap; }
 }
 
+/* =========================================================================
+   ROBLOX-INSPIRED HUD, BOSS BARS, & MAP SYSTEMS (MATHBOUND)
+   ========================================================================= */
+
+.roblox-top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 12px 18px;
+  pointer-events: none;
+  z-index: 120;
+}
+
+.roblox-header-left, .roblox-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.roblox-logo-btn, .roblox-menu-btn {
+  width: 38px;
+  height: 38px;
+  background: rgba(16, 14, 22, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.roblox-logo-btn:hover, .roblox-menu-btn:hover {
+  background: rgba(40, 32, 55, 0.95);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.roblox-menu-btn span {
+  width: 18px;
+  height: 2px;
+  background: #ffffff;
+  border-radius: 1px;
+}
+
+.roblox-player-frame {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(18, 14, 25, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 6px 14px 6px 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.roblox-avatar-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #9d4edd;
+  overflow: hidden;
+  box-shadow: 0 0 8px rgba(157, 78, 221, 0.5);
+}
+
+.roblox-stat-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.roblox-level-text {
+  font-family: var(--font-title);
+  font-size: 13px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 3px #000;
+}
+
+.roblox-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.roblox-bar-label {
+  font-size: 10px;
+  font-weight: 900;
+  font-family: var(--font-mono);
+  width: 16px;
+}
+
+.roblox-bar.hp .roblox-bar-label { color: #2ecc71; }
+.roblox-bar.mp .roblox-bar-label { color: #3498db; }
+
+.roblox-bar-track {
+  width: 110px;
+  height: 10px;
+  background: #0f0d14;
+  border: 1px solid rgba(0, 0, 0, 0.8);
+  border-radius: 2px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.roblox-bar-fill {
+  height: 100%;
+  transition: width 0.25s ease-out;
+}
+
+.roblox-bar-fill.hp {
+  background: linear-gradient(90deg, #27ae60, #2ecc71);
+  box-shadow: 0 0 6px rgba(46, 204, 113, 0.7);
+}
+
+.roblox-bar-fill.mp {
+  background: linear-gradient(90deg, #2980b9, #3498db);
+  box-shadow: 0 0 6px rgba(52, 152, 219, 0.7);
+}
+
+.roblox-bar-num {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #eeeeee;
+  min-width: 55px;
+  text-shadow: 0 1px 2px #000;
+}
+
+.roblox-objective-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(18, 14, 25, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.roblox-obj-diamond {
+  color: #ffd166;
+  font-size: 11px;
+}
+
+.roblox-obj-count {
+  color: #ffd978;
+  font-family: var(--font-mono);
+}
+
+.roblox-time-badge {
+  background: rgba(18, 14, 25, 0.88);
+  border: 1px solid rgba(255, 217, 120, 0.35);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #ffd978;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: bold;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.btn-roblox-tool {
+  background: rgba(30, 22, 44, 0.9);
+  border: 1px solid var(--gold-dark);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.btn-roblox-tool:hover {
+  background: rgba(55, 38, 80, 0.95);
+  border-color: var(--gold-glow);
+  transform: translateY(-1px);
+}
+
+.roblox-controls-card {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  background: rgba(14, 12, 20, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 90;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+}
+
+.roblox-ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.roblox-keys {
+  display: flex;
+  gap: 3px;
+}
+
+.roblox-keys .k {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.roblox-keys .k.wide {
+  min-width: 44px;
+}
+
+.roblox-ctrl-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+}
+
+.boss-content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.boss-level-subtitle {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 800;
+  color: #eeeeee;
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 3px #000;
+}
+
+.boss-jewel-crown {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.boss-skull-medallion, .boss-star-crest {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+/* Theme 1: The Dark Witch (Image 1) */
+.boss-banner-container.theme-witch .boss-name {
+  color: #ffffff;
+  text-shadow: 0 0 18px #9d4edd, 0 2px 4px #000;
+  font-family: var(--font-title);
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.boss-banner-container.theme-witch .boss-bar-frame {
+  width: 100%;
+  height: 24px;
+  background: #0d0617;
+  border: 3px solid #7b2cbf;
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(157, 78, 221, 0.6), inset 0 0 10px #3c096c;
+  position: relative;
+}
+
+.boss-banner-container.theme-witch .boss-bar-fill {
+  background: linear-gradient(90deg, #9d4edd, #ff0054);
+  box-shadow: 0 0 14px rgba(255, 0, 84, 0.8);
+}
+
+.boss-banner-container.theme-witch .boss-jewel-crown {
+  color: #c77dff;
+  text-shadow: 0 0 12px #e0aaff;
+}
+
+/* Theme 2: The Lich (Image 2) */
+.boss-banner-container.theme-lich .boss-name {
+  color: #ff3333;
+  text-shadow: 0 0 22px #d90429, 0 2px 4px #000;
+  font-family: var(--font-title);
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.boss-banner-container.theme-lich .boss-bar-frame {
+  width: 100%;
+  height: 26px;
+  background: #140303;
+  border: 3px solid #9d0208;
+  border-radius: 6px;
+  box-shadow: 0 0 22px rgba(208, 0, 0, 0.7), inset 0 0 12px #6a040f;
+  position: relative;
+}
+
+.boss-banner-container.theme-lich .boss-bar-fill {
+  background: linear-gradient(90deg, #9d0208, #ff002b);
+  box-shadow: 0 0 16px rgba(255, 0, 43, 0.9);
+}
+
+.boss-banner-container.theme-lich .boss-skull-medallion {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  background: #1f0202;
+  border: 2px solid #d90429;
+  border-radius: 50%;
+  box-shadow: 0 0 14px #ff002b;
+}
+
+/* Theme 3: Eternal Dragon (Image 3) */
+.boss-banner-container.theme-dragon .boss-name {
+  color: #fff3b0;
+  text-shadow: 0 0 24px #ffb703, 0 2px 4px #000;
+  font-family: var(--font-title);
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.boss-banner-container.theme-dragon .boss-bar-frame {
+  width: 100%;
+  height: 28px;
+  background: #191402;
+  border: 3px solid #ffd166;
+  border-radius: 6px;
+  box-shadow: 0 0 26px rgba(255, 209, 102, 0.8), inset 0 0 14px #d4a373;
+  position: relative;
+}
+
+.boss-banner-container.theme-dragon .boss-bar-fill {
+  background: linear-gradient(90deg, #e5a910, #ffd166, #ffb703);
+  box-shadow: 0 0 18px rgba(255, 209, 102, 1);
+}
+
+.boss-banner-container.theme-dragon .boss-star-crest {
+  display: flex;
+  color: #ffd700;
+  text-shadow: 0 0 16px #ffea00;
+  font-size: 28px;
+}
+
+.world-map-canvas {
+  background: #090c12;
+  border: 2px solid var(--gold-primary);
+  border-radius: 6px;
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.9), 0 4px 14px rgba(0, 0, 0, 0.8);
+  max-width: 100%;
+  height: auto;
+}
+
+.world-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.world-map-legend .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.world-map-legend .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.world-map-legend .dot.safe { background: #2ec4b6; box-shadow: 0 0 6px #2ec4b6; }
+.world-map-legend .dot.quest { background: #3a86ff; box-shadow: 0 0 6px #3a86ff; }
+.world-map-legend .dot.danger { background: #e63946; box-shadow: 0 0 6px #e63946; }
+.world-map-legend .dot.boss { background: #9b5de5; box-shadow: 0 0 6px #9b5de5; }
+.world-map-legend .dot.treasure { background: #ffd166; box-shadow: 0 0 6px #ffd166; }
+

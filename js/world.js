@@ -158,8 +158,14 @@ class WorldManager {
     this.spawnCollectible('scroll', -14, 0, -8, 'Ancient Scroll of Limits');
     this.spawnCollectible('chest', 15, 0, -25, 'Cursed Forest Chest');
 
+    // Spawn Starter Village (Beginner Kingdom area)
+    this.spawnVillageHouse(0, 25, true); // Village Inn with sleeping bed
+    this.spawnVillageHouse(-14, 20, false);
+    this.spawnVillageHouse(14, 20, false);
+    this.spawnTrainingDummy(6, 15);
+
     // NPC: The Last Guardian of Knowledge (Starting Sanctuary)
-    this.spawnNPC(0, 0, 4, 'The Last Guardian of Knowledge', 'Elder of Numeria');
+    this.spawnNPC(0, 0, 8, 'The Last Guardian of Knowledge', 'Elder of Numeria');
   }
 
   // =========================================================================
@@ -499,6 +505,116 @@ class WorldManager {
         if (window.game) window.game.startBossEncounter(2);
       }
     });
+  }
+
+  // =========================================================================
+  // VILLAGE HOUSES, INN & INTERACTIVE BEDS (SLEEPING SYSTEM)
+  // =========================================================================
+  spawnVillageHouse(x, z, hasBed = false) {
+    const y = this.getTerrainHeight(x, z);
+    const group = new THREE.Group();
+    group.position.set(x, y, z);
+
+    // House Walls
+    const wallGeom = new THREE.BoxGeometry(6.5, 4.2, 5.5);
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.8 });
+    const walls = new THREE.Mesh(wallGeom, wallMat);
+    walls.position.y = 2.1;
+    group.add(walls);
+
+    // Sloped Wooden Roof
+    const roofGeom = new THREE.ConeGeometry(5.2, 2.5, 4);
+    roofGeom.rotateY(Math.PI / 4);
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x4a2c11, roughness: 0.7 });
+    const roof = new THREE.Mesh(roofGeom, roofMat);
+    roof.position.y = 5.2;
+    group.add(roof);
+
+    // Doorway Frame
+    const doorGeom = new THREE.BoxGeometry(1.4, 2.4, 0.2);
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0x2e1806 });
+    const door = new THREE.Mesh(doorGeom, doorMat);
+    door.position.set(0, 1.2, 2.8);
+    group.add(door);
+
+    this.scene.add(group);
+    this.worldObjects.push(group);
+
+    // If house contains an interactive bed (Inn)
+    if (hasBed) {
+      this.spawnBed(x, y, z);
+    }
+  }
+
+  spawnBed(x, y, z) {
+    const group = new THREE.Group();
+    group.position.set(x, y + 0.1, z);
+
+    // Wooden Bed Frame
+    const frameGeom = new THREE.BoxGeometry(1.6, 0.45, 2.6);
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x5c3818, roughness: 0.7 });
+    const frame = new THREE.Mesh(frameGeom, frameMat);
+    frame.position.y = 0.22;
+    group.add(frame);
+
+    // Mattress & Red Blanket (Roblox style)
+    const matGeom = new THREE.BoxGeometry(1.5, 0.35, 2.5);
+    const matMat = new THREE.MeshStandardMaterial({ color: 0xb5179e, roughness: 0.6 });
+    const mattress = new THREE.Mesh(matGeom, matMat);
+    mattress.position.y = 0.55;
+    group.add(mattress);
+
+    // White Pillow
+    const pilGeom = new THREE.BoxGeometry(1.2, 0.22, 0.6);
+    const pilMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.4 });
+    const pillow = new THREE.Mesh(pilGeom, pilMat);
+    pillow.position.set(0, 0.75, -0.85);
+    group.add(pillow);
+
+    this.scene.add(group);
+    this.worldObjects.push(group);
+
+    // Register bed with proximity interaction
+    this.interactables.push({
+      type: 'bed',
+      name: 'Adventurer\'s Bed',
+      position: new THREE.Vector3(x, y + 0.8, z),
+      radius: 3.5,
+      interact: () => {
+        if (window.interfaceManager) {
+          window.interfaceManager.showSleepModal();
+        }
+      }
+    });
+  }
+
+  spawnTrainingDummy(x, z) {
+    const y = this.getTerrainHeight(x, z);
+    const group = new THREE.Group();
+    group.position.set(x, y, z);
+
+    // Post
+    const postGeom = new THREE.CylinderGeometry(0.18, 0.18, 2.2, 8);
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x6f4e37 });
+    const post = new THREE.Mesh(postGeom, postMat);
+    post.position.y = 1.1;
+    group.add(post);
+
+    // Straw Body
+    const strawGeom = new THREE.CylinderGeometry(0.45, 0.4, 1.2, 8);
+    const strawMat = new THREE.MeshStandardMaterial({ color: 0xd4a373 });
+    const straw = new THREE.Mesh(strawGeom, strawMat);
+    straw.position.y = 1.3;
+    group.add(straw);
+
+    // Crossbar arms
+    const barGeom = new THREE.BoxGeometry(1.6, 0.18, 0.18);
+    const bar = new THREE.Mesh(barGeom, postMat);
+    bar.position.y = 1.5;
+    group.add(bar);
+
+    this.scene.add(group);
+    this.worldObjects.push(group);
   }
 
   spawnDimensionalTower(x, y, z, name) {

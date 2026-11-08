@@ -306,6 +306,11 @@ class PlayerController {
     // Play sword slash SFX
     if (window.soundEngine) window.soundEngine.playSwordSlash();
 
+    // Trigger 3D character attack animation
+    if (window.game && window.game.character) {
+      window.game.character.triggerAttack('basic');
+    }
+
     // Perform melee raycast against enemies in front
     if (window.game) {
       window.game.checkMeleeHit(this.equippedWeapon.damage, this.equippedWeapon.reach);
@@ -529,14 +534,18 @@ class PlayerController {
       this.isGrounded = false;
     }
 
-    // Update Camera position and rotation
-    this.camera.position.copy(this.position);
-    this.camera.rotation.order = 'YXZ';
-    this.camera.rotation.y = this.yaw;
-    this.camera.rotation.x = this.pitch;
+    // Update Camera position and rotation (only if in First-Person mode)
+    if (!window.robloxCharacter || window.robloxCharacter.cameraMode === 'first_person') {
+      this.camera.position.copy(this.position);
+      this.camera.rotation.order = 'YXZ';
+      this.camera.rotation.y = this.yaw;
+      this.camera.rotation.x = this.pitch;
+    }
 
     // --- ANIMATE FIRST-PERSON VIEWMODEL ---
-    this.updateViewmodel(delta);
+    if (!window.robloxCharacter || window.robloxCharacter.cameraMode === 'first_person') {
+      this.updateViewmodel(delta);
+    }
   }
 
   updateViewmodel(delta) {

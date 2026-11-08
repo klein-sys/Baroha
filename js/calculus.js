@@ -358,6 +358,9 @@ class CalculusManager {
     ];
   }
 
+    this.lastQuestionId = null;
+  }
+
   getQuestionsForRealm(realmId, phase = 1) {
     const key = `realm${realmId}`;
     const pool = this.questionBank[key] || this.questionBank.realm1;
@@ -368,8 +371,29 @@ class CalculusManager {
 
   getRandomQuestion(realmId, phase = 1) {
     const list = this.getQuestionsForRealm(realmId, phase);
-    const randomIndex = Math.floor(Math.random() * list.length);
-    return list[randomIndex];
+    
+    // Avoid duplicate question in same encounter if more than 1 available
+    let available = list.filter(q => q.id !== this.lastQuestionId);
+    if (available.length === 0) available = list;
+
+    const randomIndex = Math.floor(Math.random() * available.length);
+    const selected = available[randomIndex];
+    this.lastQuestionId = selected.id;
+
+    // Deep clone question
+    const qClone = JSON.parse(JSON.stringify(selected));
+
+    // Fisher-Yates Shuffle on Multiple Choice Options so correct answer is randomly A, B, C, or D
+    if (qClone.type === 'mcq' && qClone.options && qClone.options.length > 1) {
+      for (let i = qClone.options.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = qClone.options[i];
+        qClone.options[i] = qClone.options[j];
+        qClone.options[j] = temp;
+      }
+    }
+
+    return qClone;
   }
 
   recordAnswer(isCorrect) {
