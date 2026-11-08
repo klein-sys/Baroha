@@ -439,11 +439,13 @@ class InterfaceManager {
     if (isCorrect) {
       if (window.soundEngine) window.soundEngine.playMathCorrect();
       titleEl.className = 'math-explanation-title correct';
-      titleEl.innerText = '⚡ HARMONIC EQUILIBRIUM! ANSWER CORRECT!';
+      titleEl.innerText = `⚡ HARMONIC OVERLOAD! +${Math.round(question.damage * 1.5)} DAMAGE DEALT!`;
+      this.showToast(`⚡ CRITICAL RESONANCE! Boss ward shattered for ${Math.round(question.damage * 1.5)} DMG!`, 'success');
     } else {
       if (window.soundEngine) window.soundEngine.playMathError();
       titleEl.className = 'math-explanation-title wrong';
-      titleEl.innerText = '⚠️ CURSE UNRESOLVED! 1 HEART LOST!';
+      titleEl.innerText = '⚠️ BARRIER BREACH! 1 HEART LOST!';
+      this.showToast('⚠️ CURSE UNRESOLVED! Lost 1 Heart Container!', 'error');
     }
 
     contentEl.innerText = isCorrect
@@ -456,6 +458,10 @@ class InterfaceManager {
       document.getElementById('math-trial-modal').classList.remove('open');
       this.activeModal = null;
       if (onCompleteCallback) onCompleteCallback(isCorrect, question);
+      if (window.game && window.game.isRunning && !window.game.isPaused && !window.game.isGameOver) {
+        const canvas = document.getElementById('game-canvas');
+        if (canvas) canvas.requestPointerLock();
+      }
     };
   }
 
