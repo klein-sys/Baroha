@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>The Forbidden Realm: The Trials of Knowledge - 3D Calculus RPG</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- WebGL 3D Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Screen FX Overlays -->
+  <div class="vignette-overlay"></div>
+  <div class="damage-vignette" id="damage-vignette"></div>
+
+  <!-- Reticle & Hitmarker -->
+  <div id="crosshair">
+    <div class="crosshair-ring"></div>
+    <div class="crosshair-dot"></div>
+  </div>
+  <div id="hitmarker"></div>
+
+  <!-- Floating Combat Damage Text -->
+  <div class="floating-text-container" id="floating-text-container"></div>
+
+  <!-- Notification Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- =========================================================================
+       IN-GAME HUD
+       ========================================================================= -->
+  <div id="game-hud">
+
+    <!-- Top-Left: Player Vitality & Hearts -->
+    <div class="hud-top-left">
+      <div class="player-ornament-card">
+        <div class="player-avatar-frame">
+          <span class="player-avatar-icon">🧙‍♂️</span>
+          <span class="player-level-tag" id="hud-player-level">1</span>
+        </div>
+        <div class="player-meta">
+          <div class="player-name-title" id="hud-player-title">Arcane Guardian</div>
+          <div class="player-class-rank" id="hud-player-class">Novice Adventurer</div>
+          <div class="hearts-row" id="hud-hearts-row">
+            <span class="heart-icon full"></span>
+            <span class="heart-icon full"></span>
+            <span class="heart-icon full"></span>
+            <span class="heart-icon full"></span>
+            <span class="heart-icon full"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-bars">
+        <!-- Health -->
+        <div class="stat-row">
+          <span class="stat-badge hp">HP</span>
+          <div class="bar-outer">
+            <div class="bar-fill hp" id="hud-hp-bar" style="width: 100%;"></div>
+          </div>
+          <span class="stat-values" id="hud-hp-num">100/100</span>
+        </div>
+        <!-- Mana -->
+        <div class="stat-row">
+          <span class="stat-badge mp">MP</span>
+          <div class="bar-outer">
+            <div class="bar-fill mp" id="hud-mp-bar" style="width: 100%;"></div>
+          </div>
+          <span class="stat-values" id="hud-mp-num">100/100</span>
+        </div>
+        <!-- XP -->
+        <div class="stat-row">
+          <span class="stat-badge xp">XP</span>
+          <div class="bar-outer">
+            <div class="bar-fill xp" id="hud-xp-bar" style="width: 0%;"></div>
+          </div>
+          <span class="stat-values" id="hud-xp-num">0/250 XP</span>
+        </div>
+      </div>
+
+      <!-- Sacred Calculus Crystals Tracker -->
+      <div class="crystals-tracker">
+        <span class="crystals-label">CRYSTALS:</span>
+        <div class="crystal-slot" id="crystal-slot-1" title="First Fragment: Limits & Continuity">💎</div>
+        <div class="crystal-slot" id="crystal-slot-2" title="Second Fragment: Trig Derivatives">💎</div>
+        <div class="crystal-slot" id="crystal-slot-3" title="Final Fragment: The Eternal Equation">💎</div>
+      </div>
+    </div>
+
+    <!-- Top-Center: Grand Boss Bar -->
+    <div class="boss-banner-container" id="boss-banner">
+      <div class="boss-title-row">
+        <span class="boss-name" id="hud-boss-name">MORGATHIA, KEEPER OF BROKEN LIMITS</span>
+        <span class="boss-phase-badge" id="hud-boss-phase">PHASE I</span>
+      </div>
+      <div class="boss-bar-frame">
+        <div class="boss-bar-fill" id="hud-boss-hp-bar" style="width: 100%;"></div>
+      </div>
+      <div class="boss-quote-subtitle" id="hud-boss-quote">"Your understanding falters at the boundary of infinity..."</div>
+    </div>
+
+    <!-- Top-Right: Realm Banner, Controls & Settings Buttons, & Quest Tracker -->
+    <div class="hud-top-right">
+      <div class="hud-top-actions">
+        <div class="realm-badge">
+          <span class="realm-icon">🏰</span>
+          <span class="realm-text" id="hud-realm-text">Realm I: The Cursed Forest</span>
+        </div>
+        <button class="btn-hud-pill" id="btn-hud-controls" title="Open Controls Guide [H]">🎮 CONTROLS [H]</button>
+        <button class="btn-hud-pill" id="btn-hud-settings" title="Adjust Graphics & Settings [O]">⚙️ SETTINGS [O]</button>
+      </div>
+
+      <div class="quest-tracker-card">
+        <div class="quest-tracker-title">
+          <span>ACTIVE TRIAL</span>
+          <span class="key-hint">[TAB] Journal</span>
+        </div>
+        <div class="quest-name" id="hud-quest-name">The Last Guardian's Wisdom</div>
+        <div class="quest-objective" id="hud-quest-desc">Speak with the Last Guardian of Knowledge at the forest glade.</div>
+        <div class="quest-progress-bar">
+          <div class="quest-progress-fill" id="hud-quest-progress" style="width: 0%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Interaction Prompt -->
+    <div id="interact-prompt">
+      <span class="key-badge">E</span>
+      <span id="interact-text">Interact</span>
+    </div>
+
+    <!-- Bottom Center: Abilities Dock & Quick Nav -->
+    <div class="hud-bottom-center">
+      <div class="ability-dock" id="ability-dock">
+        <!-- Rendered dynamically by interfaceManager -->
+      </div>
+      <div class="hud-bottom-nav">
+        <button class="btn-nav-pill" id="nav-pill-journal">[TAB] Quest Journal</button>
+        <button class="btn-nav-pill" id="nav-pill-inventory">[I] Inventory</button>
+        <button class="btn-nav-pill" id="nav-pill-codex">[M] Calculus Codex</button>
+        <button class="btn-nav-pill" id="nav-pill-status">[C] Character Status</button>
+        <button class="btn-nav-pill" id="nav-pill-controls">[H] Controls Guide</button>
+        <button class="btn-nav-pill" id="nav-pill-settings">[O] Settings</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- =========================================================================
+       MATHEMATICS TRIAL MODAL (Combat & Boss Calculus Challenges)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="math-trial-modal">
+    <div class="fantasy-panel">
+      <div class="math-header-banner">
+        <span class="math-curse-tag" id="math-trial-topic">LIMITS AND CONTINUITY</span>
+        <div class="math-timer-wrap">
+          <span class="timer-label">ARCANE TIME:</span>
+          <div class="timer-bar">
+            <div class="timer-bar-fill" id="math-timer-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fantasy-panel-body">
+        <div class="math-prompt-box">
+          <p class="math-prompt-lore" id="math-trial-lore">Morgathia weaves a curse of broken thresholds. Evaluate the approaching boundary!</p>
+          <div class="math-equation-display" id="math-trial-equation">lim (x → 3) [ 2x² - 4x + 5 ]</div>
+          <p class="math-prompt-help">Choose the mathematically correct harmonic solution to break the curse:</p>
+        </div>
+
+        <!-- Multiple Choice Options -->
+        <div class="math-options-grid" id="math-options-grid"></div>
+
+        <!-- Numeric Input Challenge -->
+        <div class="math-input-container" id="math-input-container">
+          <input type="text" class="math-number-input" id="math-numeric-input" placeholder="Enter exact value..." autocomplete="off">
+          <button class="btn-submit-answer" id="btn-submit-numeric">SEAL THE EQUATION</button>
+        </div>
+
+        <!-- Step-by-Step Educational Explanation Box -->
+        <div class="math-explanation-box" id="math-explanation-box">
+          <div class="math-explanation-title" id="math-explanation-status">⚡ HARMONIC EQUILIBRIUM!</div>
+          <p class="math-explanation-content" id="math-explanation-text"></p>
+          <div class="math-explanation-step" id="math-explanation-steps"></div>
+          <button class="btn-continue-combat" id="btn-continue-combat">CONTINUE ADVENTURE ▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       NPC DIALOGUE MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop" id="npc-dialog-modal">
+    <div class="fantasy-panel">
+      <div class="fantasy-panel-header">
+        <div class="panel-title"><span>📜 ANCIENT DISCOURSE</span></div>
+        <button class="btn-close-modal">✕</button>
+      </div>
+      <div class="fantasy-panel-body">
+        <div class="dialogue-speaker-wrap">
+          <div class="dialogue-portrait">🧙‍♂️</div>
+          <div class="dialogue-speaker-info">
+            <div class="dialogue-speaker-name" id="npc-name">The Last Guardian of Knowledge</div>
+            <div class="dialogue-speaker-role" id="npc-role">Elder of Numeria</div>
+          </div>
+        </div>
+        <div class="dialogue-speech-text" id="npc-speech">Greetings, young adventurer. The Kingdom of Numeria has fallen to the Forbidden Equation...</div>
+        <div class="dialogue-choices" id="npc-choices"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       QUEST JOURNAL MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop" id="quest-journal-modal">
+    <div class="fantasy-panel">
+      <div class="fantasy-panel-header">
+        <div class="panel-title"><span>📖 CHRONICLES OF NUMERIA</span></div>
+        <button class="btn-close-modal">✕</button>
+      </div>
+      <div class="fantasy-panel-body">
+        <div class="quest-journal-body" id="quest-journal-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       INVENTORY MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop" id="inventory-modal">
+    <div class="fantasy-panel">
+      <div class="fantasy-panel-header">
+        <div class="panel-title"><span>🎒 ARCANE SATCHEL & ARTIFACTS</span></div>
+        <button class="btn-close-modal">✕</button>
+      </div>
+      <div class="fantasy-panel-body">
+        <div class="inventory-grid" id="inventory-grid"></div>
+        <div class="inventory-details-card">
+          <div class="item-detail-title" id="inventory-item-title">Select an item</div>
+          <div class="item-detail-desc" id="inventory-item-desc">Click any consumable potion or artifact to inspect and use.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       CHARACTER STATUS MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop" id="character-modal">
+    <div class="fantasy-panel">
+      <div class="fantasy-panel-header">
+        <div class="panel-title"><span>⚜️ GUARDIAN STATUS</span></div>
+        <button class="btn-close-modal">✕</button>
+      </div>
+      <div class="fantasy-panel-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div style="background: rgba(18, 14, 24, 0.85); border: 1px solid #44321c; padding: 12px; border-radius: 6px;">
+            <p style="color: #c2b59b; font-size: 13px;">Player Level:</p>
+            <h3 style="color: #ffd978; font-family: var(--font-title);" id="char-level">1</h3>
+          </div>
+          <div style="background: rgba(18, 14, 24, 0.85); border: 1px solid #44321c; padding: 12px; border-radius: 6px;">
+            <p style="color: #c2b59b; font-size: 13px;">Rank / Title:</p>
+            <h3 style="color: #ffd978; font-family: var(--font-title);" id="char-rank">Novice Adventurer</h3>
+          </div>
+          <div style="background: rgba(18, 14, 24, 0.85); border: 1px solid #44321c; padding: 12px; border-radius: 6px;">
+            <p style="color: #c2b59b; font-size: 13px;">Health Points (HP):</p>
+            <h3 style="color: #ff6b6b; font-family: var(--font-mono);" id="char-hp">100/100</h3>
+          </div>
+          <div style="background: rgba(18, 14, 24, 0.85); border: 1px solid #44321c; padding: 12px; border-radius: 6px;">
+            <p style="color: #c2b59b; font-size: 13px;">Mana (MP):</p>
+            <h3 style="color: #00d4ff; font-family: var(--font-mono);" id="char-mana">100/100</h3>
+          </div>
+          <div style="background: rgba(18, 14, 24, 0.85); border: 1px solid #44321c; padding: 12px; border-radius: 6px;">
+            <p style="color: #c2b59b; font-size: 13px;">Hearts (Lives):</p>
+            <h3 style="color: #e63946; font-family: var(--font-mono);" id="char-hearts">5/5</h3>
+          </div>
+          <div style="background: rgba(18, 14, 24, 0.85); border: 1px solid #44321c; padding: 12px; border-radius: 6px;">
+            <p style="color: #c2b59b; font-size: 13px;">Calculus Accuracy:</p>
+            <h3 style="color: #38ef7d; font-family: var(--font-mono);" id="char-accuracy">100%</h3>
+          </div>
+          <div style="background: rgba(18, 14, 24, 0.85); border: 1px solid #44321c; padding: 12px; border-radius: 6px; grid-column: span 2;">
+            <p style="color: #c2b59b; font-size: 13px;">Base Runeblade Attack Power:</p>
+            <h3 style="color: #ffbe0b; font-family: var(--font-title);" id="char-power">35</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       CALCULUS CODEX MODAL (BATANGAS STATE UNIVERSITY SEMESTRAL REPORT)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="codex-modal">
+    <div class="fantasy-panel" style="max-width: 820px;">
+      <div class="fantasy-panel-header">
+        <div class="panel-title"><span>📐 CALCULUS CODEX & SEMESTRAL DEFENSE</span></div>
+        <button class="btn-close-modal">✕</button>
+      </div>
+      <div class="fantasy-panel-body">
+        <div style="background: rgba(30, 20, 10, 0.7); border: 1px solid #e5b95c; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+          <h4 style="color: #ffd978; font-family: var(--font-title);">Batangas State University - The National Engineering University</h4>
+          <p style="font-size: 13px; color: #ffccd5;">College of Informatics and Computing Sciences | MATH 101 – Differential Calculus</p>
+          <p style="font-size: 12px; color: #c2b59b;">Semestral Project: Designing Digital Worlds Through Differential Calculus</p>
+        </div>
+        <div id="codex-examples-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       CONTROLS & HOW TO PLAY MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop" id="controls-modal">
+    <div class="fantasy-panel" style="max-width: 860px;">
+      <div class="fantasy-panel-header">
+        <div class="panel-title"><span>⚔️ CONTROLS & HOW TO PLAY</span></div>
+        <button class="btn-close-modal">✕</button>
+      </div>
+      <div class="fantasy-panel-body">
+        
+        <!-- Tabs Header -->
+        <div class="tabs-header">
+          <button class="tab-btn active" data-tab="tab-ctrl-move">🏃 Movement</button>
+          <button class="tab-btn" data-tab="tab-ctrl-combat">⚔️ Combat & Magic</button>
+          <button class="tab-btn" data-tab="tab-ctrl-interact">🔍 Interaction</button>
+          <button class="tab-btn" data-tab="tab-ctrl-menus">📜 Menus & Grimoire</button>
+          <button class="tab-btn" data-tab="tab-ctrl-mobile">📱 Mobile Touch</button>
+          <button class="tab-btn" data-tab="tab-ctrl-rules">💖 Boss & Survival Rules</button>
+        </div>
+
+        <!-- Tab 1: Movement -->
+        <div class="tab-content active" id="tab-ctrl-move">
+          <div class="controls-grid">
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">W A S D</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Movement & Strafe</div>
+                <div class="control-desc">Walk forward, left, backward, and right across the 3D terrain and dungeons.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">MOUSE</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Camera Look (360°)</div>
+                <div class="control-desc">Look around in full first-person. Click the screen to lock your mouse cursor. Press Esc to release.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">SPACE</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Jump</div>
+                <div class="control-desc">Leap across stone barriers, ruins, stairs, and quantum chasms.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">SHIFT</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Sprint</div>
+                <div class="control-desc">Hold while moving to sprint at high velocity (accelerates from 8 to 14 units/sec).</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Combat & Magic -->
+        <div class="tab-content" id="tab-ctrl-combat">
+          <div class="controls-grid">
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">LMB</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Left Click: Runeblade Slash</div>
+                <div class="control-desc">Swings your enchanted 3D sword with trail particle effects, dealing melee damage to nearby foes.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">RMB</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Right Click: Shield Parry / Block</div>
+                <div class="control-desc">Raises sword in defensive parry stance. Blocks 60% of incoming enemy physical damage!</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">[ 1 ]</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Magic Bolt (10 MP)</div>
+                <div class="control-desc">Fires a concentrated projectile of arcane mathematical energy.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">[ 2 ]</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Fireball (25 MP)</div>
+                <div class="control-desc">Unlocked at Level 2: Hurls an explosive sphere dealing heavy area damage to groups.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">[ 3 ]</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Lightning Strike (35 MP)</div>
+                <div class="control-desc">Unlocked at Level 3: Calls down devastating thunderbolts from the heavens.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">[ 4 ]</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Magical Shield (25 MP)</div>
+                <div class="control-desc">Summons an invulnerable forcefield absorbing 100% of all incoming damage for 5 seconds.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">[ 5 ]</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Healing Aura (30 MP)</div>
+                <div class="control-desc">Channels harmonic calculus energy to immediately restore +40 Health Points.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">[ Q ]</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Quick Cast / Eternal Nova (50 MP)</div>
+                <div class="control-desc">Casts currently selected spell or the cataclysmic screen-clearing Eternal Nova ultimate.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Interaction -->
+        <div class="tab-content" id="tab-ctrl-interact">
+          <div class="controls-grid">
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">E or F</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Interact & Talk with NPCs</div>
+                <div class="control-desc">Approach characters like The Last Guardian of Knowledge or Hermit Scholar Alistair to converse and receive advice.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">E or F</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Chests & Collectibles</div>
+                <div class="control-desc">Open Mystery Chests, collect the 3 Forest Keys of Limits, and gather Health Potions and Crystals.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">E or F</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Ancient Scrolls of Calculus</div>
+                <div class="control-desc">Interact with glowing scrolls to trigger optional mathematical challenges awarding bonus XP!</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">E or F</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Gates & Celestial Obelisks</div>
+                <div class="control-desc">Unlock Castle Barriers once keys are gathered, and resonate the 3 Obelisks in the Realm Beyond Infinity.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Menus & Hotkeys -->
+        <div class="tab-content" id="tab-ctrl-menus">
+          <div class="controls-grid">
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">TAB</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Quest Journal</div>
+                <div class="control-desc">Inspect active trials, realm objective progress, and unlocked achievements.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">[ I ]</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Arcane Satchel (Inventory)</div>
+                <div class="control-desc">Click and drink Healing Potions (+50 HP), Mana Crystals (+50 MP), or inspect Golden Hearts.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">[ C ]</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Guardian Status</div>
+                <div class="control-desc">View your Level, HP, Mana, Attack Power, and Calculus Accuracy %.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">[ M ]</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Calculus Codex</div>
+                <div class="control-desc">Access the BSU Math 101 Study Guide and worked examples for project defense!</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">[ H ]</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Controls Guide</div>
+                <div class="control-desc">Opens this detailed control and gameplay mastery manual anytime.</div>
+              </div>
+            </div>
+            <div class="control-card">
+              <div class="key-badge-stack">
+                <span class="key-badge-large">[ O ]</span>
+              </div>
+              <div class="control-info">
+                <div class="control-title">Settings & Graphics</div>
+                <div class="control-desc">Adjust resolution scale, FOV, render distance fog, mouse sensitivity, and volume.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 5: Mobile Touch -->
+        <div class="tab-content" id="tab-ctrl-mobile">
+          <div style="background: rgba(18, 14, 25, 0.9); border: 1px solid var(--gold-dark); border-radius: 6px; padding: 16px; margin-bottom: 14px;">
+            <h4 style="color: var(--gold-glow); font-family: var(--font-title); margin-bottom: 8px;">Mobile Touchscreen Overlay</h4>
+            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
+              When playing on a smartphone or tablet, touch controls automatically appear on the display:
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
+              <div style="background: #110e16; padding: 10px; border-radius: 4px;"><strong>Left Thumb:</strong> Drag virtual joystick to walk & strafe.</div>
+              <div style="background: #110e16; padding: 10px; border-radius: 4px;"><strong>Right Screen:</strong> Drag to look around in 360°.</div>
+              <div style="background: #110e16; padding: 10px; border-radius: 4px;"><strong>[SWORD]:</strong> Melee attack with Runeblade.</div>
+              <div style="background: #110e16; padding: 10px; border-radius: 4px;"><strong>[JUMP]:</strong> Jump over gaps and terrain.</div>
+              <div style="background: #110e16; padding: 10px; border-radius: 4px;"><strong>[CAST]:</strong> Cast equipped magic ability.</div>
+              <div style="background: #110e16; padding: 10px; border-radius: 4px;"><strong>[USE]:</strong> Interact with NPCs, chests, keys.</div>
+              <div style="background: #110e16; padding: 10px; border-radius: 4px;"><strong>[POTION]:</strong> Quick-use Healing Potion.</div>
+              <div style="background: #110e16; padding: 10px; border-radius: 4px;"><strong>[QUEST]:</strong> Open Quest Journal.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 6: Boss & Survival Rules -->
+        <div class="tab-content" id="tab-ctrl-rules">
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="control-pro-tip">
+              <strong>💖 The 5 Hearts (Lives) Rule:</strong> You have exactly 5 Hearts. Normal minion attacks deplete your green HP bar. If HP drops to 0, you lose 1 Heart and respawn at the checkpoint with full HP.
+            </div>
+            <div class="control-pro-tip" style="border-left-color: #ffd978;">
+              <strong>⚡ Boss Math Combat Curses:</strong> Bosses cast calculus curse trials. An <strong>incorrect answer immediately deducts 1 Heart</strong>! A <strong>correct answer deals massive counter-damage</strong> to the boss!
+            </div>
+            <div class="control-pro-tip" style="border-left-color: #06d6a0;">
+              <strong>💛 Restoring Lost Hearts:</strong> Seek rare Golden Hearts hidden in ruins or chests to restore lost heart containers up to the maximum of 5.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       ORGANIZED SETTINGS MODAL (ADJUSTABLE GRAPHICS, CONTROLS, AUDIO)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="settings-modal">
+    <div class="fantasy-panel" style="max-width: 780px;">
+      <div class="fantasy-panel-header">
+        <div class="panel-title"><span>⚙️ GAMEPLAY & GRAPHICS SETTINGS</span></div>
+        <button class="btn-close-modal">✕</button>
+      </div>
+      <div class="fantasy-panel-body">
+        
+        <!-- Settings Tabs Header -->
+        <div class="tabs-header">
+          <button class="tab-btn active" data-tab="tab-set-graphics">🖥️ Graphics & Display</button>
+          <button class="tab-btn" data-tab="tab-set-controls">🎮 Controls & Sensitivity</button>
+          <button class="tab-btn" data-tab="tab-set-audio">🔊 Audio & Volume</button>
+        </div>
+
+        <!-- Tab 1: Graphics Settings -->
+        <div class="tab-content active" id="tab-set-graphics">
+          
+          <!-- Quality Presets -->
+          <div class="settings-section">
+            <div class="settings-section-title">Graphics Quality Presets</div>
+            <div class="settings-preset-row">
+              <button class="btn-preset-pill" data-preset="low">Low (Fast)</button>
+              <button class="btn-preset-pill" data-preset="medium">Medium</button>
+              <button class="btn-preset-pill active" data-preset="high">High (Recommended)</button>
+              <button class="btn-preset-pill" data-preset="ultra">Ultra (Max Quality)</button>
+            </div>
+            <p style="font-size: 11px; color: var(--text-muted);">Quick-tune graphics settings for optimal balance between visual fidelity and high framerates.</p>
+          </div>
+
+          <!-- Fine-Grained Graphics Settings -->
+          <div class="settings-section">
+            <div class="settings-section-title">Display & Rendering Options</div>
+            
+            <!-- Resolution Scale -->
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Resolution Scaling</span>
+                <span class="settings-label-sub">Adjust internal 3D render pixel density</span>
+              </div>
+              <div class="settings-control">
+                <select class="fantasy-select" id="settings-res-scale">
+                  <option value="0.75">0.75x Performance (High FPS)</option>
+                  <option value="1" selected>1.0x Native (Balanced)</option>
+                  <option value="1.5">1.5x Ultra HD (Crisp Details)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Render Distance / Fog -->
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Render Distance & Atmosphere Fog</span>
+                <span class="settings-label-sub">Viewing depth of realm horizon and architecture</span>
+              </div>
+              <div class="settings-control">
+                <select class="fantasy-select" id="settings-render-dist">
+                  <option value="short">Short (Dense Fog / High FPS)</option>
+                  <option value="medium" selected>Medium (Standard Atmospheric)</option>
+                  <option value="far">Far (Vast Panoramic Vista)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Field of View (FOV) -->
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Camera Field of View (FOV)</span>
+                <span class="settings-label-sub">Horizontal peripheral vision width</span>
+              </div>
+              <div class="settings-control">
+                <div class="fantasy-slider-wrap">
+                  <input type="range" class="fantasy-slider" id="settings-fov" min="65" max="95" value="75">
+                  <span class="slider-val-badge" id="settings-fov-val">75°</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Particle Effects -->
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Particle & Spell Explosions</span>
+                <span class="settings-label-sub">Glowing torches, magic projectile trails, combat embers</span>
+              </div>
+              <div class="settings-control">
+                <label class="fantasy-toggle">
+                  <input type="checkbox" id="settings-particles" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- FPS Cap -->
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Framerate Limiter</span>
+                <span class="settings-label-sub">Cap target FPS to conserve battery and GPU load</span>
+              </div>
+              <div class="settings-control">
+                <select class="fantasy-select" id="settings-fps-cap">
+                  <option value="30">30 FPS (Power Saver)</option>
+                  <option value="60" selected>60 FPS (Smooth Standard)</option>
+                  <option value="0">Uncapped (Max Display Refresh)</option>
+                </select>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Tab 2: Controls Settings -->
+        <div class="tab-content" id="tab-set-controls">
+          <div class="settings-section">
+            <div class="settings-section-title">Mouse & Look Settings</div>
+            
+            <!-- Mouse Sensitivity -->
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Mouse Look Sensitivity</span>
+                <span class="settings-label-sub">First-person camera rotation response</span>
+              </div>
+              <div class="settings-control">
+                <div class="fantasy-slider-wrap">
+                  <input type="range" class="fantasy-slider" id="settings-mouse-sens" min="0.5" max="3.0" step="0.1" value="1.0">
+                  <span class="slider-val-badge" id="settings-mouse-sens-val">1.0x</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Invert Y-Axis -->
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Invert Y-Axis</span>
+                <span class="settings-label-sub">Inverts vertical pitch look direction</span>
+              </div>
+              <div class="settings-control">
+                <label class="fantasy-toggle">
+                  <input type="checkbox" id="settings-invert-y">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Mobile Touch UI Force -->
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Virtual Touch Controls</span>
+                <span class="settings-label-sub">On-screen joystick and action buttons</span>
+              </div>
+              <div class="settings-control">
+                <select class="fantasy-select" id="settings-mobile-ui">
+                  <option value="auto" selected>Auto-Detect Device</option>
+                  <option value="always">Always Enabled</option>
+                  <option value="never">Disabled</option>
+                </select>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Tab 3: Audio Settings -->
+        <div class="tab-content" id="tab-set-audio">
+          <div class="settings-section">
+            <div class="settings-section-title">Volume Levels</div>
+            
+            <!-- Master Volume -->
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Master Volume</span>
+                <span class="settings-label-sub">Overall game audio output</span>
+              </div>
+              <div class="settings-control">
+                <div class="fantasy-slider-wrap">
+                  <input type="range" class="fantasy-slider" id="settings-vol-master" min="0" max="100" value="100">
+                  <span class="slider-val-badge" id="settings-vol-master-val">100%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Music Volume -->
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Realm Ambience & Boss Music</span>
+                <span class="settings-label-sub">Procedural background synthesizer soundtracks</span>
+              </div>
+              <div class="settings-control">
+                <div class="fantasy-slider-wrap">
+                  <input type="range" class="fantasy-slider" id="settings-vol-music" min="0" max="100" value="45">
+                  <span class="slider-val-badge" id="settings-vol-music-val">45%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SFX Volume -->
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Sound Effects (SFX)</span>
+                <span class="settings-label-sub">Sword strikes, magical spells, damage, chimes</span>
+              </div>
+              <div class="settings-control">
+                <div class="fantasy-slider-wrap">
+                  <input type="range" class="fantasy-slider" id="settings-vol-sfx" min="0" max="100" value="65">
+                  <span class="slider-val-badge" id="settings-vol-sfx-val">65%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mute Audio -->
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Mute All Audio</span>
+                <span class="settings-label-sub">Completely silence the audio engine</span>
+              </div>
+              <div class="settings-control">
+                <label class="fantasy-toggle">
+                  <input type="checkbox" id="settings-mute-audio">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="settings-footer-actions">
+          <button class="btn-fantasy-cta" id="btn-settings-reset">RESET DEFAULTS</button>
+          <button class="btn-fantasy-cta primary" id="btn-settings-save">SAVE & APPLY SETTINGS</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       CREDITS MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop" id="credits-modal">
+    <div class="fantasy-panel">
+      <div class="fantasy-panel-header">
+        <div class="panel-title"><span>👑 PROJECT CREDITS</span></div>
+        <button class="btn-close-modal">✕</button>
+      </div>
+      <div class="fantasy-panel-body" style="text-align: center;">
+        <h2 style="font-family: var(--font-title); color: #ffd978; margin-bottom: 8px;">THE FORBIDDEN REALM: THE TRIALS OF KNOWLEDGE</h2>
+        <p style="font-size: 15px; color: #c2b59b; margin-bottom: 14px;">A 3D Fantasy Adventure RPG Featuring Differential Calculus</p>
+        <div style="background: #110e16; padding: 16px; border-radius: 6px; border: 1px solid #44321c; text-align: left; max-width: 500px; margin: 0 auto;">
+          <p><strong>Institution:</strong> Batangas State University - The National Engineering University</p>
+          <p><strong>Course:</strong> MATH 101 – Differential Calculus</p>
+          <p><strong>Facilitators:</strong> Engr. Hilarion S. Aquino III & Engr. James Marvin C. Gatdula</p>
+          <p><strong>Technologies:</strong> HTML5, CSS3, JavaScript (ES6+), Three.js (WebGL), Web Audio API</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       FULLSCREEN SCREENS (MAIN MENU, PAUSE, GAME OVER, VICTORY)
+       ========================================================================= -->
+
+  <!-- Main Menu -->
+  <div class="screen-overlay" id="main-menu">
+    <div class="game-title-hero">
+      <div class="hero-subtitle">Differential Calculus 3D Action RPG</div>
+      <h1 class="hero-main-title">THE FORBIDDEN REALM</h1>
+      <div class="hero-subtag">THE TRIALS OF KNOWLEDGE</div>
+      <div class="hero-academics">Batangas State University • MATH 101 Semestral Project</div>
+    </div>
+    <div class="menu-actions-stack">
+      <button class="btn-fantasy-cta primary" id="btn-start-game">▶ START ADVENTURE</button>
+      <button class="btn-fantasy-cta" id="btn-continue-game" disabled>CONTINUE QUEST</button>
+      <button class="btn-fantasy-cta" id="btn-how-to-play">HOW TO PLAY / CONTROLS</button>
+      <button class="btn-fantasy-cta" id="btn-settings">⚙️ SETTINGS & GRAPHICS</button>
+      <button class="btn-fantasy-cta" id="btn-codex">CALCULUS CODEX & REPORT</button>
+      <button class="btn-fantasy-cta" id="btn-credits">CREDITS</button>
+    </div>
+  </div>
+
+  <!-- Pause Menu -->
+  <div class="screen-overlay hidden" id="pause-menu">
+    <h2 style="font-family: var(--font-title); color: #ffd978; font-size: 38px; margin-bottom: 20px;">GAME PAUSED</h2>
+    <div class="menu-actions-stack">
+      <button class="btn-fantasy-cta primary" id="btn-pause-resume">RESUME PLAY</button>
+      <button class="btn-fantasy-cta" id="btn-pause-restart">RESTART REALM</button>
+      <button class="btn-fantasy-cta" id="btn-pause-controls">🎮 CONTROLS GUIDE</button>
+      <button class="btn-fantasy-cta" id="btn-pause-settings">⚙️ GRAPHICS & SETTINGS</button>
+      <button class="btn-fantasy-cta" id="btn-pause-mainmenu">MAIN MENU</button>
+    </div>
+  </div>
+
+  <!-- Game Over Screen -->
+  <div class="screen-overlay hidden" id="game-over-screen">
+    <div class="game-over-title">ALL HEARTS LOST</div>
+    <p class="game-over-sub">The corruption of the Forbidden Equation has consumed your life energy. Review your limits and derivatives before challenging the guardians once more!</p>
+    <div class="menu-actions-stack">
+      <button class="btn-fantasy-cta primary" id="btn-gameover-retry">RETRY FROM CHECKPOINT</button>
+      <button class="btn-fantasy-cta" id="btn-gameover-mainmenu">RETURN TO TITLE</button>
+    </div>
+  </div>
+
+  <!-- Victory Ending Screen -->
+  <div class="screen-overlay hidden" id="victory-screen">
+    <div class="victory-title">NUMERIA RESTORED!</div>
+    <p class="victory-sub">With the defeat of Morgathia, Vorthak, and Azrael, the three Sacred Calculus Crystals have fused together into harmonic equilibrium. The Forbidden Equation is banished forever!</p>
+    <div class="stats-summary-grid">
+      <div class="stat-box">
+        <div class="stat-box-val" id="stat-level">4</div>
+        <div class="stat-box-lbl">FINAL GUARDIAN LEVEL</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-val" id="stat-xp">3750</div>
+        <div class="stat-box-lbl">TOTAL EXPERIENCE</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-val" id="stat-accuracy">100%</div>
+        <div class="stat-box-lbl">CALCULUS ACCURACY</div>
+      </div>
+    </div>
+    <div class="menu-actions-stack">
+      <button class="btn-fantasy-cta primary" id="btn-victory-mainmenu">RETURN TO TITLE</button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MOBILE TOUCH VIRTUAL JOYSTICK & ACTIONS
+       ========================================================================= -->
+  <div id="mobile-controls">
+    <div class="joystick-zone" id="joystick-zone">
+      <div class="joystick-thumb" id="joystick-thumb"></div>
+    </div>
+    <div class="mobile-action-buttons">
+      <button class="btn-touch-action attack" id="btn-touch-attack">SWORD</button>
+      <button class="btn-touch-action" id="btn-touch-jump">JUMP</button>
+      <button class="btn-touch-action" id="btn-touch-cast">CAST</button>
+      <button class="btn-touch-action" id="btn-touch-interact">USE</button>
+      <button class="btn-touch-action" id="btn-touch-potion">POTION</button>
+      <button class="btn-touch-action" id="btn-touch-journal">QUEST</button>
+      <button class="btn-touch-action" id="btn-touch-controls">GUIDE</button>
+      <button class="btn-touch-action" id="btn-touch-settings">OPT</button>
+    </div>
+  </div>
+
+  <!-- Scripts in dependency order -->
+  <script src="js/three.min.js"></script>
+  <script>
+    if (typeof THREE === 'undefined') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\\/script>');
+    }
+  </script>
+  <script src="js/audio.js"></script>
+  <script src="js/calculus.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/abilities.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/enemies.js"></script>
+  <script src="js/missions.js"></script>
+  <script src="js/inventory.js"></script>
+  <script src="js/progression.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/interface.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+
+</body>
+</html>
+
