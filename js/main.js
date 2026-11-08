@@ -62,6 +62,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (btnCredits) {
     btnCredits.addEventListener('click', () => {
+      if (window.interfaceManager) window.interfaceManager.closeAllModals('credits-modal');
       const modal = document.getElementById('credits-modal');
       if (modal) modal.classList.add('open');
     });
@@ -149,10 +150,14 @@ window.addEventListener('DOMContentLoaded', () => {
   // --- MODAL CLOSE BUTTONS ---
   document.querySelectorAll('.btn-close-modal').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const modal = e.target.closest('.modal-backdrop');
-      if (modal) modal.classList.remove('open');
-      if (game.isRunning && !game.isPaused) {
-        game.canvas.requestPointerLock();
+      e.preventDefault();
+      e.stopPropagation();
+      if (window.interfaceManager) {
+        window.interfaceManager.closeAllModals();
+        window.interfaceManager.resumePointerLockIfActive();
+      } else {
+        const modal = e.target.closest('.modal-backdrop');
+        if (modal) modal.classList.remove('open');
       }
     });
   });

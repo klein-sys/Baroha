@@ -74,13 +74,16 @@ class DevConsoleManager {
     if (!modal) return;
 
     if (this.isOpen) {
+      if (window.interfaceManager) window.interfaceManager.closeAllModals('dev-console-modal');
       if (document.exitPointerLock) document.exitPointerLock();
       this.populateDevUI();
       modal.classList.add('open');
       if (window.soundEngine) window.soundEngine.playItemPickup();
     } else {
       modal.classList.remove('open');
-      if (window.game && window.game.isRunning && !window.game.isPaused) {
+      if (window.interfaceManager) {
+        window.interfaceManager.resumePointerLockIfActive();
+      } else if (window.game && window.game.isRunning && !window.game.isPaused) {
         const canvas = document.getElementById('game-canvas');
         if (canvas) canvas.requestPointerLock();
       }

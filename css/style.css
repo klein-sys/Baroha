@@ -773,9 +773,9 @@ html, body {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(5, 4, 8, 0.82);
-  backdrop-filter: blur(5px);
-  z-index: 50;
+  background: rgba(5, 4, 8, 0.88);
+  backdrop-filter: blur(8px);
+  z-index: 500;
   display: none;
   align-items: center;
   justify-content: center;
@@ -783,7 +783,13 @@ html, body {
 }
 
 .modal-backdrop.open {
-  display: flex;
+  display: flex !important;
+  animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalFadeIn {
+  0% { opacity: 0; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 .fantasy-panel {
@@ -1520,7 +1526,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 60;
+  z-index: 600;
   pointer-events: none;
 }
 

@@ -236,7 +236,16 @@ class PlayerController {
           if (window.devConsoleManager) window.devConsoleManager.toggle();
           break;
         case 'Escape': case 'KeyP':
-          if (window.game) window.game.togglePause();
+          const anyOpenModal = document.querySelector('.modal-backdrop.open');
+          if (anyOpenModal) {
+            e.preventDefault();
+            if (window.interfaceManager) {
+              window.interfaceManager.closeAllModals();
+              window.interfaceManager.resumePointerLockIfActive();
+            }
+          } else {
+            if (window.game) window.game.togglePause();
+          }
           break;
       }
     });

@@ -8,4 +8,5 @@ desktop.ini
 *.tmp
 node_modules/
 .vercel
+assets/
 

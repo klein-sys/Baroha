@@ -98,7 +98,13 @@ class InterfaceManager {
     const robloxMenuBtn = document.getElementById('btn-roblox-menu');
     if (robloxMenuBtn) {
       robloxMenuBtn.onclick = () => {
-        if (window.game) window.game.togglePause();
+        const anyOpen = document.querySelector('.modal-backdrop.open');
+        if (anyOpen) {
+          this.closeAllModals();
+          this.resumePointerLockIfActive();
+        } else {
+          if (window.game) window.game.togglePause();
+        }
       };
     }
 
@@ -221,9 +227,37 @@ class InterfaceManager {
     if (this.robloxObjCount) this.robloxObjCount.innerText = countStr;
   }
 
+  closeAllModals(exceptModalId = null) {
+    const modals = document.querySelectorAll('.modal-backdrop');
+    modals.forEach(m => {
+      if (!exceptModalId || m.id !== exceptModalId) {
+        m.classList.remove('open');
+      }
+    });
+
+    if (exceptModalId !== 'world-map-modal' && window.worldMapManager) {
+      window.worldMapManager.isOpen = false;
+    }
+    if (exceptModalId !== 'dev-console-modal' && window.devConsoleManager) {
+      window.devConsoleManager.isOpen = false;
+    }
+
+    this.activeModal = exceptModalId ? document.getElementById(exceptModalId) : null;
+  }
+
+  resumePointerLockIfActive() {
+    if (window.game && window.game.isRunning && !window.game.isPaused && !window.game.isGameOver && !window.game.isVictory) {
+      const canvas = document.getElementById('game-canvas');
+      if (canvas && document.body.contains(canvas)) {
+        canvas.requestPointerLock();
+      }
+    }
+  }
+
   showSleepModal() {
     const modal = document.getElementById('sleep-dialog-modal');
     if (!modal) return;
+    this.closeAllModals('sleep-dialog-modal');
     if (document.exitPointerLock) document.exitPointerLock();
 
     const timeInfo = document.getElementById('sleep-current-time');
@@ -244,10 +278,7 @@ class InterfaceManager {
     const modal = document.getElementById('sleep-dialog-modal');
     if (modal) modal.classList.remove('open');
     this.activeModal = null;
-    if (window.game && window.game.isRunning && !window.game.isPaused) {
-      const canvas = document.getElementById('game-canvas');
-      if (canvas) canvas.requestPointerLock();
-    }
+    this.resumePointerLockIfActive();
   }
 
   updateBossHealth(hp, maxHp, hpRatio) {
@@ -377,6 +408,7 @@ class InterfaceManager {
     const modal = document.getElementById('math-trial-modal');
     if (!modal) return;
 
+    this.closeAllModals('math-trial-modal');
     // Release pointer lock so player can click answers
     if (document.exitPointerLock) document.exitPointerLock();
 
@@ -471,6 +503,7 @@ class InterfaceManager {
   showNpcDialogue(name, role) {
     const modal = document.getElementById('npc-dialog-modal');
     if (!modal) return;
+    this.closeAllModals('npc-dialog-modal');
     if (document.exitPointerLock) document.exitPointerLock();
 
     document.getElementById('npc-name').innerText = name;
@@ -497,6 +530,7 @@ class InterfaceManager {
       b2.onclick = () => {
         modal.classList.remove('open');
         this.activeModal = null;
+        this.resumePointerLockIfActive();
       };
       choices.appendChild(b2);
     } else if (name.includes('Scholar')) {
@@ -507,6 +541,7 @@ class InterfaceManager {
       b1.onclick = () => {
         modal.classList.remove('open');
         this.activeModal = null;
+        this.resumePointerLockIfActive();
       };
       choices.appendChild(b1);
     } else {
@@ -517,6 +552,7 @@ class InterfaceManager {
       b1.onclick = () => {
         modal.classList.remove('open');
         this.activeModal = null;
+        this.resumePointerLockIfActive();
       };
       choices.appendChild(b1);
     }
@@ -531,15 +567,16 @@ class InterfaceManager {
   toggleQuestJournal() {
     const modal = document.getElementById('quest-journal-modal');
     if (!modal) return;
+    const wasOpen = modal.classList.contains('open');
+    this.closeAllModals();
 
-    if (modal.classList.contains('open')) {
-      modal.classList.remove('open');
-      this.activeModal = null;
-    } else {
+    if (!wasOpen) {
       if (document.exitPointerLock) document.exitPointerLock();
       this.renderQuestJournal();
       modal.classList.add('open');
       this.activeModal = modal;
+    } else {
+      this.resumePointerLockIfActive();
     }
   }
 
@@ -569,15 +606,16 @@ class InterfaceManager {
   toggleInventory() {
     const modal = document.getElementById('inventory-modal');
     if (!modal) return;
+    const wasOpen = modal.classList.contains('open');
+    this.closeAllModals();
 
-    if (modal.classList.contains('open')) {
-      modal.classList.remove('open');
-      this.activeModal = null;
-    } else {
+    if (!wasOpen) {
       if (document.exitPointerLock) document.exitPointerLock();
       this.renderInventorySlots();
       modal.classList.add('open');
       this.activeModal = modal;
+    } else {
+      this.resumePointerLockIfActive();
     }
   }
 
@@ -610,11 +648,10 @@ class InterfaceManager {
   toggleCharacterStatus() {
     const modal = document.getElementById('character-modal');
     if (!modal) return;
+    const wasOpen = modal.classList.contains('open');
+    this.closeAllModals();
 
-    if (modal.classList.contains('open')) {
-      modal.classList.remove('open');
-      this.activeModal = null;
-    } else {
+    if (!wasOpen) {
       if (document.exitPointerLock) document.exitPointerLock();
       if (window.game && window.game.player) {
         const p = window.game.player;
@@ -628,6 +665,8 @@ class InterfaceManager {
       }
       modal.classList.add('open');
       this.activeModal = modal;
+    } else {
+      this.resumePointerLockIfActive();
     }
   }
 
@@ -637,15 +676,16 @@ class InterfaceManager {
   toggleCalculusCodex() {
     const modal = document.getElementById('codex-modal');
     if (!modal) return;
+    const wasOpen = modal.classList.contains('open');
+    this.closeAllModals();
 
-    if (modal.classList.contains('open')) {
-      modal.classList.remove('open');
-      this.activeModal = null;
-    } else {
+    if (!wasOpen) {
       if (document.exitPointerLock) document.exitPointerLock();
       this.renderCodexWorkedExamples();
       modal.classList.add('open');
       this.activeModal = modal;
+    } else {
+      this.resumePointerLockIfActive();
     }
   }
 
@@ -675,9 +715,11 @@ class InterfaceManager {
   // =========================================================================
   setupModalTabs() {
     document.querySelectorAll('.tabs-header .tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const targetTab = btn.dataset.tab;
-        const parentModal = btn.closest('.fantasy-panel');
+        const parentModal = btn.closest('.fantasy-panel') || btn.closest('.modal-backdrop');
         if (!parentModal || !targetTab) return;
 
         parentModal.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -689,40 +731,49 @@ class InterfaceManager {
         });
       });
     });
+
+    // Close modal when clicking backdrop outside the fantasy-panel
+    document.querySelectorAll('.modal-backdrop').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          if (modal.id === 'math-trial-modal') return; // protect combat trial
+          this.closeAllModals();
+          this.resumePointerLockIfActive();
+        }
+      });
+    });
   }
 
   toggleControlsModal() {
     const modal = document.getElementById('controls-modal');
     if (!modal) return;
-    if (modal.classList.contains('open')) {
-      modal.classList.remove('open');
-      this.activeModal = null;
-      if (window.game && window.game.isRunning && !window.game.isPaused) {
-        window.game.canvas.requestPointerLock();
-      }
-    } else {
+    const wasOpen = modal.classList.contains('open');
+    this.closeAllModals();
+
+    if (!wasOpen) {
       if (document.exitPointerLock) document.exitPointerLock();
       modal.classList.add('open');
       this.activeModal = modal;
+    } else {
+      this.resumePointerLockIfActive();
     }
   }
 
   toggleSettingsModal() {
     const modal = document.getElementById('settings-modal');
     if (!modal) return;
-    if (modal.classList.contains('open')) {
-      modal.classList.remove('open');
-      this.activeModal = null;
-      if (window.game && window.game.isRunning && !window.game.isPaused) {
-        window.game.canvas.requestPointerLock();
-      }
-    } else {
+    const wasOpen = modal.classList.contains('open');
+    this.closeAllModals();
+
+    if (!wasOpen) {
       if (document.exitPointerLock) document.exitPointerLock();
       if (window.settingsManager) {
         window.settingsManager.populateSettingsUI();
       }
       modal.classList.add('open');
       this.activeModal = modal;
+    } else {
+      this.resumePointerLockIfActive();
     }
   }
 

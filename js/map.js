@@ -91,13 +91,16 @@ class WorldMapManager {
     this.isOpen = !this.isOpen;
 
     if (this.isOpen) {
+      if (window.interfaceManager) window.interfaceManager.closeAllModals('world-map-modal');
       if (document.exitPointerLock) document.exitPointerLock();
       this.renderMap();
       if (this.modalEl) this.modalEl.classList.add('open');
       if (window.soundEngine) window.soundEngine.playItemPickup();
     } else {
       if (this.modalEl) this.modalEl.classList.remove('open');
-      if (window.game && window.game.isRunning && !window.game.isPaused) {
+      if (window.interfaceManager) {
+        window.interfaceManager.resumePointerLockIfActive();
+      } else if (window.game && window.game.isRunning && !window.game.isPaused) {
         window.game.canvas.requestPointerLock();
       }
     }
