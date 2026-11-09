@@ -98,34 +98,79 @@ function assert(condition, message) {
   }
 }
 
-// 1. Load calculus.js
+// 1. Load calculusEngine.js and calculus.js (Pure Mathematics Verification)
 try {
-  const code = fs.readFileSync('js/calculus.js', 'utf8');
-  vm.runInThisContext(code);
-  assert(typeof (global.CalculusManager || global.window.CalculusManager) === 'function', 'CalculusManager class defined');
-  assert(global.calculusManager instanceof global.CalculusManager, 'calculusManager instance created');
+  const engineCode = fs.readFileSync('js/calculusEngine.js', 'utf8');
+  vm.runInThisContext(engineCode);
+  assert(typeof (global.CalculusEngine || global.window.CalculusEngine) === 'function', 'CalculusEngine class defined');
+  const ce = global.calculusEngine || global.window.calculusEngine;
+  assert(ce !== null, 'calculusEngine instance created');
 
-  // Verify Question Banks
-  const cm = global.calculusManager;
-  let totalQuestions = 0;
-  for (const realm of ['realm1', 'realm2', 'realm3']) {
-    const list = cm.questionBank[realm];
-    assert(list && list.length > 0, `${realm} has questions`);
-    list.forEach(q => {
-      totalQuestions++;
-      assert(q.topic && q.topic.length > 0, `Question ${q.id} has topic`);
-      assert(q.damage && q.damage > 0, `Question ${q.id} has damage value`);
-      if (q.type === 'mcq') {
-        const correctCount = q.options.filter(o => o.isCorrect).length;
-        assert(correctCount === 1, `Question ${q.id} has exactly 1 correct option`);
-      } else {
-        assert(q.correctAnswer && q.acceptableAnswers.length > 0, `Numeric Question ${q.id} has acceptable answers`);
-      }
-    });
+  // Test (A.1): Removable Discontinuity & Limit Evaluation
+  const sealHole = ce.evalRiftSeal(3.0, 3.0);
+  assert(sealHole.isHole === true, 'Rift Seal detects undefined singularity hole at x = 3');
+  const sealLeft = ce.evalRiftSeal(2.999, 3.0);
+  assert(Math.abs(sealLeft.power - 6.0) < 0.01, 'Rift Seal left limit approaches 6.00 (x = 2.999)');
+  const sealRight = ce.evalRiftSeal(3.001, 3.0);
+  assert(Math.abs(sealRight.power - 6.0) < 0.01, 'Rift Seal right limit approaches 6.00 (x = 3.001)');
+  assert(sealLeft.isBreached === true, 'Limit within tolerance breaches seal at power = 6');
+
+  // Test (A.2): Piecewise Continuity Parameter Condition
+  const bridgeFractured = ce.evalPiecewiseBridge(0.0, 2.0);
+  assert(!bridgeFractured.isContinuous, 'Piecewise bridge with k = 0 is discontinuous (jump = 2)');
+  const bridgeContinuous = ce.evalPiecewiseBridge(1.0, 2.0);
+  assert(bridgeContinuous.isContinuous, 'Piecewise bridge with k = 1 is continuous (jump = 0)');
+  assert(bridgeContinuous.leftLimit === 5.0 && bridgeContinuous.rightLimit === 5.0, 'Left Limit = Right Limit = 5.0 at x = 2');
+
+  // Test (A.3): Asymptote Singularity & Horizontal Plateau
+  const asympNear = ce.evalAsymptoteDanger(4.05, 4.0, 15);
+  assert(asympNear.inDangerZone && asympNear.intensity > 100, 'Vertical asymptote intensity blows up near singularity r = 4');
+  const plateau = ce.evalManaPlateau(1000, 100, 5);
+  assert(Math.abs(plateau.current - 100) < 1.0, 'Mana plateau converges to horizontal asymptote M(t) = 100');
+
+  // Test (A.4): Intermediate Value Theorem Bisection
+  const fRoot = x => x * x - 12;
+  let bis = ce.bisectionStep(fRoot, 0, 6);
+  assert(bis.signChange, 'IVT sign change condition f(a)*f(b) < 0 holds on [0, 6]');
+  for (let i = 0; i < 8; i++) {
+    bis = ce.bisectionStep(fRoot, bis.nextA, bis.nextB);
   }
-  console.log(`Verified ${totalQuestions} mathematical calculus questions.`);
+  assert(Math.abs(bis.mid - Math.sqrt(12)) < 0.1, 'Bisection step converges to true algebraic root sqrt(12) ≈ 3.464');
+
+  // Test (A.5): Small-Angle Trigonometric Limit
+  assert(Math.abs(ce.smallAngleLimit(0.0001) - 1.0) < 0.001, 'lim theta->0 sin(theta)/theta = 1.0');
+
+  // Test (B.1): Celestial Trig Derivatives & Zero Crossing
+  const dDay = ce.evalDayNightCalculus(12.0);
+  assert(dDay.isDay && dDay.L > 0, 'Noon t=12 produces positive light L(t) = sin(pi/2) = 1');
+  const dDusk = ce.evalDayNightCalculus(18.0);
+  assert(Math.abs(dDusk.L) < 0.01 && dDusk.dLdt < 0, 'Dusk t=18 is zero-crossing downward with max dimming rate');
+
+  // Test (B.2): Basic Trig Derivatives: d/dt[sin] = cos, d/dt[cos] = -sin, d/dt[tan] = sec^2
+  assert(Math.abs(ce.derivSin(0, 1, 1) - 1.0) < 0.001, 'd/dt[sin(t)] at t=0 equals cos(0) = 1');
+  assert(Math.abs(ce.derivCos(Math.PI / 2, 1, 1) - (-1.0)) < 0.001, 'd/dt[cos(t)] at t=pi/2 equals -sin(pi/2) = -1');
+  assert(Math.abs(ce.derivTan(0, 1, 1) - 1.0) < 0.001, 'd/dt[tan(t)] at t=0 equals sec^2(0) = 1');
+
+  // Test (B.3): Harmonic Oscillating Platform Peak
+  const oscPeak = ce.evalOscillatingPlatform(Math.PI / (2 * 1.2), 3.5, 1.2);
+  assert(Math.abs(oscPeak.v) < 0.01 && oscPeak.isAtPeak, 'Harmonic platform has velocity v(t) = 0 at peak displacement y = A');
+
+  // Test (B.4): Tangent Aim Slope
+  const tang = ce.evalTangentAim(0, 2.0, 0.5);
+  assert(Math.abs(tang.slope - 1.0) < 0.001, 'Tangent slope dy/dx = A*k*cos(kx) = 2.0*0.5*cos(0) = 1.0');
+
+  // Test (B.5): Spell Pulse Timing
+  const pulse = ce.evalPulseCharge(Math.PI / (2 * 3.0), 100, 3.0);
+  assert(pulse.isPeak, 'Pulse spell reaches peak damage and D\'(t) = 0 at crest');
+
+  // Load calculus.js telemetry and codex
+  const codexCode = fs.readFileSync('js/calculus.js', 'utf8');
+  vm.runInThisContext(codexCode);
+  const cm = global.calculusManager || global.window.calculusManager;
+  assert(cm.workedExamples && cm.workedExamples.length >= 3, 'Calculus Codex has worked examples for presentation');
+  console.log('All 13 Differential Calculus Core Mechanics Verified with Exact Mathematical Precision!');
 } catch (e) {
-  assert(false, `calculus.js execution: ${e.message}`);
+  assert(false, `Calculus Engine execution: ${e.message}`);
 }
 
 // 2. Load missions.js

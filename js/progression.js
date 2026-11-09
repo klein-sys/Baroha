@@ -47,7 +47,12 @@ class ProgressionManager {
   }
 
   hasSave() {
-    return !!localStorage.getItem(this.saveKey);
+    try {
+      const data = JSON.parse(localStorage.getItem(this.saveKey));
+      return Boolean(data?.player && [1, 2, 3].includes(data.world?.currentRealm));
+    } catch {
+      return false;
+    }
   }
 
   loadGame(player, worldManager, missionsManager, inventoryManager, abilitiesManager) {
@@ -65,7 +70,7 @@ class ProgressionManager {
         player.maxHp = data.player.maxHp || 100;
         player.hp = data.player.hp || player.maxHp;
         player.maxMana = data.player.maxMana || 100;
-        player.mana = data.player.mana || player.maxMana;
+        player.mana = data.player.mana ?? player.maxMana;
         player.attackPower = data.player.attackPower || 35;
       }
 
@@ -95,6 +100,10 @@ class ProgressionManager {
         });
       }
 
+      window.interfaceManager?.renderAbilityDock();
+      window.interfaceManager?.updateQuestHUD();
+      window.interfaceManager?.updatePlayerStatsUI();
+      window.interfaceManager?.updateCrystalsUI(missionsManager.crystals);
       console.log('Game progress loaded successfully.');
       return true;
     } catch (e) {

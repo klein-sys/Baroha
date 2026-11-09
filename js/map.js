@@ -79,7 +79,7 @@ class WorldMapManager {
 
   bindShortcut() {
     window.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.repeat || e.target.closest?.('input, textarea, select')) return;
       if (e.code === 'KeyT') {
         e.preventDefault();
         this.toggleMap();
@@ -100,8 +100,6 @@ class WorldMapManager {
       if (this.modalEl) this.modalEl.classList.remove('open');
       if (window.interfaceManager) {
         window.interfaceManager.resumePointerLockIfActive();
-      } else if (window.game && window.game.isRunning && !window.game.isPaused) {
-        window.game.canvas.requestPointerLock();
       }
     }
   }

@@ -11,6 +11,8 @@ class WorldManager {
     this.interactables = [];
     this.collectibles = [];
     this.animatedLights = [];
+    this.oscillatingPlatforms = [];
+    this.solidBridges = [];
 
     // Terrain size
     this.terrainWidth = 140;
@@ -35,6 +37,16 @@ class WorldManager {
       if (c.mesh) this.scene.remove(c.mesh);
     });
     this.collectibles = [];
+
+    this.oscillatingPlatforms.forEach(p => {
+      if (p.mesh) this.scene.remove(p.mesh);
+    });
+    this.oscillatingPlatforms = [];
+
+    this.solidBridges.forEach(b => {
+      if (b.mesh) this.scene.remove(b.mesh);
+    });
+    this.solidBridges = [];
 
     this.animatedLights = [];
 
@@ -70,6 +82,26 @@ class WorldManager {
   }
 
   getTerrainHeight(x, z) {
+    // Check solidified bridges
+    if (this.solidBridges) {
+      for (let i = 0; i < this.solidBridges.length; i++) {
+        const b = this.solidBridges[i];
+        if (b.isSolid && Math.abs(x - b.x) <= b.halfWidth && Math.abs(z - b.z) <= b.halfLength) {
+          return b.y;
+        }
+      }
+    }
+
+    // Check oscillating platforms
+    if (this.oscillatingPlatforms) {
+      for (let i = 0; i < this.oscillatingPlatforms.length; i++) {
+        const p = this.oscillatingPlatforms[i];
+        if (p.mesh && Math.abs(x - p.mesh.position.x) <= p.radius && Math.abs(z - p.mesh.position.z) <= p.radius) {
+          return p.mesh.position.y + 0.3;
+        }
+      }
+    }
+
     // Terrain height evaluation
     if (this.currentRealm === 1) {
       // Gentle rolling forest hills
@@ -146,10 +178,12 @@ class WorldManager {
     // Ancient Stone Ruins & Castle Gate (North)
     this.spawnCastleGate(0, -45);
 
-    // Spawn 3 Corrupted Forest Keys
-    this.spawnCollectible('key', -18, 0, 18, 'Forest Key of Limits I');
-    this.spawnCollectible('key', 22, 0, -12, 'Forest Key of Limits II');
-    this.spawnCollectible('key', -8, 0, -32, 'Forest Key of Limits III');
+    // Core Differential Calculus Mechanics (Limits, Piecewise Continuity, IVT, Oscillators)
+    this.spawnRiftSeal(-18, 18);
+    this.spawnPiecewiseBridge(22, -12);
+    this.spawnLeylineShrine(-8, -32);
+    this.spawnOscillatingPlatform(12, 0, 3.2, 1.2, 1.0);
+    this.spawnManaWell(0, 16);
 
     // Spawn Potions & Crystals
     this.spawnCollectible('potion', 5, 0, 8, 'Healing Potion');
@@ -329,6 +363,8 @@ class WorldManager {
 
     this.scene.add(group);
     this.worldObjects.push(group);
+    group.rotation.y = Math.random() * Math.PI * 2;
+    applyRealmModel(Math.random() < 0.7 ? 'pine' : 'bareTree', group, [trunk, leaves], 6 + Math.random() * 3);
   }
 
   spawnGlowingMushroom(x, z) {
@@ -764,9 +800,14 @@ class WorldManager {
       roughness: 0.3
     });
 
-    const mesh = new THREE.Mesh(geom, mat);
+    const mesh = new THREE.Group();
+    const fallback = new THREE.Mesh(geom, mat);
+    mesh.add(fallback);
     mesh.position.set(x, finalY, z);
     this.scene.add(mesh);
+    if (type === 'key' || type === 'chest') {
+      applyRealmModel(type, mesh, [fallback], type === 'key' ? 0.55 : 0.9, -0.25);
+    }
 
     const item = {
       type: type,
@@ -826,17 +867,480 @@ class WorldManager {
     });
   }
 
+  // =========================================================================
+  // CALCULUS MECHANIC 1: RIFT SEAL (REMOVABLE DISCONTINUITY)
+  // f(x) = (x^2 - 9)/(x - 3), undefined at x = 3, lim x->3 = 6
+  // =========================================================================
+  spawnRiftSeal(x, z) {
+    const groundY = this.getTerrainHeight(x, z);
+    const group = new THREE.Group();
+    group.position.set(x, groundY, z);
+
+    // Obelisks
+    const obeliskGeom = new THREE.ConeGeometry(0.5, 3.5, 4);
+    const obeliskMat = new THREE.MeshStandardMaterial({ color: 0x2b1b4d, roughness: 0.4, metalness: 0.6 });
+    for (let i = 0; i < 4; i++) {
+      const angle = (i * Math.PI) / 2;
+      const ob = new THREE.Mesh(obeliskGeom, obeliskMat);
+      ob.position.set(Math.cos(angle) * 2.2, 1.75, Math.sin(angle) * 2.2);
+      group.add(ob);
+    }
+
+    // Floating Rune Ring (Torus)
+    const ringGeom = new THREE.TorusGeometry(1.4, 0.15, 16, 32);
+    const ringMat = new THREE.MeshStandardMaterial({
+      color: 0x9d4edd,
+      emissive: 0x7b2cbf,
+      emissiveIntensity: 0.7,
+      roughness: 0.2
+    });
+    const ring = new THREE.Mesh(ringGeom, ringMat);
+    ring.position.y = 2.0;
+    group.add(ring);
+
+    // Core Crystal (Shatters when limit breached)
+    const coreGeom = new THREE.OctahedronGeometry(0.6);
+    const coreMat = new THREE.MeshStandardMaterial({
+      color: 0x00d4ff,
+      emissive: 0x0077b6,
+      emissiveIntensity: 0.6
+    });
+    const core = new THREE.Mesh(coreGeom, coreMat);
+    core.position.y = 2.0;
+    group.add(core);
+
+    this.scene.add(group);
+    this.worldObjects.push(group);
+
+    // Tunable frequency parameters
+    const frequencies = [2.70, 2.85, 2.95, 2.99, 3.00, 3.01, 3.10, 3.25];
+    let freqIndex = 0;
+    let isBreached = false;
+
+    const riftObj = {
+      type: 'calculus_rift',
+      name: 'Corrupted Limit Rift Seal',
+      position: new THREE.Vector3(x, groundY + 1.5, z),
+      radius: 4.5,
+      getTelemetry: () => {
+        const curX = frequencies[freqIndex];
+        const isHole = Math.abs(curX - 3.0) < 0.001;
+        const val = isHole ? null : (curX * curX - 9) / (curX - 3);
+        return {
+          title: 'RIFT SEAL (REMOVABLE DISCONTINUITY)',
+          func: 'f(x) = (x² - 9) / (x - 3) [Undefined at x = 3]',
+          details: isHole
+            ? '⚠️ HOLE DETECTED at x = 3.0 (0/0 Indeterminate). Approach limit, do not stand on hole!'
+            : `Tuning frequency x → 3 channels Limit Power = 6.00. Current Resonance: ${val.toFixed(2)}.`,
+          isWarning: isHole,
+          metrics: [
+            { label: 'Frequency x', val: curX.toFixed(2) },
+            { label: 'Resonance f(x)', val: isHole ? 'UNDEFINED (0/0)' : val.toFixed(2) },
+            { label: 'Target Limit', val: '6.00' },
+            { label: 'x = 2.99', val: '5.99' },
+            { label: 'x = 3.01', val: '6.01' }
+          ]
+        };
+      },
+      interact: () => {
+        if (isBreached) {
+          if (window.interfaceManager) window.interfaceManager.showToast('Rift Seal already breached and stabilized!', 'info');
+          return;
+        }
+
+        freqIndex = (freqIndex + 1) % frequencies.length;
+        const curX = frequencies[freqIndex];
+        const isHole = Math.abs(curX - 3.0) < 0.001;
+
+        if (isHole) {
+          if (window.soundEngine) window.soundEngine.playMathError();
+          if (window.interfaceManager) {
+            window.interfaceManager.showToast('⚠️ SINGULARITY HOLE at x = 3.0! (0/0 Indeterminate) — Function undefined here. Approach limit without standing on the hole!', 'error');
+          }
+          coreMat.emissive.setHex(0xff0044);
+          coreMat.emissiveIntensity = 1.0;
+        } else if (Math.abs(curX - 3.0) <= 0.02) {
+          // Breached! Power is 6.00
+          isBreached = true;
+          core.scale.set(1.5, 1.5, 1.5);
+          coreMat.emissive.setHex(0x00ff88);
+          ringMat.emissive.setHex(0x38ef7d);
+          if (window.soundEngine) window.soundEngine.playChestOpen();
+          if (window.interfaceManager) {
+            window.interfaceManager.showToast('✨ RIFT SEAL BREACHED! Frequency x → 3 reached Limit Power = 6.00! Claimed Forest Key of Limits I (+150 XP)!', 'success');
+          }
+          if (window.missionsManager) window.missionsManager.recordKeyCollected();
+          if (window.game && window.game.player) window.game.player.addXp(150);
+        } else {
+          const val = (curX * curX - 9) / (curX - 3);
+          if (window.soundEngine) window.soundEngine.playSpellCast();
+          if (window.interfaceManager) {
+            window.interfaceManager.showToast(`Rune Frequency tuned to x = ${curX.toFixed(2)}. Resonance Power = ${val.toFixed(2)} (Target Limit = 6.00). Keep approaching x → 3!`, 'info');
+          }
+          coreMat.emissive.setHex(0x00d4ff);
+        }
+      }
+    };
+    this.interactables.push(riftObj);
+  }
+
+  // =========================================================================
+  // CALCULUS MECHANIC 2: PIECEWISE CONTINUOUS BRIDGE
+  // f(x) = { kx + 3 (x <= 2), x^2 + 1 (x > 2) }. Continuous iff k = 1
+  // =========================================================================
+  spawnPiecewiseBridge(x, z) {
+    const groundY = this.getTerrainHeight(x, z);
+    const group = new THREE.Group();
+    group.position.set(x, groundY, z);
+
+    // Ravine marker
+    const bridgeLength = 12;
+    const bridgeWidth = 4;
+
+    // Bridge stone slabs (flickering when discontinuous, solid when continuous)
+    const slabGeom = new THREE.BoxGeometry(bridgeWidth, 0.5, bridgeLength);
+    const slabMat = new THREE.MeshStandardMaterial({
+      color: 0x4a4e69,
+      transparent: true,
+      opacity: 0.35,
+      roughness: 0.7
+    });
+    const bridgeMesh = new THREE.Mesh(slabGeom, slabMat);
+    bridgeMesh.position.set(0, 0.25, 0);
+    group.add(bridgeMesh);
+
+    // Rune Tuning Pedestal
+    const pedGeom = new THREE.CylinderGeometry(0.6, 0.8, 1.8, 8);
+    const pedMat = new THREE.MeshStandardMaterial({ color: 0x22223b, roughness: 0.5 });
+    const pedestal = new THREE.Mesh(pedGeom, pedMat);
+    pedestal.position.set(-3.5, 0.9, 0);
+    group.add(pedestal);
+
+    // Glowing Rune Dial
+    const dialGeom = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+    const dialMat = new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0xffaa00, emissiveIntensity: 0.5 });
+    const dial = new THREE.Mesh(dialGeom, dialMat);
+    dial.position.set(-3.5, 2.0, 0);
+    group.add(dial);
+
+    this.scene.add(group);
+    this.worldObjects.push(group);
+
+    // Register bridge in solid collision table
+    const bridgeCollision = {
+      x: x,
+      z: z,
+      y: groundY + 0.5,
+      halfWidth: bridgeWidth / 2 + 0.5,
+      halfLength: bridgeLength / 2 + 0.5,
+      isSolid: false
+    };
+    this.solidBridges.push(bridgeCollision);
+
+    // Tuning k parameters: [-1, 0, 1, 2, 3]
+    const kValues = [-1.0, 0.0, 1.0, 2.0];
+    let kIndex = 0;
+    let keySpawned = false;
+
+    const bridgeInteract = {
+      type: 'calculus_bridge',
+      name: 'Piecewise Bridge Rune Pedestal',
+      position: new THREE.Vector3(x - 3.5, groundY + 1.2, z),
+      radius: 3.5,
+      getTelemetry: () => {
+        const k = kValues[kIndex];
+        const leftLimit = 2 * k + 3;
+        const rightLimit = 5.0;
+        const jump = Math.abs(leftLimit - rightLimit);
+        const isContinuous = jump < 0.01;
+        return {
+          title: 'PIECEWISE CONTINUOUS BRIDGE',
+          func: 'f(x) = { kx + 3 (x ≤ 2), x² + 1 (x > 2) }',
+          details: isContinuous
+            ? '✨ CONTINUOUS! Left Limit (5.0) = Right Limit (5.0) = f(2). Jump = 0. Bridge solidified!'
+            : `FRACTURED! Left Limit (${leftLimit.toFixed(1)}) ≠ Right Limit (${rightLimit.toFixed(1)}). Jump Discontinuity = ${jump.toFixed(1)}.`,
+          isWarning: !isContinuous,
+          metrics: [
+            { label: 'Rune k', val: k.toFixed(1) },
+            { label: 'Left Limit (x→2⁻)', val: leftLimit.toFixed(1) },
+            { label: 'Right Limit (x→2⁺)', val: '5.0' },
+            { label: 'f(2)', val: leftLimit.toFixed(1) },
+            { label: 'Jump Δ', val: jump.toFixed(1) },
+            { label: 'Bridge Physical State', val: isContinuous ? 'SOLID (WALKABLE)' : 'SPECTRAL (UNSTABLE)' }
+          ]
+        };
+      },
+      interact: () => {
+        kIndex = (kIndex + 1) % kValues.length;
+        const k = kValues[kIndex];
+        const leftLimit = 2 * k + 3;
+        const rightLimit = 5.0;
+        const jump = Math.abs(leftLimit - rightLimit);
+        const isContinuous = jump < 0.01;
+
+        if (isContinuous) {
+          bridgeCollision.isSolid = true;
+          slabMat.opacity = 0.95;
+          slabMat.color.setHex(0xd4af37);
+          slabMat.emissive = new THREE.Color(0xffaa00);
+          slabMat.emissiveIntensity = 0.4;
+          if (window.soundEngine) window.soundEngine.playMathCorrect();
+          if (window.interfaceManager) {
+            window.interfaceManager.showToast('🌉 PIECEWISE CONTINUITY ACHIEVED! Left Limit = Right Limit = f(2) = 5.0 (Jump = 0). Bridge solidified! Cross and claim Forest Key II!', 'success');
+          }
+          if (!keySpawned) {
+            keySpawned = true;
+            this.spawnCollectible('key', x, groundY + 0.5, z + 5, 'Forest Key of Limits II');
+          }
+        } else {
+          bridgeCollision.isSolid = false;
+          slabMat.opacity = 0.35;
+          slabMat.color.setHex(0x4a4e69);
+          slabMat.emissive = new THREE.Color(0x000000);
+          if (window.soundEngine) window.soundEngine.playSpellCast();
+          if (window.interfaceManager) {
+            window.interfaceManager.showToast(`Rune parameter tuned to k = ${k.toFixed(1)}. Left Limit = ${leftLimit.toFixed(1)}, Right Limit = 5.0. Jump Discontinuity = ${jump.toFixed(1)}! Bridge remains spectral.`, 'warning');
+          }
+        }
+      }
+    };
+    this.interactables.push(bridgeInteract);
+  }
+
+  // =========================================================================
+  // CALCULUS MECHANIC 3: IVT LEYLINE SHRINE (ROOT FINDING VIA BISECTION)
+  // f(x) = x^2 - 12. f(a)*f(b) < 0 guarantees root in (a, b) by IVT!
+  // =========================================================================
+  spawnLeylineShrine(x, z) {
+    const groundY = this.getTerrainHeight(x, z);
+    const group = new THREE.Group();
+    group.position.set(x, groundY, z);
+
+    // Compass altar
+    const altarGeom = new THREE.CylinderGeometry(1.6, 2.0, 1.2, 16);
+    const altarMat = new THREE.MeshStandardMaterial({ color: 0x1b263b, roughness: 0.6 });
+    const altar = new THREE.Mesh(altarGeom, altarMat);
+    altar.position.y = 0.6;
+    group.add(altar);
+
+    // Needle dial
+    const needleGeom = new THREE.ConeGeometry(0.2, 1.2, 6);
+    const needleMat = new THREE.MeshStandardMaterial({ color: 0x00d4ff, emissive: 0x0077b6, emissiveIntensity: 0.5 });
+    const needle = new THREE.Mesh(needleGeom, needleMat);
+    needle.position.y = 1.3;
+    needle.rotation.x = Math.PI / 2;
+    group.add(needle);
+
+    this.scene.add(group);
+    this.worldObjects.push(group);
+
+    let a = 0.0;
+    let b = 6.0;
+    let isRootSolved = false;
+
+    const leylineObj = {
+      type: 'calculus_ivt',
+      name: 'Leyline Seeker Shrine',
+      position: new THREE.Vector3(x, groundY + 1.2, z),
+      radius: 4.0,
+      getTelemetry: () => {
+        const fa = a * a - 12;
+        const fb = b * b - 12;
+        const mid = (a + b) / 2;
+        const fmid = mid * mid - 12;
+        return {
+          title: 'INTERMEDIATE VALUE THEOREM (IVT) LEYLINE',
+          func: 'f(x) = x² - 12 [Continuous on interval [a, b]]',
+          details: (fa * fb <= 0)
+            ? `f(a)·f(b) < 0 guarantees a subterranean root exists in (${a.toFixed(2)}, ${b.toFixed(2)})! Bisection narrows the interval.`
+            : 'Interval boundary error.',
+          metrics: [
+            { label: 'Interval [a, b]', val: `[${a.toFixed(2)}, ${b.toFixed(2)}]` },
+            { label: 'f(a)', val: fa.toFixed(2) },
+            { label: 'f(b)', val: fb.toFixed(2) },
+            { label: 'Midpoint m', val: mid.toFixed(2) },
+            { label: 'f(m)', val: fmid.toFixed(2) },
+            { label: 'Interval Width', val: Math.abs(b - a).toFixed(2) }
+          ]
+        };
+      },
+      interact: () => {
+        if (isRootSolved) {
+          if (window.interfaceManager) window.interfaceManager.showToast('Leyline Core already unsealed via IVT!', 'info');
+          return;
+        }
+
+        const fa = a * a - 12;
+        const mid = (a + b) / 2;
+        const fmid = mid * mid - 12;
+
+        // Perform bisection step
+        if (fa * fmid <= 0) {
+          b = mid;
+        } else {
+          a = mid;
+        }
+
+        const width = Math.abs(b - a);
+        needle.rotation.z += 0.8;
+
+        if (width < 0.4 || Math.abs(fmid) < 0.1) {
+          isRootSolved = true;
+          needleMat.emissive.setHex(0x38ef7d);
+          if (window.soundEngine) window.soundEngine.playChestOpen();
+          if (window.interfaceManager) {
+            window.interfaceManager.showToast(`🗝️ ROOT LOCATED VIA IVT! Root x ≈ ${mid.toFixed(3)} found in interval (${a.toFixed(2)}, ${b.toFixed(2)}). Leyline Core Unsealed: Forest Key III (+150 XP)!`, 'success');
+          }
+          if (window.missionsManager) window.missionsManager.recordKeyCollected();
+          if (window.game && window.game.player) window.game.player.addXp(150);
+        } else {
+          if (window.soundEngine) window.soundEngine.playSpellCast();
+          if (window.interfaceManager) {
+            window.interfaceManager.showToast(`Seeker Pulse: Interval halved to [${a.toFixed(2)}, ${b.toFixed(2)}] (Midpoint m = ${mid.toFixed(2)}, f(m) = ${fmid.toFixed(2)}). Sign change confirmed!`, 'info');
+          }
+        }
+      }
+    };
+    this.interactables.push(leylineObj);
+  }
+
+  // =========================================================================
+  // CALCULUS MECHANIC 4: HARMONIC OSCILLATING PLATFORM
+  // y(t) = A*sin(w*t), v(t) = A*w*cos(w*t), a(t) = -A*w^2*sin(w*t)
+  // =========================================================================
+  spawnOscillatingPlatform(x, z, A = 3.5, omega = 1.2, y0 = 1.0) {
+    const group = new THREE.Group();
+    group.position.set(x, y0, z);
+
+    // Platform Slab
+    const slabGeom = new THREE.CylinderGeometry(2.2, 2.4, 0.6, 16);
+    const slabMat = new THREE.MeshStandardMaterial({
+      color: 0x1d3557,
+      emissive: 0x457b9d,
+      emissiveIntensity: 0.3,
+      metalness: 0.7,
+      roughness: 0.3
+    });
+    const slab = new THREE.Mesh(slabGeom, slabMat);
+    group.add(slab);
+
+    // Glowing core crystal underneath
+    const crystalGeom = new THREE.OctahedronGeometry(0.5);
+    const crystalMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
+    const crystal = new THREE.Mesh(crystalGeom, crystalMat);
+    crystal.position.y = -0.5;
+    group.add(crystal);
+
+    this.scene.add(group);
+    this.worldObjects.push(group);
+
+    const platformObj = {
+      mesh: group,
+      material: slabMat,
+      A: A,
+      omega: omega,
+      y0: y0,
+      radius: 2.4,
+      update: (t) => {
+        const y = A * Math.sin(omega * t);
+        const v = A * omega * Math.cos(omega * t);
+        const a = -A * omega * omega * Math.sin(omega * t);
+        group.position.y = y0 + y;
+
+        // Visual telegraph: green when v ≈ 0 (safe peak)
+        const isSafePeak = Math.abs(v) < 0.35;
+        if (isSafePeak) {
+          slabMat.emissive.setHex(0x00ff88);
+          slabMat.emissiveIntensity = 0.8;
+        } else {
+          slabMat.emissive.setHex(0x457b9d);
+          slabMat.emissiveIntensity = 0.2;
+        }
+
+        return { y, v, a, isSafePeak };
+      }
+    };
+    this.oscillatingPlatforms.push(platformObj);
+  }
+
+  // =========================================================================
+  // CALCULUS MECHANIC 5: MANA WELL (HORIZONTAL ASYMPTOTE PLATEAU)
+  // M(t) = 100t / (t + 5) -> 100 as t -> infinity
+  // =========================================================================
+  spawnManaWell(x, z) {
+    const groundY = this.getTerrainHeight(x, z);
+    const group = new THREE.Group();
+    group.position.set(x, groundY, z);
+
+    // Stone Basin
+    const basinGeom = new THREE.CylinderGeometry(2.0, 2.2, 0.8, 16);
+    const basinMat = new THREE.MeshStandardMaterial({ color: 0x3d3a45, roughness: 0.7 });
+    const basin = new THREE.Mesh(basinGeom, basinMat);
+    basin.position.y = 0.4;
+    group.add(basin);
+
+    // Glowing Azure Pool
+    const poolGeom = new THREE.CircleGeometry(1.8, 16);
+    poolGeom.rotateX(-Math.PI / 2);
+    const poolMat = new THREE.MeshBasicMaterial({ color: 0x00b4d8 });
+    const pool = new THREE.Mesh(poolGeom, poolMat);
+    pool.position.y = 0.81;
+    group.add(pool);
+
+    this.scene.add(group);
+    this.worldObjects.push(group);
+
+    let wellTimer = 0;
+    this.interactables.push({
+      type: 'mana_well',
+      name: 'Sanctuary Mana Well',
+      position: new THREE.Vector3(x, groundY + 0.8, z),
+      radius: 3.5,
+      getTelemetry: () => {
+        wellTimer += 0.5;
+        const current = (100 * wellTimer) / (wellTimer + 5);
+        const rate = 500 / Math.pow(wellTimer + 5, 2);
+        return {
+          title: 'MANA WELL (HORIZONTAL ASYMPTOTE)',
+          func: 'M(t) = 100t / (t + 5) [Plateau: lim t→∞ M(t) = 100]',
+          details: `Regeneration rate dM/dt = 500/(t+5)² shows diminishing returns as mana approaches asymptote.`,
+          metrics: [
+            { label: 'Time t', val: `${wellTimer.toFixed(1)}s` },
+            { label: 'Mana Regen M(t)', val: `${current.toFixed(1)} MP` },
+            { label: 'Rate dM/dt', val: `${rate.toFixed(2)} MP/s` },
+            { label: 'Asymptote Limit', val: '100 MP' }
+          ]
+        };
+      },
+      interact: () => {
+        if (window.game && window.game.player) {
+          window.game.player.restoreMana(35);
+          if (window.soundEngine) window.soundEngine.playItemPickup();
+          if (window.interfaceManager) {
+            window.interfaceManager.showToast('Restored +35 Mana at Sanctuary Well (Horizontal Asymptote M(t) → 100)!', 'info');
+          }
+        }
+      }
+    });
+  }
+
   update(delta) {
-    // Bob and rotate collectibles
-    const time = Date.now() * 0.003;
+    const t = Date.now() * 0.001;
+
+    // 1. Update Oscillating Platforms
+    if (this.oscillatingPlatforms) {
+      this.oscillatingPlatforms.forEach(p => p.update(t));
+    }
+
+    // 2. Bob and rotate collectibles
     this.collectibles.forEach(item => {
       if (!item.collected && item.mesh) {
         item.mesh.rotation.y += 1.8 * delta;
-        item.mesh.position.y = item.baseY + Math.sin(time + item.position.x) * 0.15;
+        item.mesh.position.y = item.baseY + Math.sin(t * 3.0 + item.position.x) * 0.15;
       }
     });
 
-    // Animate celestial rings
+    // 3. Animate celestial rings
     this.animatedLights.forEach(lightObj => {
       if (lightObj.mesh) {
         lightObj.mesh.rotation.z += lightObj.speed * delta;

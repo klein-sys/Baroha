@@ -134,6 +134,9 @@ class EnemiesManager {
     group.add(eyeR);
 
     this.scene.add(group);
+    if (type === 'knight' || type === 'scholar') {
+      applyRealmModel(type, group, [body, eyeL, eyeR], 1.8);
+    }
 
     const enemy = {
       type: type,
@@ -198,7 +201,7 @@ class EnemiesManager {
     this.activeBoss = bossData;
     this.bossMaxHp = bossData.maxHp;
     this.bossHp = bossData.maxHp;
-    this.bossQuestionTimer = 6.0; // Trigger first calculus trial shortly
+    this.bossCalculusTimer = 0;
 
     // Play intense boss battle music
     if (window.soundEngine) {
@@ -413,6 +416,12 @@ class EnemiesManager {
       const toPlayer = player.position.clone().sub(enemy.position);
       const dist = toPlayer.length();
 
+      const visual = enemy.mesh.userData.realmModel;
+      if (visual) {
+        const moving = dist < enemy.detectionRadius && dist > enemy.attackRadius;
+        visual.position.y = moving ? Math.abs(Math.sin(performance.now() * 0.01)) * 0.13 : 0;
+      }
+
       // Look at player
       enemy.mesh.lookAt(player.position.x, enemy.mesh.position.y, player.position.z);
 
@@ -448,13 +457,27 @@ class EnemiesManager {
         boss.ring2.rotation.y += 1.5 * delta;
       }
 
-      // Boss periodic calculus curse trial
-      this.bossQuestionTimer -= delta;
-      if (this.bossQuestionTimer <= 0) {
-        this.bossQuestionTimer = 16.0; // Next challenge in 16 seconds
-        if (window.game) {
-          const realmId = (boss && boss.realmId) || (window.missionsManager && window.missionsManager.currentRealm) || 1;
-          window.game.triggerBossMathTrial(realmId, this.bossPhase);
+      // Active Boss Calculus Mechanics (Asymptote Singularity & Orbital Hazards)
+      this.bossCalculusTimer += delta;
+      if (window.calculusEngine && window.game && window.game.player) {
+        const playerPos = window.game.player.position;
+        const bossDist = playerPos.distanceTo(boss.mesh.position);
+        
+        // Realm 1 Morgathia: Asymptote Singularity at r = 4.0
+        if (boss.realmId === 1 || !boss.realmId) {
+          const asymp = window.calculusEngine.evalAsymptoteDanger(bossDist, 4.0, 15);
+          if (asymp.inDangerZone && window.interfaceManager) {
+            window.interfaceManager.renderCalculusTelemetry({
+              title: 'MORGATHIA ASYMPTOTE SINGULARITY',
+              func: 'g(r) = 15 / |r - 4.0|',
+              details: `Radius r = ${bossDist.toFixed(2)}m (Singularity at r = 4.0m). Denominator → 0, Intensity = ${asymp.intensity.toFixed(1)}!`,
+              isWarning: true
+            });
+            if (asymp.isDeadly && this.bossCalculusTimer > 1.0) {
+              window.game.player.takeDamage(12);
+              this.bossCalculusTimer = 0;
+            }
+          }
         }
       }
     }

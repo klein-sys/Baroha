@@ -106,9 +106,11 @@
         </div>
         <div class="roblox-time-badge" id="roblox-time-badge">
           <span id="hud-clock-text">☀️ 08:00 AM</span>
+          <span id="hud-calculus-flux" class="hud-flux-pill">L: +0.50 | dL/dt: -0.22</span>
         </div>
         <button class="btn-roblox-tool" id="btn-cam-toggle" title="Switch 1st/3rd Person [V]">🎥 3RD PERSON [V]</button>
         <button class="btn-roblox-tool" id="btn-hud-map" title="Open World Map [T]">🗺️ MAP [T]</button>
+        <button class="btn-roblox-tool" id="btn-capture-mouse" title="Lock Mouse Look" style="display: none;">🖱️ LOCK</button>
       </div>
     </div>
 
@@ -186,6 +188,15 @@
           <div class="quest-progress-fill" id="hud-quest-progress" style="width: 0%;"></div>
         </div>
       </div>
+
+      <!-- Real-Time Calculus Telemetry & Active Mechanic Panel -->
+      <div id="calculus-live-hud" class="calculus-live-hud" style="display: none;">
+        <div class="calc-hud-header">
+          <span class="calc-hud-badge">📐 CALCULUS TELEMETRY</span>
+          <span class="calc-hud-title" id="calc-hud-title">ACTIVE HARMONIC FLUX</span>
+        </div>
+        <div class="calc-hud-body" id="calc-hud-body"></div>
+      </div>
     </div>
 
     <!-- Center: Interaction Prompt -->
@@ -237,48 +248,6 @@
       </div>
     </div>
 
-  </div>
-
-  <!-- =========================================================================
-       MATHEMATICS TRIAL MODAL (Combat & Boss Calculus Challenges)
-       ========================================================================= -->
-  <div class="modal-backdrop" id="math-trial-modal">
-    <div class="fantasy-panel">
-      <div class="math-header-banner">
-        <span class="math-curse-tag" id="math-trial-topic">LIMITS AND CONTINUITY</span>
-        <div class="math-timer-wrap">
-          <span class="timer-label">ARCANE TIME:</span>
-          <div class="timer-bar">
-            <div class="timer-bar-fill" id="math-timer-fill"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="fantasy-panel-body">
-        <div class="math-prompt-box">
-          <p class="math-prompt-lore" id="math-trial-lore">Morgathia weaves a curse of broken thresholds. Evaluate the approaching boundary!</p>
-          <div class="math-equation-display" id="math-trial-equation">lim (x → 3) [ 2x² - 4x + 5 ]</div>
-          <p class="math-prompt-help">Choose the mathematically correct harmonic solution to break the curse:</p>
-        </div>
-
-        <!-- Multiple Choice Options -->
-        <div class="math-options-grid" id="math-options-grid"></div>
-
-        <!-- Numeric Input Challenge -->
-        <div class="math-input-container" id="math-input-container">
-          <input type="text" class="math-number-input" id="math-numeric-input" placeholder="Enter exact value..." autocomplete="off">
-          <button class="btn-submit-answer" id="btn-submit-numeric">SEAL THE EQUATION</button>
-        </div>
-
-        <!-- Step-by-Step Educational Explanation Box -->
-        <div class="math-explanation-box" id="math-explanation-box">
-          <div class="math-explanation-title" id="math-explanation-status">⚡ HARMONIC EQUILIBRIUM!</div>
-          <p class="math-explanation-content" id="math-explanation-text"></p>
-          <div class="math-explanation-step" id="math-explanation-steps"></div>
-          <button class="btn-continue-combat" id="btn-continue-combat">CONTINUE ADVENTURE ▶</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- =========================================================================
@@ -1223,6 +1192,10 @@
       document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\\/script>');
     }
   </script>
+  <script src="js/vendor/GLTFLoader.js"></script>
+  <script src="js/vendor/SkeletonUtils.js"></script>
+  <script src="js/realm-art.js"></script>
+  <script src="js/calculusEngine.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/calculus.js"></script>
   <script src="js/daynight.js"></script>

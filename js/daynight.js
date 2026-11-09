@@ -12,6 +12,12 @@ class DayNightManager {
     this.timeScale = 0.15; // 1 real second = ~0.15 in-game minutes (full day ~10 mins, adjustable)
     this.isNight = false;
     this.wasNight = false;
+    this.wasLightLevel = 1.0;
+    this.nightNotificationFired = false;
+    this.dawnNotificationFired = true;
+    this.currentLightLevel = 1.0;
+    this.currentDimmingRate = 0.0;
+    this.currentMonsterAggression = 0.6;
 
     // Lighting entities
     this.sunLight = null;
@@ -81,17 +87,43 @@ class DayNightManager {
     // Update lighting, sun position, and sky color
     this.updateAtmosphere();
 
-    // Night detection
-    // Nighttime: 7:00 PM (19.0) to 5:00 AM (5.0)
-    this.isNight = (this.timeOfDay >= 19.0 || this.timeOfDay < 5.0);
+    // Evaluate Day / Night Trigonometric Calculus:
+    // L(t) = sin(w*(t - 6)), dL/dt = w*cos(w*(t - 6))
+    const calc = window.calculusEngine
+      ? window.calculusEngine.evalDayNightCalculus(this.timeOfDay)
+      : {
+          L: Math.sin((Math.PI / 12) * (this.timeOfDay - 6)),
+          dLdt: (Math.PI / 12) * Math.cos((Math.PI / 12) * (this.timeOfDay - 6)),
+          isDay: this.timeOfDay >= 6 && this.timeOfDay < 18,
+          isNight: this.timeOfDay >= 18 || this.timeOfDay < 6,
+          dimmingRate: -(Math.PI / 12) * Math.cos((Math.PI / 12) * (this.timeOfDay - 6)),
+          monsterAggression: 1.0
+        };
 
-    if (this.isNight !== this.wasNight) {
-      this.handleDayNightTransition(this.isNight);
-      this.wasNight = this.isNight;
+    this.currentLightLevel = calc.L;
+    this.currentDimmingRate = calc.dLdt;
+    this.currentMonsterAggression = calc.monsterAggression;
+    this.isNight = calc.isNight;
+
+    // Night starts ONCE when L crosses zero downward (Task 2B.1 & Task 3a)
+    if (this.wasLightLevel > 0 && calc.L <= 0) {
+      if (!this.nightNotificationFired) {
+        this.nightNotificationFired = true;
+        this.dawnNotificationFired = false;
+        this.handleDayNightTransition(true);
+      }
+    } else if (this.wasLightLevel <= 0 && calc.L > 0) {
+      if (!this.dawnNotificationFired) {
+        this.dawnNotificationFired = true;
+        this.nightNotificationFired = false;
+        this.handleDayNightTransition(false);
+      }
     }
+    this.wasLightLevel = calc.L;
+    this.wasNight = this.isNight;
 
-    // Update HUD clock
-    this.updateClockUI();
+    // Update HUD clock and live calculus flux indicator
+    this.updateClockUI(calc);
   }
 
   updateAtmosphere() {

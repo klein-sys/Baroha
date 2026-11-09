@@ -173,7 +173,13 @@ class PlayerController {
   setupInputs() {
     // Keyboard down
     window.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey
+        || e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+
+      const playing = window.game?.canPlay();
+      if (!playing && /^(Key[WASDEQF]|Arrow|Shift|Space|Digit)/.test(e.code)) return;
+      if (e.code === 'Tab' && (!playing || !this.isPointerLocked)) return;
+      if (e.repeat && !/^(Key[WASD]|Arrow|Shift|Space)/.test(e.code)) return;
 
       switch (e.code) {
         case 'KeyW': case 'ArrowUp':
@@ -231,10 +237,6 @@ class PlayerController {
         case 'Digit6':
           if (window.abilitiesManager) window.abilitiesManager.selectAbility(5);
           break;
-        case 'Backquote': case 'F1':
-          e.preventDefault();
-          if (window.devConsoleManager) window.devConsoleManager.toggle();
-          break;
         case 'Escape': case 'KeyP':
           const anyOpenModal = document.querySelector('.modal-backdrop.open');
           if (anyOpenModal) {
@@ -270,28 +272,47 @@ class PlayerController {
 
     // Mouse Look (Pointer Lock)
     const canvas = document.getElementById('game-canvas');
-    canvas.addEventListener('click', () => {
-      if (!this.isPointerLocked && (!window.game || !window.game.isPaused)) {
-        canvas.requestPointerLock();
-      }
-    });
+    canvas.addEventListener('click', () => window.game?.requestMouseLook());
+    document.getElementById('btn-capture-mouse').addEventListener('click', () => window.game?.requestMouseLook());
+
+    const resetInput = () => {
+      Object.keys(this.keys).forEach(key => { this.keys[key] = false; });
+      this.touchMoveVector.x = 0;
+      this.touchMoveVector.y = 0;
+      this.isBlocking = false;
+    };
+    window.addEventListener('blur', resetInput);
 
     document.addEventListener('pointerlockchange', () => {
       this.isPointerLocked = (document.pointerLockElement === canvas);
+      document.body.classList.toggle('mouse-look', this.isPointerLocked);
+      if (!this.isPointerLocked) resetInput();
+    });
+
+    let lookPointer = null;
+    let lastX = 0;
+    let lastY = 0;
+    canvas.addEventListener('pointerdown', event => {
+      if (event.pointerType !== 'touch' || lookPointer !== null || !window.game?.canPlay()) return;
+      lookPointer = event.pointerId;
+      lastX = event.clientX;
+      lastY = event.clientY;
+      canvas.setPointerCapture(lookPointer);
+    });
+    canvas.addEventListener('pointermove', event => {
+      if (event.pointerId !== lookPointer || !window.game?.canPlay()) return;
+      this.rotateView(event.clientX - lastX, event.clientY - lastY, 0.005);
+      lastX = event.clientX;
+      lastY = event.clientY;
+    });
+    canvas.addEventListener('lostpointercapture', event => {
+      if (event.pointerId === lookPointer) lookPointer = null;
     });
 
     document.addEventListener('mousemove', (e) => {
       if (!this.isPointerLocked) return;
 
-      const baseSens = 0.0022;
-      const multiplier = (window.settingsManager && window.settingsManager.settings.controls.mouseSensitivity) || 1.0;
-      const invertY = (window.settingsManager && window.settingsManager.settings.controls.invertY) ? -1 : 1;
-
-      this.yaw -= e.movementX * baseSens * multiplier;
-      this.pitch -= e.movementY * baseSens * multiplier * invertY;
-
-      // Clamp vertical look between -85 and +85 degrees
-      this.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.pitch));
+      this.rotateView(e.movementX, e.movementY, 0.0022);
     });
 
     // Mouse Click (LMB Attack, RMB Block)
@@ -313,7 +334,15 @@ class PlayerController {
     });
 
     // Prevent context menu on right click
-    window.addEventListener('contextmenu', (e) => e.preventDefault());
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  rotateView(dx, dy, sensitivity) {
+    const controls = window.settingsManager?.settings.controls;
+    const speed = sensitivity * (controls?.mouseSensitivity ?? 1);
+    this.yaw -= dx * speed;
+    this.pitch -= dy * speed * (controls?.invertY ? -1 : 1);
+    this.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.pitch));
   }
 
   performAttack() {
@@ -516,7 +545,7 @@ class PlayerController {
     }
 
     if (moveDir.lengthSq() > 0) {
-      moveDir.normalize();
+      if (moveDir.lengthSq() > 1) moveDir.normalize();
       this.velocity.x = moveDir.x * moveSpeed;
       this.velocity.z = moveDir.z * moveSpeed;
     } else {
@@ -539,13 +568,21 @@ class PlayerController {
     this.position.y += this.velocity.y * delta;
     this.position.z += this.velocity.z * delta;
 
+    const world = window.game?.world;
+    const outsideWorld = world && (Math.abs(this.position.x) > world.terrainWidth / 2
+      || Math.abs(this.position.z) > world.terrainDepth / 2);
+    if (this.position.y < -12) {
+      this.loseHeart();
+      return;
+    }
+
     // Ground collision test (simple floor at y = 1.8 or world height)
     let groundHeight = 1.8;
     if (window.game && window.game.world) {
       groundHeight = window.game.world.getTerrainHeight(this.position.x, this.position.z) + this.height;
     }
 
-    if (this.position.y <= groundHeight) {
+    if (!outsideWorld && this.position.y <= groundHeight) {
       this.position.y = groundHeight;
       this.velocity.y = 0;
       this.isGrounded = true;

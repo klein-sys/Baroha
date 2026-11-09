@@ -18,7 +18,7 @@ class RobloxCharacter {
     this.cameraPitch = 0.25; // vertical orbit angle (radians)
     this.cameraYaw = 0.0;    // horizontal orbit angle (radians)
     this.cameraTarget = new THREE.Vector3();
-    this.cameraOffset = new THREE.Vector3(0, 1.3, 0);
+    this.cameraOffset = new THREE.Vector3(0, -0.2, 0);
 
     // Animation & State Machine
     this.animState = 'idle'; // 'idle', 'walking', 'running', 'sprinting', 'jumping', 'attacking', 'heavy_attack', 'hurt', 'victory', 'sleeping'
@@ -249,7 +249,9 @@ class RobloxCharacter {
 
     // Synchronize position from playerController
     this.position.copy(playerController.position);
-    this.mesh.position.copy(this.position);
+    // Snap character feet to ground (playerController.position.y is eye-height at terrainHeight + 1.8)
+    // Character feet bottom is at -0.4 relative to mesh origin, so mesh at (y - 1.4) puts feet precisely on ground.
+    this.mesh.position.set(this.position.x, this.position.y - 1.4, this.position.z);
 
     // Update facing rotation to match movement / camera
     if (playerController.velocity.lengthSq() > 0.1) {

@@ -110,11 +110,30 @@ class GameEngine {
     this.isGameOver = false;
     this.isVictory = false;
 
-    // Lock pointer for mouse look
-    this.canvas.requestPointerLock();
+    this.requestMouseLook();
+  }
+
+  canPlay() {
+    return this.isRunning && !this.isPaused && !this.isGameOver && !this.isVictory
+      && !document.querySelector('.modal-backdrop.open')
+      && !this.dayNight.isSleeping;
+  }
+
+  requestMouseLook() {
+    if (!this.canPlay() || document.pointerLockElement === this.canvas) return;
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+    try {
+      this.canvas.requestPointerLock?.()?.catch(() => {});
+    } catch {
+      // The player can click the canvas to retry when the browser denies capture.
+    }
   }
 
   transitionToRealm(realmId) {
+    this.nearestInteractable = null;
+    this.player.velocity.set(0, 0, 0);
+    window.interfaceManager?.hideInteractPrompt();
+    window.interfaceManager?.hideBossBar();
     if (window.missionsManager) {
       window.missionsManager.currentRealm = realmId;
     }
@@ -299,7 +318,7 @@ class GameEngine {
   }
 
   castEquippedAbility() {
-    this.abilities.castAbility(this.player);
+    if (this.canPlay()) this.abilities.castAbility(this.player);
   }
 
   // =========================================================================
@@ -311,14 +330,15 @@ class GameEngine {
     let minDist = 3.6;
 
     // Check Collectibles
-    this.world.collectibles.forEach(item => {
+    for (const item of this.world.collectibles) {
       if (!item.collected) {
         const d = this.player.position.distanceTo(item.position);
         if (d < item.radius) {
           this.collectItem(item);
+          if (!this.canPlay()) return;
         }
       }
-    });
+    }
 
     // Check Interactables (NPCs, gates, towers)
     this.world.interactables.forEach(target => {
@@ -333,13 +353,44 @@ class GameEngine {
 
     if (nearest && window.interfaceManager) {
       window.interfaceManager.showInteractPrompt(`Press [E] to interact with ${nearest.name}`);
+      if (nearest.getTelemetry) {
+        window.interfaceManager.renderCalculusTelemetry(nearest.getTelemetry());
+      }
     } else if (window.interfaceManager) {
       window.interfaceManager.hideInteractPrompt();
+      // Check if near an oscillating platform
+      let nearPlatform = false;
+      if (this.world && this.world.oscillatingPlatforms) {
+        for (const p of this.world.oscillatingPlatforms) {
+          if (p.mesh && this.player.position.distanceTo(p.mesh.position) < 6.5) {
+            nearPlatform = true;
+            const t = Date.now() * 0.001;
+            const calc = window.calculusEngine ? window.calculusEngine.evalOscillatingPlatform(t, p.A, p.omega) : null;
+            if (calc) {
+              window.interfaceManager.renderCalculusTelemetry({
+                title: 'HARMONIC OSCILLATING PLATFORM',
+                func: `y(t) = ${p.A}·sin(${p.omega}t)`,
+                details: `v(t) = y'(t) = ${(p.A * p.omega).toFixed(1)}·cos(${p.omega}t). Critical leap peak at v(t) ≈ 0!`,
+                metrics: [
+                  { label: 'Elevation y(t)', val: `${calc.y.toFixed(2)}m` },
+                  { label: 'Velocity v(t)', val: `${calc.v.toFixed(2)}m/s` },
+                  { label: 'Acceleration a(t)', val: `${calc.a.toFixed(2)}m/s²` },
+                  { label: 'Platform Leap State', val: calc.isAtPeak ? 'SAFE (STATIONARY PEAK)' : 'ACTIVE (v ≠ 0)' }
+                ]
+              });
+            }
+            break;
+          }
+        }
+      }
+      if (!nearPlatform && (!this.enemies || !this.enemies.isBossActive)) {
+        window.interfaceManager.hideCalculusTelemetry();
+      }
     }
   }
 
   handleInteract() {
-    if (this.nearestInteractable) {
+    if (this.canPlay() && this.nearestInteractable) {
       this.nearestInteractable.interact();
     }
   }
@@ -359,15 +410,11 @@ class GameEngine {
       if (window.soundEngine) window.soundEngine.playItemPickup();
       if (window.interfaceManager) window.interfaceManager.showToast(`FOUND: ${item.name}!`, 'success');
     } else if (item.type === 'scroll') {
-      // Trigger optional calculus puzzle
       if (window.soundEngine) window.soundEngine.playItemPickup();
-      const q = window.calculusManager.getRandomQuestion(this.world.currentRealm, 1);
+      this.player.addXp(150);
+      this.player.restoreMana(50);
       if (window.interfaceManager) {
-        window.interfaceManager.openMathTrial(q, false, (isCorrect) => {
-          if (isCorrect) {
-            this.player.addXp(120);
-          }
-        });
+        window.interfaceManager.showToast('📜 Ancient Calculus Scroll: New Codex Theorem Discovered (+150 XP, +50 MP)! Press [M] to inspect.', 'success');
       }
     } else if (item.type === 'xp') {
       this.player.addXp(150);
@@ -381,30 +428,20 @@ class GameEngine {
   }
 
   // =========================================================================
-  // BOSS ENCOUNTERS & CALCULUS TRIALS
+  // BOSS ENCOUNTERS & CALCULUS MECHANICS
   // =========================================================================
 
   startBossEncounter(realmId) {
     this.enemies.spawnBoss(realmId);
   }
 
-  triggerBossMathTrial(realmId, phase) {
+  triggerCalculusSurge(damage = 50) {
     if (!this.enemies.isBossActive) return;
-
-    const question = window.calculusManager.getRandomQuestion(realmId, phase);
-    if (!question) return;
-
+    this.enemies.damageBoss(damage);
+    this.player.addXp(80);
+    if (window.soundEngine) window.soundEngine.playMathCorrect();
     if (window.interfaceManager) {
-      window.interfaceManager.openMathTrial(question, true, (isCorrect, q) => {
-        if (isCorrect) {
-          // Deal massive mathematical damage to boss
-          this.enemies.damageBoss(q.damage * 1.5);
-          this.player.addXp(75);
-        } else {
-          // Boss attack hits player! Deduct 1 Heart
-          this.player.loseHeart();
-        }
-      });
+      window.interfaceManager.showToast(`⚡ CALCULUS SURGE: Resonance dealt ${damage} direct damage to boss!`, 'success');
     }
   }
 
@@ -459,7 +496,7 @@ class GameEngine {
 
     this.isGameOver = false;
     this.isRunning = true;
-    this.canvas.requestPointerLock();
+    this.requestMouseLook();
 
     if (window.interfaceManager) {
       window.interfaceManager.updatePlayerStatsUI();
@@ -483,7 +520,7 @@ class GameEngine {
   }
 
   togglePause() {
-    if (this.isGameOver || this.isVictory) return;
+    if (!this.isRunning || this.isGameOver || this.isVictory || document.querySelector('.modal-backdrop.open')) return;
 
     this.isPaused = !this.isPaused;
     const pauseMenu = document.getElementById('pause-menu');
@@ -493,7 +530,7 @@ class GameEngine {
       if (pauseMenu) pauseMenu.classList.remove('hidden');
     } else {
       if (pauseMenu) pauseMenu.classList.add('hidden');
-      this.canvas.requestPointerLock();
+      this.requestMouseLook();
     }
   }
 
@@ -526,7 +563,7 @@ class GameEngine {
 
     const delta = Math.min(this.clock.getDelta(), 0.1);
 
-    if (this.isRunning && !this.isPaused && !this.isGameOver && !this.isVictory) {
+    if (this.canPlay()) {
       // 1. Day / Night atmosphere & orbital lighting
       if (this.dayNight) this.dayNight.update(delta);
 
@@ -542,10 +579,10 @@ class GameEngine {
 
       // 5. Update Enemies & 3D Bosses
       this.enemies.update(delta, this.player);
-      if (this.bosses) this.bosses.update(delta, this.player);
+      if (this.canPlay() && this.bosses) this.bosses.update(delta, this.player);
 
       // 6. Update Proximity Interactions
-      this.updateInteractions();
+      if (this.canPlay()) this.updateInteractions();
 
       // 7. Update HUD Stats & Cooldowns
       if (window.interfaceManager) {

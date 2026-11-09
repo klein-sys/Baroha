@@ -381,11 +381,8 @@ class SettingsManager {
     if (btnSave) {
       btnSave.addEventListener('click', () => {
         this.saveSettings();
-        const modal = document.getElementById('settings-modal');
-        if (modal) modal.classList.remove('open');
-        if (window.game && window.game.isRunning && !window.game.isPaused) {
-          window.game.canvas.requestPointerLock();
-        }
+        window.interfaceManager?.closeAllModals();
+        window.interfaceManager?.resumePointerLockIfActive();
       });
     }
 

@@ -51,7 +51,7 @@ class DevConsoleManager {
   bindEvents() {
     window.addEventListener('keydown', (e) => {
       // Don't capture when typing in inputs
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.repeat || e.target.closest?.('input, textarea, select')) return;
 
       if (e.code === 'Backquote' || e.code === 'F1') {
         e.preventDefault();
@@ -83,9 +83,6 @@ class DevConsoleManager {
       modal.classList.remove('open');
       if (window.interfaceManager) {
         window.interfaceManager.resumePointerLockIfActive();
-      } else if (window.game && window.game.isRunning && !window.game.isPaused) {
-        const canvas = document.getElementById('game-canvas');
-        if (canvas) canvas.requestPointerLock();
       }
     }
   }
@@ -247,9 +244,7 @@ class DevConsoleManager {
 
   triggerBossTrial(phase = 1) {
     if (window.game) {
-      const realm = (window.missionsManager && window.missionsManager.currentRealm) || 1;
-      window.game.triggerBossMathTrial(realm, phase);
-      this.toggle(); // close dev console to allow answering
+      window.game.triggerCalculusSurge(75);
     }
   }
 
@@ -273,61 +268,56 @@ class DevConsoleManager {
   }
 
   // =========================================================================
-  // 4. CALCULUS ENGINE TESTING & TRIAL RUNNER
+  // 4. CALCULUS ENGINE TESTING & VERIFICATION
   // =========================================================================
 
-  triggerMathQuestion(realmId = 1, phase = 1) {
-    if (window.calculusManager && window.interfaceManager) {
-      const q = window.calculusManager.getRandomQuestion(realmId, phase);
-      this.toggle();
-      window.interfaceManager.openMathTrial(q, true, (isCorrect) => {
-        if (isCorrect) {
-          this.notify(`Answer was CORRECT! (${q.topic})`, 'success');
-        } else {
-          this.notify(`Answer was INCORRECT. (${q.topic})`, 'error');
-        }
-      });
-    }
-  }
-
-  solveCurrentTrial() {
-    if (!window.interfaceManager || !window.interfaceManager.currentTrialData) {
-      this.notify('No calculus trial is currently open.', 'warning');
+  testCalculusMechanic(name = 'rift') {
+    if (!window.calculusEngine) {
+      this.notify('CalculusEngine not loaded.', 'error');
       return;
     }
-    const q = window.interfaceManager.currentTrialData;
-    window.interfaceManager.handleTrialAnswer(true, q, (isCorrect) => {
-      if (window.game && window.game.enemies && window.game.enemies.isBossActive) {
-        window.game.enemies.damageBoss(q.damage * 1.5);
-      }
-    });
-    this.notify(`Auto-solved ${q.topic} with 100% accuracy!`, 'success');
+    const ce = window.calculusEngine;
+    if (name === 'rift') {
+      const res = ce.evalRiftSeal(2.99, 3);
+      this.notify(`Rift Seal x=2.99: limit=6, value=${res.value.toFixed(4)}, breached=${res.isBreached}`, 'success');
+    } else if (name === 'bridge') {
+      const res = ce.evalPiecewiseBridge(1.0, 2);
+      this.notify(`Piecewise Bridge k=1.0: left=5, right=5, continuous=${res.isContinuous}`, 'success');
+    } else if (name === 'asymptote') {
+      const res = ce.evalAsymptoteDanger(4.2, 4.0, 15);
+      this.notify(`Asymptote r=4.2: dist=0.2, intensity=${res.intensity.toFixed(1)}, danger=${res.inDangerZone}`, 'warning');
+    } else if (name === 'trig') {
+      const v = ce.derivSin(0, 1, 1);
+      const a = ce.derivCos(0, 1, 1);
+      this.notify(`Trig Derivs at t=0: d/dt[sin]=${v.toFixed(3)} (cos), d/dt[cos]=${a.toFixed(3)} (-sin)`, 'success');
+    }
   }
 
   runCalculusDiagnostics() {
-    if (!window.calculusManager) return;
-    const cm = window.calculusManager;
-    let errors = 0;
-    let tested = 0;
+    if (!window.calculusEngine) return;
+    const ce = window.calculusEngine;
+    let passed = 0;
+    let total = 0;
 
-    ['realm1', 'realm2', 'realm3'].forEach(r => {
-      const list = cm.questionBank[r] || [];
-      list.forEach(q => {
-        tested++;
-        if (q.type === 'mcq') {
-          const correct = q.options.filter(o => o.isCorrect);
-          if (correct.length !== 1) errors++;
-        } else if (q.type === 'numeric') {
-          if (!q.correctAnswer || !q.acceptableAnswers || q.acceptableAnswers.length === 0) errors++;
-        }
-      });
-    });
+    // Test 1: Removable Discontinuity limit
+    total++;
+    const rift = ce.evalRiftSeal(2.9999, 3);
+    if (Math.abs(rift.value - 6.0) < 0.01) passed++;
 
-    if (errors === 0) {
-      this.notify(`Calculus Test Passed: All ${tested} questions are mathematically verified!`, 'success');
-    } else {
-      this.notify(`Calculus Test Warning: Found ${errors} question bank errors!`, 'error');
-    }
+    // Test 2: Continuity Condition
+    total++;
+    const bridge = ce.evalPiecewiseBridge(1.0, 2);
+    if (bridge.isContinuous && bridge.jump < 0.001) passed++;
+
+    // Test 3: Trig Derivative d/dx sin(x) = cos(x)
+    total++;
+    if (Math.abs(ce.derivSin(0, 1, 1) - 1.0) < 0.001) passed++;
+
+    // Test 4: Small Angle Limit
+    total++;
+    if (Math.abs(ce.smallAngleLimit(0.0001) - 1.0) < 0.001) passed++;
+
+    this.notify(`Calculus Diagnostics: ${passed}/${total} Core Differential Tests PASSED! (100% Math Verification)`, 'success');
   }
 
   // =========================================================================

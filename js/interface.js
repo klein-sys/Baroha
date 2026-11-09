@@ -7,7 +7,6 @@ class InterfaceManager {
   constructor() {
     this.activeModal = null;
     this.currentTrialData = null;
-    this.trialTimerInterval = null;
 
     // Toast queue
     this.toastQueue = [];
@@ -155,10 +154,7 @@ class InterfaceManager {
 
     // Level & Title
     if (this.playerLevelBadge) this.playerLevelBadge.innerText = p.level;
-    if (this.robloxLevel) {
-      const displayLv = p.level === 1 ? 25 : (p.level === 2 ? 50 : 100);
-      this.robloxLevel.innerText = `Lv. ${displayLv}`;
-    }
+    if (this.robloxLevel) this.robloxLevel.innerText = `Lv. ${p.level}`;
     if (this.playerClass) this.playerClass.innerText = p.rankTitle;
 
     // Hearts UI
@@ -246,12 +242,7 @@ class InterfaceManager {
   }
 
   resumePointerLockIfActive() {
-    if (window.game && window.game.isRunning && !window.game.isPaused && !window.game.isGameOver && !window.game.isVictory) {
-      const canvas = document.getElementById('game-canvas');
-      if (canvas && document.body.contains(canvas)) {
-        canvas.requestPointerLock();
-      }
-    }
+    window.game?.requestMouseLook();
   }
 
   showSleepModal() {
@@ -332,14 +323,46 @@ class InterfaceManager {
     const container = document.getElementById('toast-container');
     if (!container) return;
 
+    if (!this.activeToastMap) this.activeToastMap = new Map();
+
+    // De-duplicate: If identical message already visible, refresh timer instead of stacking
+    const msgKey = message.trim();
+    if (this.activeToastMap.has(msgKey)) {
+      const existing = this.activeToastMap.get(msgKey);
+      clearTimeout(existing.timer);
+      existing.timer = setTimeout(() => {
+        if (existing.el.parentNode) existing.el.parentNode.removeChild(existing.el);
+        this.activeToastMap.delete(msgKey);
+      }, 4000);
+      return;
+    }
+
+    // Enforce max 3 visible toasts: remove oldest if at capacity
+    while (container.children.length >= 3) {
+      const oldest = container.firstElementChild;
+      if (oldest) {
+        for (const [key, val] of this.activeToastMap.entries()) {
+          if (val.el === oldest) {
+            clearTimeout(val.timer);
+            this.activeToastMap.delete(key);
+            break;
+          }
+        }
+        oldest.remove();
+      }
+    }
+
     const toast = document.createElement('div');
-    toast.className = 'toast-msg';
+    toast.className = `toast-msg toast-${type}`;
     toast.innerText = message;
     container.appendChild(toast);
 
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       if (toast.parentNode) toast.parentNode.removeChild(toast);
-    }, 3200);
+      this.activeToastMap.delete(msgKey);
+    }, 4000);
+
+    this.activeToastMap.set(msgKey, { el: toast, timer });
   }
 
   showInteractPrompt(text) {
@@ -401,100 +424,44 @@ class InterfaceManager {
   }
 
   // =========================================================================
-  // MATHEMATICS QUESTION TRIAL MODAL
+  // CALCULUS TELEMETRY HUD & NOTIFICATIONS
+  // (Question/quiz modals removed per MATH 101 Project Rules)
   // =========================================================================
-  openMathTrial(question, isBoss = true, onCompleteCallback) {
-    this.currentTrialData = question;
-    const modal = document.getElementById('math-trial-modal');
-    if (!modal) return;
-
-    this.closeAllModals('math-trial-modal');
-    // Release pointer lock so player can click answers
-    if (document.exitPointerLock) document.exitPointerLock();
-
-    // Populate question details
-    document.getElementById('math-trial-topic').innerText = question.topic;
-    document.getElementById('math-trial-lore').innerText = question.lore;
-    document.getElementById('math-trial-equation').innerText = question.displayEquation;
-
-    const optionsGrid = document.getElementById('math-options-grid');
-    const inputContainer = document.getElementById('math-input-container');
-    const explanationBox = document.getElementById('math-explanation-box');
-
-    explanationBox.classList.remove('active');
-
-    if (question.type === 'mcq') {
-      optionsGrid.style.display = 'grid';
-      inputContainer.classList.remove('active');
-      optionsGrid.innerHTML = '';
-
-      question.options.forEach((opt, idx) => {
-        const letters = ['A', 'B', 'C', 'D'];
-        const card = document.createElement('div');
-        card.className = 'math-option-card';
-        card.innerHTML = `
-          <div class="option-badge">${letters[idx]}</div>
-          <div class="option-text">${opt.text}</div>
-        `;
-        card.onclick = () => this.handleTrialAnswer(opt.isCorrect, question, onCompleteCallback);
-        optionsGrid.appendChild(card);
-      });
-    } else {
-      // Numeric input
-      optionsGrid.style.display = 'none';
-      inputContainer.classList.add('active');
-      const numInput = document.getElementById('math-numeric-input');
-      numInput.value = '';
-      numInput.focus();
-
-      document.getElementById('btn-submit-numeric').onclick = () => {
-        const val = numInput.value.trim().toLowerCase();
-        const isCorrect = question.acceptableAnswers.includes(val);
-        this.handleTrialAnswer(isCorrect, question, onCompleteCallback);
-      };
-    }
-
-    modal.classList.add('open');
-    this.activeModal = modal;
+  showCalculusInsight(title, message) {
+    this.showToast(`📐 ${title}: ${message}`, 'info');
   }
 
-  handleTrialAnswer(isCorrect, question, onCompleteCallback) {
-    if (window.calculusManager) window.calculusManager.recordAnswer(isCorrect);
-
-    const explanationBox = document.getElementById('math-explanation-box');
-    const titleEl = document.getElementById('math-explanation-status');
-    const contentEl = document.getElementById('math-explanation-text');
-    const stepEl = document.getElementById('math-explanation-steps');
-
-    explanationBox.classList.add('active');
-
-    if (isCorrect) {
-      if (window.soundEngine) window.soundEngine.playMathCorrect();
-      titleEl.className = 'math-explanation-title correct';
-      titleEl.innerText = `⚡ HARMONIC OVERLOAD! +${Math.round(question.damage * 1.5)} DAMAGE DEALT!`;
-      this.showToast(`⚡ CRITICAL RESONANCE! Boss ward shattered for ${Math.round(question.damage * 1.5)} DMG!`, 'success');
-    } else {
-      if (window.soundEngine) window.soundEngine.playMathError();
-      titleEl.className = 'math-explanation-title wrong';
-      titleEl.innerText = '⚠️ BARRIER BREACH! 1 HEART LOST!';
-      this.showToast('⚠️ CURSE UNRESOLVED! Lost 1 Heart Container!', 'error');
+  renderCalculusTelemetry(data) {
+    const hud = document.getElementById('calculus-live-hud');
+    if (!hud) return;
+    if (!data) {
+      hud.style.display = 'none';
+      return;
     }
-
-    contentEl.innerText = isCorrect
-      ? 'The spell strikes true! Your mathematical proof damages the entity.'
-      : 'The corrupted equation destabilizes your life energy! Study the worked solution below:';
-
-    stepEl.innerText = question.explanation;
-
-    document.getElementById('btn-continue-combat').onclick = () => {
-      document.getElementById('math-trial-modal').classList.remove('open');
-      this.activeModal = null;
-      if (onCompleteCallback) onCompleteCallback(isCorrect, question);
-      if (window.game && window.game.isRunning && !window.game.isPaused && !window.game.isGameOver) {
-        const canvas = document.getElementById('game-canvas');
-        if (canvas) canvas.requestPointerLock();
+    hud.style.display = 'block';
+    const titleEl = document.getElementById('calc-hud-title');
+    const bodyEl = document.getElementById('calc-hud-body');
+    if (titleEl) titleEl.innerText = data.title || 'ACTIVE HARMONIC FLUX';
+    if (bodyEl) {
+      if (typeof data.html === 'string') {
+        bodyEl.innerHTML = data.html;
+      } else {
+        bodyEl.innerHTML = `
+          <div style="font-family: var(--font-mono); font-size: 13px; color: ${data.isWarning ? '#ff4b4b' : '#ffd166'}; margin-bottom: 4px;">${data.func || ''}</div>
+          <div style="font-size: 12px; color: #e0e0e0; margin-bottom: 6px;">${data.details || ''}</div>
+          ${data.metrics ? `
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top: 4px;">
+              ${data.metrics.map(m => `<span class="calc-pill-metric"><strong>${m.label}:</strong> ${m.val}</span>`).join('')}
+            </div>
+          ` : ''}
+        `;
       }
-    };
+    }
+  }
+
+  hideCalculusTelemetry() {
+    const hud = document.getElementById('calculus-live-hud');
+    if (hud) hud.style.display = 'none';
   }
 
   // =========================================================================
@@ -531,6 +498,7 @@ class InterfaceManager {
         modal.classList.remove('open');
         this.activeModal = null;
         this.resumePointerLockIfActive();
+        if (window.missionsManager) window.missionsManager.completeQuest('r1_m1');
       };
       choices.appendChild(b2);
     } else if (name.includes('Scholar')) {
@@ -694,6 +662,49 @@ class InterfaceManager {
     if (!container || !window.calculusManager) return;
     container.innerHTML = '';
 
+    // Live Telemetry Card
+    const telem = window.calculusManager.getActiveCalculusTelemetry();
+    if (telem) {
+      const liveCard = document.createElement('div');
+      liveCard.style.cssText = 'background: rgba(10, 25, 45, 0.9); border: 2px solid #00d4ff; border-radius: 8px; padding: 16px; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,212,255,0.3);';
+      liveCard.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(0,212,255,0.3); padding-bottom: 8px; margin-bottom: 12px;">
+          <h3 style="font-family: var(--font-title); color: #00d4ff; margin: 0; font-size: 16px;">⚡ LIVE WORLD CALCULUS TELEMETRY</h3>
+          <span style="font-size: 11px; background: #00d4ff; color: #060913; font-weight: bold; padding: 2px 8px; border-radius: 10px;">ACTIVE SYSTEM</span>
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; font-size: 13px;">
+          <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px;">
+            <strong style="color: #ffd166;">Celestial Flux:</strong><br>
+            L(t) = sin(ωt) = <span style="color:#00d4ff;">${telem.dayNight.L.toFixed(3)}</span><br>
+            dL/dt = ω·cos(ωt) = <span style="color:${telem.dayNight.dLdt >= 0 ? '#38ef7d' : '#ff4b4b'};">${telem.dayNight.dLdt.toFixed(3)}</span><br>
+            <span style="font-size: 11px; color:#aaa;">${telem.dayNight.isNight ? 'Night Active (Dusk peak passed)' : 'Daylight Active'}</span>
+          </div>
+          <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px;">
+            <strong style="color: #ffd166;">Harmonic Platform:</strong><br>
+            y(t) = 3.5·sin(1.2t) = <span style="color:#00d4ff;">${telem.platform.y.toFixed(2)} m</span><br>
+            v(t) = y'(t) = <span style="color:#38ef7d;">${telem.platform.v.toFixed(2)} m/s</span><br>
+            a(t) = y''(t) = <span style="color:#ff99aa;">${telem.platform.a.toFixed(2)} m/s²</span><br>
+            <span style="font-size: 11px; color:${telem.platform.isAtPeak ? '#38ef7d' : '#ffd166'};">${telem.platform.statusText}</span>
+          </div>
+          <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px;">
+            <strong style="color: #ffd166;">Rift Seal Limit:</strong><br>
+            f(x) = (x² - 9)/(x - 3)<br>
+            Hole at x = 3 (0/0 Indeterminate)<br>
+            lim (x→3) f(x) = <span style="color:#38ef7d;">6.00</span><br>
+            <span style="font-size: 11px; color:#aaa;">Left: 2.99→5.99 | Right: 3.01→6.01</span>
+          </div>
+          <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px;">
+            <strong style="color: #ffd166;">Piecewise Bridge:</strong><br>
+            f(x) = { kx+3 (x≤2), x²+1 (x>2) }<br>
+            Continuous at k = <span style="color:#38ef7d;">1.00</span><br>
+            Jump = |Left - Right| = 0.00<br>
+            <span style="font-size: 11px; color:#aaa;">Solidifies chasm crossing</span>
+          </div>
+        </div>
+      `;
+      container.appendChild(liveCard);
+    }
+
     window.calculusManager.workedExamples.forEach(ex => {
       const card = document.createElement('div');
       card.style.cssText = 'background: rgba(20, 16, 28, 0.85); border: 1px solid #e5b95c; border-radius: 6px; padding: 16px; margin-bottom: 16px;';
@@ -736,7 +747,6 @@ class InterfaceManager {
     document.querySelectorAll('.modal-backdrop').forEach(modal => {
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
-          if (modal.id === 'math-trial-modal') return; // protect combat trial
           this.closeAllModals();
           this.resumePointerLockIfActive();
         }
@@ -793,8 +803,10 @@ class InterfaceManager {
       if (mobileControls) mobileControls.classList.add('active');
     }
 
-    const resetJoystick = () => {
-      this.joystickActive = false;
+    let joystickPointer = null;
+    const resetJoystick = (event) => {
+      if (event.pointerId !== joystickPointer) return;
+      joystickPointer = null;
       joystickThumb.style.transform = 'translate(-50%, -50%)';
       if (window.game && window.game.player) {
         window.game.player.touchMoveVector.x = 0;
@@ -802,9 +814,10 @@ class InterfaceManager {
       }
     };
 
-    joystickZone.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      this.joystickActive = true;
+    joystickZone.addEventListener('pointerdown', (e) => {
+      if (joystickPointer !== null || !window.game?.canPlay()) return;
+      joystickPointer = e.pointerId;
+      joystickZone.setPointerCapture(joystickPointer);
       const rect = joystickZone.getBoundingClientRect();
       this.joystickCenter = {
         x: rect.left + rect.width / 2,
@@ -812,12 +825,10 @@ class InterfaceManager {
       };
     }, { passive: false });
 
-    joystickZone.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      if (!this.joystickActive) return;
-      const touch = e.touches[0];
-      const dx = touch.clientX - this.joystickCenter.x;
-      const dy = touch.clientY - this.joystickCenter.y;
+    joystickZone.addEventListener('pointermove', (e) => {
+      if (e.pointerId !== joystickPointer) return;
+      const dx = e.clientX - this.joystickCenter.x;
+      const dy = e.clientY - this.joystickCenter.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const maxRadius = 45;
 
@@ -833,17 +844,15 @@ class InterfaceManager {
       }
     }, { passive: false });
 
-    joystickZone.addEventListener('touchend', resetJoystick);
-    joystickZone.addEventListener('touchcancel', resetJoystick);
+    joystickZone.addEventListener('lostpointercapture', resetJoystick);
 
     // Mobile Action buttons
     const bindBtn = (id, action) => {
       const btn = document.getElementById(id);
       if (btn) {
-        btn.addEventListener('touchstart', (e) => {
-          e.preventDefault();
-          action();
-        }, { passive: false });
+        btn.addEventListener('click', () => {
+          if (window.game?.canPlay()) action();
+        });
       }
     };
 

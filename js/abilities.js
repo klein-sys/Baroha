@@ -156,12 +156,35 @@ class AbilitiesManager {
     if (window.interfaceManager) window.interfaceManager.updatePlayerStatsUI();
   }
 
-  // --- 1. MAGIC BOLT ---
+  // --- 1. MAGIC BOLT (with small-angle aiming assist: lim theta->0 sin(theta)/theta = 1) ---
   spawnMagicBolt(player) {
     if (window.soundEngine) window.soundEngine.playMagicBolt();
 
-    const forward = new THREE.Vector3(-Math.sin(player.yaw), Math.sin(player.pitch), -Math.cos(player.yaw)).normalize();
+    let forward = new THREE.Vector3(-Math.sin(player.yaw), Math.sin(player.pitch), -Math.cos(player.yaw)).normalize();
     const spawnPos = player.position.clone().add(new THREE.Vector3(0, -0.2, 0)).addScaledVector(forward, 0.8);
+
+    // Apply Calculus Small-Angle Aim Assist: lim theta->0 [sin(theta)/theta] = 1
+    if (window.game && window.game.enemies && window.calculusEngine) {
+      let closestEnemy = null;
+      let minAngle = 0.35; // ~20 degrees cone
+      window.game.enemies.enemies.forEach(e => {
+        if (!e.isDead && e.mesh) {
+          const toEnemy = e.mesh.position.clone().sub(spawnPos).normalize();
+          const angle = forward.angleTo(toEnemy);
+          if (angle < minAngle) {
+            minAngle = angle;
+            closestEnemy = e;
+          }
+        }
+      });
+      if (closestEnemy) {
+        // Evaluate limit assist factor
+        const assistRatio = window.calculusEngine.smallAngleLimit(minAngle);
+        const toEnemy = closestEnemy.mesh.position.clone().sub(spawnPos).normalize();
+        // Blend trajectory smoothly by assist ratio (as error theta -> 0, assist reaches 1.0)
+        forward.lerp(toEnemy, 0.45 * assistRatio).normalize();
+      }
+    }
 
     const geom = new THREE.SphereGeometry(0.18, 8, 8);
     const mat = new THREE.MeshBasicMaterial({ color: 0x00d4ff });
