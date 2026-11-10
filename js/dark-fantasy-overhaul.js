@@ -26,10 +26,31 @@
     while (p && p.parent) p = p.parent;
     return !!(p && p.isScene);
   }
+  function markSharedResources(root) {
+    if (!root || typeof root.traverse !== 'function') return;
+    root.traverse(obj => {
+      if (obj.geometry) {
+        obj.geometry.userData = obj.geometry.userData || {};
+        obj.geometry.userData.shared = true;
+      }
+      if (obj.material) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach(m => {
+          if (m) {
+            m.userData = m.userData || {};
+            m.userData.shared = true;
+          }
+        });
+      }
+    });
+  }
   function getScene(name) {
     if (!cache.has(name)) {
       cache.set(name, loader.loadAsync(BASE + name + '.glb')
-        .then(({scene}) => scene)
+        .then(({scene}) => {
+          markSharedResources(scene);
+          return scene;
+        })
         .catch(err => {
           cache.delete(name); // permit retry when an asset is restored
           console.warn('[Dark Fantasy] Could not load ' + name + ':', err);
@@ -37,6 +58,32 @@
         }));
     }
     return cache.get(name);
+  }
+  function filterGeometryByMinY(geom, minY) {
+    if (!geom || !geom.attributes || !geom.attributes.position) return geom;
+    const pos = geom.attributes.position;
+    const idxAttr = geom.index;
+    const kept = [];
+    if (idxAttr) {
+      const arr = idxAttr.array;
+      for (let i = 0; i < arr.length; i += 3) {
+        const a = arr[i], b = arr[i + 1], c = arr[i + 2];
+        if ((pos.getY(a) + pos.getY(b) + pos.getY(c)) / 3 >= minY) {
+          kept.push(a, b, c);
+        }
+      }
+    } else {
+      for (let i = 0; i + 2 < pos.count; i += 3) {
+        if ((pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3 >= minY) {
+          kept.push(i, i + 1, i + 2);
+        }
+      }
+    }
+    if (kept.length === 0) return null;
+    const cloned = geom.clone();
+    cloned.setIndex(kept);
+    cloned.userData = { shared: false };
+    return cloned;
   }
   // Hide the mesh material rather than its entire Object3D; meshes can be animated parents.
   function hideOriginal(o) {
@@ -48,6 +95,7 @@
       const hidden = materials.map(mat => {
         const clone = mat.clone();
         clone.visible = false;
+        clone.userData = Object.assign({}, clone.userData, { shared: false });
         return clone;
       });
       o.material = Array.isArray(o.material) ? hidden : hidden[0];
@@ -195,7 +243,80 @@
   worldGroup('spawnGlowingMushroom','glow_mushroom',c=>c.isLight);
   worldGroup('spawnCastleGate','castle_gate',(c,i)=>i===3); // purple shield must disappear on unlock
   worldGroup('spawnCryptThrone','crypt_gate',(c,i)=>i===1); // portal vortex remains visible
-  worldGroup('spawnVillageHouse','village_house'); // separate bed group is left intact
+  // House overhaul: keep wood gable roof, windows, corner beams and gold mullions while
+  // opening the solid stone block into the walkable hollow interior & synced hinged door.
+  wrap(WorldManager.prototype, 'spawnVillageHouse', function (_result, _args, before) {
+    const created = this.worldObjects.slice(before.world);
+    const target = created.find(o => o.isGroup) || created[0];
+    if (!target || target.userData.darkFantasyVisual) return;
+    if (typeof location !== 'undefined' && location.protocol === 'file:') return;
+
+    getScene('village_house').then(template => {
+      if (!template || !inScene(target) || target.userData.darkFantasyVisual) return;
+      const visual = template.clone(true);
+      visual.name = 'DF_village_house';
+      const shadowOn = !!(window.game && window.game.renderer && window.game.renderer.shadowMap.enabled);
+
+      let stoneMat = null;
+      let woodMat = null;
+      let blackironMat = null;
+
+      visual.traverse(obj => {
+        if (!obj.isMesh || !obj.geometry) return;
+        obj.castShadow = shadowOn;
+        obj.receiveShadow = shadowOn;
+        obj.frustumCulled = true;
+
+        if (typeof obj.geometry.computeBoundingBox === 'function') {
+          obj.geometry.computeBoundingBox();
+        }
+        const bb = obj.geometry.boundingBox;
+        const matName = ((obj.material && obj.material.name) || '').toLowerCase();
+        const sx = bb ? (bb.max.x - bb.min.x) : 0;
+        const sy = bb ? (bb.max.y - bb.min.y) : 0;
+        const sz = bb ? (bb.max.z - bb.min.z) : 0;
+
+        if (matName.includes('stone') || (sx > 5.0 && sy > 3.2 && sz > 4.5 && sy < 4.5)) {
+          // Solid stone cube would block interior & bed; apply its PBR stone material to hollow walls
+          stoneMat = obj.material;
+          obj.visible = false;
+        } else if (matName.includes('blackiron') || matName.includes('iron') || (bb && bb.max.y > 6.4)) {
+          // Preserve roof spire cone while stripping the static lower door mesh (y < 4.2)
+          blackironMat = obj.material;
+          const filtered = filterGeometryByMinY(obj.geometry, 4.2);
+          if (filtered) {
+            obj.geometry = filtered;
+          } else {
+            obj.visible = false;
+          }
+        } else if (matName.includes('wood') || (bb && sx > 6.5)) {
+          woodMat = obj.material;
+        }
+      });
+
+      target.add(visual);
+      target.userData.darkFantasyVisual = visual;
+
+      if (target.userData.houseWalls) {
+        if (stoneMat) {
+          target.userData.houseWalls.forEach(w => {
+            if (w) w.material = stoneMat;
+          });
+        }
+        if (woodMat && target.userData.houseFloors) {
+          target.userData.houseFloors.forEach(f => {
+            if (f) f.material = woodMat;
+          });
+        }
+        if (blackironMat && target.userData.houseDoor) {
+          target.userData.houseDoor.material = blackironMat;
+        }
+        (target.userData.houseExtras || []).forEach(hideOriginal);
+      } else {
+        (target.isGroup ? target.children.filter(c => c !== visual) : []).forEach(hideOriginal);
+      }
+    });
+  });
   worldGroup('spawnBed','adventurer_bed');
   worldGroup('spawnSpectralBrazier','spectral_brazier',c=>c.isLight);
   worldGroup('spawnTrainingDummy','training_dummy');

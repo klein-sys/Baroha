@@ -254,8 +254,10 @@ class RobloxCharacter {
     // Synchronize position from playerController
     this.position.copy(playerController.position);
     // Snap character feet to ground (playerController.position.y is eye-height at terrainHeight + 1.8)
-    // Character feet bottom is at -0.4 relative to mesh origin, so mesh at (y - 1.4) puts feet precisely on ground.
-    this.mesh.position.set(this.position.x, this.position.y - 1.4, this.position.z);
+    // Procedural feet bottom is at -0.4 (-1.4m offset), whereas dark-fantasy armored legs reach -0.51 (-1.30m offset).
+    const hasDFLegs = !!(this.leftLegPivot && this.leftLegPivot.userData && this.leftLegPivot.userData.darkFantasyVisual);
+    const groundEyeOffset = hasDFLegs ? 1.30 : 1.4;
+    this.mesh.position.set(this.position.x, this.position.y - groundEyeOffset, this.position.z);
 
     // Update facing rotation to match movement / camera
     if (playerController.velocity.lengthSq() > 0.1) {

@@ -955,10 +955,10 @@ class WorldManager {
     // Sample foundation corners so terrain hills never protrude through interior floor
     const corners = [
       this.getTerrainHeight(x, z),
-      this.getTerrainHeight(x - 3.25, z - 2.75),
-      this.getTerrainHeight(x + 3.25, z - 2.75),
-      this.getTerrainHeight(x - 3.25, z + 2.75),
-      this.getTerrainHeight(x + 3.25, z + 2.75)
+      this.getTerrainHeight(x - 3.15, z - 2.75),
+      this.getTerrainHeight(x + 3.15, z - 2.75),
+      this.getTerrainHeight(x - 3.15, z + 2.75),
+      this.getTerrainHeight(x + 3.15, z + 2.75)
     ];
     const baseY = Math.max(...corners);
     const floorThicknessOffset = 0.14;
@@ -978,80 +978,84 @@ class WorldManager {
       roughness: 0.2
     }));
 
-    // Solid Wooden Foundation & Interior Floor Slab (extends downward into ground slopes cleanly)
-    const floorGeom = this.getSharedGeom('houseFoundation', () => new THREE.BoxGeometry(6.5, 1.0, 5.5));
+    // Solid Wooden Foundation & Interior Floor Slab (matches village_house 6.3 x 5.5 footprint cleanly)
+    const floorGeom = this.getSharedGeom('houseFoundation', () => new THREE.BoxGeometry(6.28, 1.0, 5.48));
     const floorMesh = new THREE.Mesh(floorGeom, floorMat);
     floorMesh.position.set(0, floorThicknessOffset - 0.5, 0);
     floorMesh.receiveShadow = true;
     group.add(floorMesh);
 
     // Front porch threshold step for smooth walking entry across doorway
-    const stepGeom = this.getSharedGeom('houseStep', () => new THREE.BoxGeometry(1.8, 0.35, 0.9));
+    const stepGeom = this.getSharedGeom('houseStep', () => new THREE.BoxGeometry(1.76, 0.35, 0.85));
     const stepMesh = new THREE.Mesh(stepGeom, floorMat);
     stepMesh.position.set(0, floorThicknessOffset - 0.22, 3.05);
     stepMesh.receiveShadow = true;
     group.add(stepMesh);
 
-    // Register walkable interior floor + entrance step (cardinal yaw)
-    const fp1 = this._localToWorld(x, baseY, z, facingYaw, -3.22, 0, -2.72);
-    const fp2 = this._localToWorld(x, baseY, z, facingYaw, 3.22, 0, 3.45);
+    // Register walkable interior floor + entrance step
+    const fp1 = this._localToWorld(x, baseY, z, facingYaw, -3.12, 0, -2.72);
+    const fp2 = this._localToWorld(x, baseY, z, facingYaw, 3.12, 0, 3.45);
     this.addWalkableSurface(fp1.x, fp2.x, fp1.z, fp2.z, innerFloorY);
 
-    // Wall Thickness = 0.28, Total outer envelope remains exact 6.5 x 4.2 x 5.5
-    const backGeom = this.getSharedGeom('houseBackWall', () => new THREE.BoxGeometry(6.5, 4.2, 0.28));
+    // Hollow Perimeter Walls matching village_house envelope (6.3 x 4.05 x 5.5, thickness 0.28)
+    const backGeom = this.getSharedGeom('houseBackWall', () => new THREE.BoxGeometry(6.3, 4.05, 0.28));
     const backWall = new THREE.Mesh(backGeom, wallMat);
-    backWall.position.set(0, 2.1, -2.61);
+    backWall.position.set(0, 2.025, -2.61);
     backWall.castShadow = true;
     backWall.receiveShadow = true;
     group.add(backWall);
 
-    const sideGeom = this.getSharedGeom('houseSideWall', () => new THREE.BoxGeometry(0.28, 4.2, 4.94));
+    const sideGeom = this.getSharedGeom('houseSideWall', () => new THREE.BoxGeometry(0.28, 4.05, 4.94));
     const leftWall = new THREE.Mesh(sideGeom, wallMat);
-    leftWall.position.set(-3.11, 2.1, 0);
+    leftWall.position.set(-3.01, 2.025, 0);
     leftWall.castShadow = true;
     leftWall.receiveShadow = true;
     group.add(leftWall);
 
     const rightWall = new THREE.Mesh(sideGeom, wallMat);
-    rightWall.position.set(3.11, 2.1, 0);
+    rightWall.position.set(3.01, 2.025, 0);
     rightWall.castShadow = true;
     rightWall.receiveShadow = true;
     group.add(rightWall);
 
-    // Rustic framed windows on left & right walls (solid wall colliders span entire side wall!)
+    // Rustic framed windows on left & right walls (fallback details hidden when dark-fantasy overhaul loads)
     const winFrameGeom = this.getSharedGeom('houseWinFrame', () => new THREE.BoxGeometry(0.34, 1.15, 1.35));
     const winPaneGeom = this.getSharedGeom('houseWinPane', () => new THREE.BoxGeometry(0.36, 0.9, 1.1));
-    [-3.11, 3.11].forEach(wx => {
+    const windowMeshes = [];
+    [-3.01, 3.01].forEach(wx => {
       const wf = new THREE.Mesh(winFrameGeom, trimMat);
-      wf.position.set(wx, 2.15, 0);
+      wf.position.set(wx, 2.1, 0);
       group.add(wf);
+      windowMeshes.push(wf);
       const wp = new THREE.Mesh(winPaneGeom, glassMat);
-      wp.position.set(wx, 2.15, 0);
+      wp.position.set(wx, 2.1, 0);
       group.add(wp);
+      windowMeshes.push(wp);
     });
 
-    // Front wall split around 1.4m wide doorway (x in [-0.70, +0.70])
-    const frontWingGeom = this.getSharedGeom('houseFrontWing', () => new THREE.BoxGeometry(2.55, 4.2, 0.28));
+    // Front wall split around 1.42m wide doorway (x in [-0.71, +0.71])
+    const frontWingGeom = this.getSharedGeom('houseFrontWing', () => new THREE.BoxGeometry(2.44, 4.05, 0.28));
     const frontLeftWall = new THREE.Mesh(frontWingGeom, wallMat);
-    frontLeftWall.position.set(-1.975, 2.1, 2.61);
+    frontLeftWall.position.set(-1.93, 2.025, 2.61);
     frontLeftWall.castShadow = true;
     frontLeftWall.receiveShadow = true;
     group.add(frontLeftWall);
 
     const frontRightWall = new THREE.Mesh(frontWingGeom, wallMat);
-    frontRightWall.position.set(1.975, 2.1, 2.61);
+    frontRightWall.position.set(1.93, 2.025, 2.61);
     frontRightWall.castShadow = true;
     frontRightWall.receiveShadow = true;
     group.add(frontRightWall);
 
-    // Front lintel header above doorway (y = 2.48 to 4.2)
-    const lintelGeom = this.getSharedGeom('houseLintel', () => new THREE.BoxGeometry(1.4, 1.72, 0.28));
+    // Front lintel header above doorway (y = 2.62 to 4.05)
+    const lintelGeom = this.getSharedGeom('houseLintel', () => new THREE.BoxGeometry(1.42, 1.43, 0.28));
     const lintel = new THREE.Mesh(lintelGeom, wallMat);
-    lintel.position.set(0, 3.34, 2.61);
+    lintel.position.set(0, 3.335, 2.61);
     lintel.castShadow = true;
+    lintel.receiveShadow = true;
     group.add(lintel);
 
-    // Sloped Wooden Roof (Original ConeGeometry 5.2, 2.5, 4 preserved)
+    // Sloped Wooden Roof (Original ConeGeometry 5.2, 2.5, 4 preserved when fallback is active)
     const roofGeom = this.getSharedGeom('houseRoof', () => {
       const g = new THREE.ConeGeometry(5.2, 2.5, 4);
       g.rotateY(Math.PI / 4);
@@ -1059,18 +1063,18 @@ class WorldManager {
     });
     const roofMat = this.getSharedMat('houseRoof', () => new THREE.MeshStandardMaterial({ color: 0x4a2c11, roughness: 0.7 }));
     const roof = new THREE.Mesh(roofGeom, roofMat);
-    roof.position.y = 5.2;
+    roof.position.y = 5.1;
     roof.castShadow = true;
     group.add(roof);
 
-    // Hinged Wooden Door at Left Jamb (-0.70, 0.14, 2.61)
+    // Hinged Wooden Door at Left Jamb (-0.71, 0.14, 2.67)
     const doorPivot = new THREE.Group();
-    doorPivot.position.set(-0.70, floorThicknessOffset, 2.61);
+    doorPivot.position.set(-0.71, floorThicknessOffset, 2.67);
 
-    const doorGeom = this.getSharedGeom('houseDoor', () => new THREE.BoxGeometry(1.4, 2.34, 0.18));
+    const doorGeom = this.getSharedGeom('houseDoor', () => new THREE.BoxGeometry(1.42, 2.48, 0.16));
     const doorMat = this.getSharedMat('houseDoor', () => new THREE.MeshStandardMaterial({ color: 0x2e1806, roughness: 0.75 }));
     const doorMesh = new THREE.Mesh(doorGeom, doorMat);
-    doorMesh.position.set(0.70, 1.17, 0);
+    doorMesh.position.set(0.71, 1.24, 0);
     doorMesh.castShadow = true;
     doorPivot.add(doorMesh);
 
@@ -1078,34 +1082,40 @@ class WorldManager {
     const knobGeom = this.getSharedGeom('doorKnob', () => new THREE.SphereGeometry(0.065, 8, 8));
     const knobMat = this.getSharedMat('doorKnob', () => new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.25 }));
     const knobOut = new THREE.Mesh(knobGeom, knobMat);
-    knobOut.position.set(1.22, 1.05, 0.11);
+    knobOut.position.set(1.24, 1.05, 0.10);
     doorPivot.add(knobOut);
     const knobIn = new THREE.Mesh(knobGeom, knobMat);
-    knobIn.position.set(1.22, 1.05, -0.11);
+    knobIn.position.set(1.24, 1.05, -0.10);
     doorPivot.add(knobIn);
 
     group.add(doorPivot);
+    group.userData.houseWalls = [backWall, leftWall, rightWall, frontLeftWall, frontRightWall, lintel];
+    group.userData.houseFloors = [floorMesh, stepMesh];
+    group.userData.houseExtras = [roof, ...windowMeshes];
+    group.userData.houseDoor = doorMesh;
+    group.userData.doorPivot = doorPivot;
+
     this.scene.add(group);
     this.worldObjects.push(group);
 
     // Register Solid Wall Colliders (matches physical geometry strictly; roof does NOT block player below)
-    this._addLocalHouseCollider(x, baseY, z, facingYaw, -3.25, -0.5, -2.75, 3.25, 4.3, -2.44, { tag: 'house_wall' });
-    this._addLocalHouseCollider(x, baseY, z, facingYaw, -3.25, -0.5, -2.75, -2.94, 4.3, 2.75, { tag: 'house_wall' });
-    this._addLocalHouseCollider(x, baseY, z, facingYaw, 2.94, -0.5, -2.75, 3.25, 4.3, 2.75, { tag: 'house_wall' });
-    this._addLocalHouseCollider(x, baseY, z, facingYaw, -3.25, -0.5, 2.44, -0.70, 4.3, 2.75, { tag: 'house_wall' });
-    this._addLocalHouseCollider(x, baseY, z, facingYaw, 0.70, -0.5, 2.44, 3.25, 4.3, 2.75, { tag: 'house_wall' });
+    this._addLocalHouseCollider(x, baseY, z, facingYaw, -3.15, -0.5, -2.75, 3.15, 4.15, -2.44, { tag: 'house_wall' });
+    this._addLocalHouseCollider(x, baseY, z, facingYaw, -3.15, -0.5, -2.75, -2.84, 4.15, 2.75, { tag: 'house_wall' });
+    this._addLocalHouseCollider(x, baseY, z, facingYaw, 2.84, -0.5, -2.75, 3.15, 4.15, 2.75, { tag: 'house_wall' });
+    this._addLocalHouseCollider(x, baseY, z, facingYaw, -3.15, -0.5, 2.44, -0.71, 4.15, 2.75, { tag: 'house_wall' });
+    this._addLocalHouseCollider(x, baseY, z, facingYaw, 0.71, -0.5, 2.44, 3.15, 4.15, 2.75, { tag: 'house_wall' });
     // Door header lintel acts strictly as ceiling clearance above doorway (no horizontal sticking)
-    this._addLocalHouseCollider(x, baseY, z, facingYaw, -0.72, 2.48, 2.44, 0.72, 4.3, 2.75, {
+    this._addLocalHouseCollider(x, baseY, z, facingYaw, -0.72, 2.62, 2.44, 0.72, 4.15, 2.75, {
       tag: 'house_lintel', blocksHorizontal: false, blocksSight: true, blocksCamera: false, isCeiling: true
     });
 
     // Closed Door Collider (synchronized with door open/close animation)
-    const doorCollider = this._addLocalHouseCollider(x, baseY, z, facingYaw, -0.72, 0.0, 2.45, 0.72, 2.48, 2.78, {
+    const doorCollider = this._addLocalHouseCollider(x, baseY, z, facingYaw, -0.72, 0.0, 2.48, 0.72, 2.62, 2.80, {
       tag: 'house_door', enabled: true, blocksSight: true, blocksCamera: true
     });
 
     // Register Interactive Door Control (E KEY = OPEN / CLOSE DOOR)
-    const doorWorldPos = this._localToWorld(x, innerFloorY, z, facingYaw, 0, 1.25, 2.61);
+    const doorWorldPos = this._localToWorld(x, innerFloorY, z, facingYaw, 0, 1.25, 2.67);
     const doorNormalOut = this._localToWorld(0, 0, 0, facingYaw, 0, 0, 1);
     const doorState = {
       pivot: doorPivot,
@@ -1170,7 +1180,7 @@ class WorldManager {
 
   spawnBed(houseX, floorY, houseZ, facingYaw = 0) {
     // Position bed comfortably in rear half of Inn so open doorway space stays unobstructed
-    const bedWorld = this._localToWorld(houseX, floorY, houseZ, facingYaw, 0, 0, -1.05);
+    const bedWorld = this._localToWorld(houseX, floorY, houseZ, facingYaw, 0, 0, -0.95);
     const group = new THREE.Group();
     group.position.set(bedWorld.x, floorY, bedWorld.z);
     group.rotation.y = facingYaw;
@@ -1202,7 +1212,7 @@ class WorldManager {
     this.worldObjects.push(group);
 
     // Solid furniture collider on the bed (blocksSight: false so walls/door gate line-of-sight cleanly)
-    this._addLocalHouseCollider(houseX, floorY, houseZ, facingYaw, -0.82, 0.0, -2.35, 0.82, 1.05, 0.25, {
+    this._addLocalHouseCollider(houseX, floorY, houseZ, facingYaw, -0.82, 0.0, -2.38, 0.82, 1.05, 0.48, {
       tag: 'furniture_bed', blocksSight: false, blocksCamera: false
     });
 

@@ -464,6 +464,32 @@ try {
   assert(dn.timeOfDay === 6.0 && dn.isNight === false, 'Game clock advances strictly to 6:00 AM Sunrise');
   assert(global.game.player.hp === global.game.player.maxHp && global.game.player.mana === global.game.player.maxMana, 'HP & Mana restored to 100% upon waking');
   assert(nightDespawned === true, 'Nighttime monsters cleared on morning sunrise');
+
+  // Verify house exposed references & shared GLB resource protection in disposeHierarchy
+  const innGroup = wm.worldObjects.find(o => o && o.userData && o.userData.houseWalls);
+  assert(
+    innGroup && innGroup.userData.houseWalls.length === 6 &&
+    innGroup.userData.houseFloors.length === 2 &&
+    innGroup.userData.houseDoor && innGroup.userData.doorPivot,
+    'House exposes hollow wall, floor, extra, door & pivot references for PBR overhaul sync'
+  );
+
+  let sharedDisposed = false;
+  let uniqueDisposed = false;
+  const mockRoot = {
+    traverse(fn) {
+      fn({
+        geometry: { userData: { shared: true }, dispose: () => { sharedDisposed = true; } },
+        material: { userData: { shared: true }, dispose: () => { sharedDisposed = true; } }
+      });
+      fn({
+        geometry: { userData: { shared: false }, dispose: () => { uniqueDisposed = true; } },
+        material: { userData: { shared: false }, dispose: () => { uniqueDisposed = true; } }
+      });
+    }
+  };
+  wm.disposeHierarchy(mockRoot);
+  assert(!sharedDisposed && uniqueDisposed, 'disposeHierarchy preserves shared GLB/cached resources while freeing unique ones');
 } catch (e) {
   assert(false, `World Physics & House/Door/Sleep test: ${e.message}`);
 }
