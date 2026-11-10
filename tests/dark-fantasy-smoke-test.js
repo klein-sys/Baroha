@@ -8,7 +8,7 @@ class Object3D {
   clone(){return new Object3D()}
   traverse(fn){fn(this);this.children.forEach(x=>x.traverse(fn))}
 }
-class Mesh extends Object3D {constructor(){super();this.isMesh=true;this.material={visible:true}}}
+class Mesh extends Object3D {constructor(){super();this.isMesh=true;this.material={visible:true,clone(){return {visible:this.visible,clone:this.clone}}}}}
 class Scene extends Object3D {constructor(){super();this.isScene=true}}
 class GLTFLoader {loadAsync(path){return path.includes('missing_asset')?Promise.reject(Error('fake 404')):Promise.resolve({scene:new Object3D()})}}
 const THREE={GLTFLoader};
