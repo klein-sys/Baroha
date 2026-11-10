@@ -83,6 +83,7 @@ global.THREE = {
   },
   Color: class {
     constructor(c = 0) { this.c = c; }
+    setHex(hex) { this.c = hex; return this; }
     copy(c) { this.c = c.c; return this; }
     lerpColors() { return this; }
   },
@@ -94,7 +95,7 @@ global.THREE = {
     lookAt() {}
   },
   Mesh: class {
-    constructor(g, m) { this.geometry = g; this.material = m; this.position = new global.THREE.Vector3(); this.rotation = { x: 0, y: 0, z: 0, set() {} }; this.scale = { set() {} }; this.userData = {}; }
+    constructor(g, m) { this.geometry = g; this.material = m; this.position = new global.THREE.Vector3(); this.rotation = { x: 0, y: 0, z: 0, set() {} }; this.scale = { set() {}, setScalar() {} }; this.userData = {}; }
     traverse(fn) { fn(this); }
     lookAt() {}
   },
@@ -252,7 +253,7 @@ try {
   const lich = bm.spawnLich();
   assert(lich.realmId === 2, 'Lich has realmId === 2');
   const dragon = bm.spawnEternalDragon();
-  assert(dragon.realmId === 3, 'Eternal Dragon has realmId === 3');
+  assert(dragon.realmId === 4, 'Eternal Dragon has realmId === 4');
 } catch (e) {
   assert(false, `bosses.js execution: ${e.message}`);
 }
@@ -267,6 +268,7 @@ try {
 
   // Setup mock game player
   global.game = {
+    autoSaveProgress() {},
     isRunning: true,
     isPaused: false,
     player: {
@@ -366,14 +368,25 @@ try {
 
 // 7. Verify World Physics, House Collision, Door Hinges, LOS, Camera Clipping & DayNight Sleep
 try {
+  vm.runInThisContext(fs.readFileSync('js/dungeon.js', 'utf8'));
   const worldCode = fs.readFileSync('js/world.js', 'utf8');
   vm.runInThisContext(worldCode);
   const wm = new global.WorldManager(new global.THREE.Scene());
   wm.loadRealm(1);
 
   assert(wm.colliders.length > 50, `World generated ${wm.colliders.length} physical colliders`);
-  assert(wm.walkableSurfaces.length >= 3, 'Village houses registered walkable interior floor surfaces');
-  assert(wm.animatedDoors.length === 3, 'All 3 village houses registered hinged interactive doors');
+  assert(wm.walkableSurfaces.length >= 6, 'Rooms, connector, and sanctuary house registered walkable surfaces');
+  assert(wm.animatedDoors.length === 1, 'The sanctuary house registered its hinged door');
+
+  assert(wm.rooms.length === 5, 'Floor 1 contains authored rooms');
+  assert(wm.getTerrainHeight(0, -22.5) === -100, 'Unsolved continuity crossing is a physical gap');
+  const bridge = wm.interactables.find(item => item.type === 'calculus_bridge');
+  bridge.interact();
+  bridge.interact();
+  assert(wm.getTerrainHeight(0, -22.5) === 0, 'Solving continuity creates a walkable bridge');
+  wm.unlockDescent();
+  wm.loadRealm(1);
+  assert(wm.getTerrainHeight(0, -22.5) === 0 && wm.dungeonProgress[1].defeated, 'Reloading preserves bridge and portal progress');
 
   // Test solid house wall collision (Inn at 0, 25; side wall at x = ±3.11)
   const wallProbe = new global.THREE.Vector3(3.05, 1.8, 25.0);

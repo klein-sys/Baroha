@@ -7,7 +7,7 @@ class AbilitiesManager {
   constructor(scene) {
     this.scene = scene;
     this.projectiles = [];
-    this.activeSpells = [];
+    this.spellEffects = [];
 
     // Registered abilities
     this.abilities = [
@@ -131,6 +131,9 @@ class AbilitiesManager {
     player.mana -= ability.manaCost;
     ability.timer = ability.cooldown;
 
+    const colors = { bolt: 0x6adfff, fireball: 0xff8142, lightning: 0xe1c7ff, shield: 0x77aaff, heal: 0x75e8ac, nova: 0xffdc82 };
+    this.showSpellPulse(player.position, colors[ability.id], 0.65);
+
     // Execute ability effects
     switch (ability.id) {
       case 'bolt':
@@ -235,20 +238,21 @@ class AbilitiesManager {
     // Raycast forward to find ground impact
     const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)).normalize();
     const targetPos = player.position.clone().addScaledVector(forward, 8.0);
-    targetPos.y = (window.game && window.game.world) ? window.game.world.getTerrainHeight(targetPos.x, targetPos.z) : 0;
+    const world = window.game?.world;
+    if (world) {
+      world.clipCameraRay(player.position, targetPos, 0.35);
+      targetPos.y = world.getTerrainHeight(targetPos.x, targetPos.z);
+      if (targetPos.y < -8) return;
+    } else targetPos.y = 0;
 
-    // Visual lightning pillar
-    const geom = new THREE.CylinderGeometry(0.4, 0.4, 30, 8);
-    const mat = new THREE.MeshBasicMaterial({ color: 0xffffaa, transparent: true, opacity: 0.9 });
-    const bolt = new THREE.Mesh(geom, mat);
-    bolt.position.set(targetPos.x, targetPos.y + 15, targetPos.z);
-    this.scene.add(bolt);
-
-    setTimeout(() => {
-      this.scene.remove(bolt);
-      geom.dispose();
-      mat.dispose();
-    }, 250);
+    const points = [targetPos.clone()];
+    for (let step = 1; step <= 7; step++) {
+      points.push(targetPos.clone().add(new THREE.Vector3(step % 2 ? 0.45 : -0.38, step * 0.85, step % 3 ? 0.3 : -0.3)));
+    }
+    const lightning = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),
+      new THREE.LineBasicMaterial({ color: 0xf2d7ff, transparent: true }));
+    this.addSpellEffect(lightning, 0.22, 0);
+    this.showSpellPulse(targetPos, 0xbf9aff, 3.5);
 
     // Damage enemies near target
     if (window.game) {
@@ -313,7 +317,41 @@ class AbilitiesManager {
     if (p.mesh.material) p.mesh.material.dispose();
   }
 
+  addSpellEffect(mesh, duration, spread) {
+    this.scene.add(mesh);
+    this.spellEffects.push({ mesh, duration, time: 0, spread });
+  }
+
+  showSpellPulse(position, color, radius, trail = false) {
+    const lowEffects = window.settingsManager?.settings.graphics.particles === false
+      || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (trail && lowEffects) return;
+    const geometry = trail ? new THREE.SphereGeometry(radius, 6, 5)
+      : new THREE.RingGeometry(radius * 0.65, radius, 20);
+    const material = new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: lowEffects ? 0.34 : 0.72,
+      depthWrite: false, side: THREE.DoubleSide
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.copy(position);
+    mesh.rotation.x = -Math.PI / 2;
+    this.addSpellEffect(mesh, trail ? 0.2 : 0.34, lowEffects ? 0 : trail ? -0.75 : 0.55);
+  }
+
   update(delta) {
+    for (let index = this.spellEffects.length - 1; index >= 0; index--) {
+      const effect = this.spellEffects[index];
+      effect.time += delta;
+      if (effect.time >= effect.duration) {
+        this._disposeProjectile(effect);
+        this.spellEffects.splice(index, 1);
+      } else {
+        const progress = effect.time / effect.duration;
+        effect.mesh.material.opacity *= Math.exp(-7 * delta);
+        effect.mesh.scale.setScalar(1 + progress * effect.spread);
+      }
+    }
+
     // Update ability cooldown timers
     this.abilities.forEach(ability => {
       if (ability.timer > 0) {
@@ -328,19 +366,25 @@ class AbilitiesManager {
       const p = this.projectiles[i];
       p.lifetime -= delta;
 
-      p.mesh.position.addScaledVector(p.velocity, delta);
-
-      // Check collision with walls, houses, closed doors, pillars
+      // Sweep small steps so bolts do not pass through thin walls at lower frame rates.
       let hit = false;
-      if (world && world.checkProjectileColliderHit && world.checkProjectileColliderHit(p.mesh.position, p.radius)) {
-        hit = true;
+      const steps = Math.ceil(p.velocity.length() * delta / 0.3) || 1;
+      for (let step = 0; step < steps && !hit; step++) {
+        p.mesh.position.addScaledVector(p.velocity, delta / steps);
+        hit = world?.checkProjectileColliderHit(p.mesh.position, p.radius) ?? false;
+        if (!hit && window.game) {
+          hit = p.fromPlayer ? window.game.checkProjectileHitEnemy(p) : window.game.checkProjectileHitPlayer(p);
+        }
       }
-
-      // Check collision with enemies/player
-      if (!hit && p.fromPlayer && window.game) {
-        hit = window.game.checkProjectileHitEnemy(p);
-      } else if (!hit && !p.fromPlayer && window.game) {
-        hit = window.game.checkProjectileHitPlayer(p);
+      if (p.fromPlayer) {
+        const fire = p.type === 'fireball';
+        const color = fire ? 0xff7733 : 0x64e2ff;
+        p.trailTimer = (p.trailTimer ?? 0) - delta;
+        if (hit) this.showSpellPulse(p.mesh.position, color, fire ? 2.1 : 0.65);
+        else if (p.trailTimer <= 0) {
+          this.showSpellPulse(p.mesh.position, color, fire ? 0.31 : 0.13, true);
+          p.trailTimer = 0.045;
+        }
       }
 
       if (hit || p.lifetime <= 0) {
@@ -353,6 +397,8 @@ class AbilitiesManager {
   clearAllProjectiles() {
     this.projectiles.forEach(p => this._disposeProjectile(p));
     this.projectiles = [];
+    this.spellEffects.forEach(effect => this._disposeProjectile(effect));
+    this.spellEffects = [];
   }
 }
 

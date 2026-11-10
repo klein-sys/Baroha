@@ -24,7 +24,8 @@ class ProgressionManager {
           attackPower: player.attackPower
         },
         world: {
-          currentRealm: worldManager.currentRealm
+          currentRealm: worldManager.currentRealm,
+          dungeonProgress: worldManager.dungeonProgress
         },
         missions: {
           forestKeysCollected: missionsManager.forestKeysCollected,
@@ -49,7 +50,7 @@ class ProgressionManager {
   hasSave() {
     try {
       const data = JSON.parse(localStorage.getItem(this.saveKey));
-      return Boolean(data?.player && [1, 2, 3].includes(data.world?.currentRealm));
+      return Boolean(data?.player && [1, 2, 3, 4].includes(data.world?.currentRealm));
     } catch {
       return false;
     }
@@ -74,14 +75,6 @@ class ProgressionManager {
         player.attackPower = data.player.attackPower || 35;
       }
 
-      if (data.world) {
-        if (window.game) {
-          window.game.transitionToRealm(data.world.currentRealm || 1);
-        } else {
-          worldManager.loadRealm(data.world.currentRealm || 1);
-        }
-      }
-
       if (data.missions) {
         missionsManager.forestKeysCollected = data.missions.forestKeysCollected || 0;
         missionsManager.towersActivated = data.missions.towersActivated || 0;
@@ -99,6 +92,23 @@ class ProgressionManager {
           if (matched) matched.unlocked = savedA.unlocked;
         });
       }
+
+      let floor = [1, 2, 3, 4].includes(data.world?.currentRealm) ? data.world.currentRealm : 1;
+      worldManager.dungeonProgress = data.world?.dungeonProgress ?? {};
+      // Legacy saves used three realms, with Azrael in the third.
+      if (!data.world?.dungeonProgress) {
+        const crystals = missionsManager.crystals;
+        if (crystals.fragment3) {
+          floor = 4;
+          worldManager.dungeonProgress[4] = { defeated: true };
+        } else if (crystals.fragment2) {
+          floor = Math.max(floor, 3);
+        } else if (crystals.fragment1) {
+          floor = Math.max(floor, 2);
+        }
+      }
+      if (window.game) window.game.transitionToRealm(floor);
+      else worldManager.loadRealm(floor);
 
       window.interfaceManager?.renderAbilityDock();
       window.interfaceManager?.updateQuestHUD();

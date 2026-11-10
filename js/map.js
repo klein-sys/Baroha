@@ -113,50 +113,33 @@ class WorldMapManager {
 
     ctx.clearRect(0, 0, width, height);
 
-    // World coordinate mapping:
-    // X: -80 to +80 -> 0 to width
-    // Z: 50 to -210 -> height to 0
-    const mapX = (wx) => ((wx + 80) / 160) * width;
-    const mapY = (wz) => ((-wz + 50) / 260) * height;
+    const world = window.game?.world;
+    if (!world?.rooms) return;
+    const mapX = x => (x + 32) / 64 * width;
+    const mapY = z => (z + 84) / 122 * height;
+    const rectangle = (x1, x2, z1, z2, color) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(mapX(x1), mapY(z1), mapX(x2) - mapX(x1), mapY(z2) - mapY(z1));
+    };
 
-    // Draw Regions
-    this.regions.forEach(r => {
-      const rx1 = mapX(r.bounds.xMin);
-      const rx2 = mapX(r.bounds.xMax);
-      const ry1 = mapY(r.bounds.zMax);
-      const ry2 = mapY(r.bounds.zMin);
-
-      ctx.fillStyle = r.color + '33'; // translucent
-      ctx.fillRect(rx1, ry1, rx2 - rx1, ry2 - ry1);
-      ctx.strokeStyle = r.color;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(rx1, ry1, rx2 - rx1, ry2 - ry1);
-
-      // Region Title
-      ctx.fillStyle = r.color;
-      ctx.font = 'bold 13px Cinzel, serif';
-      ctx.fillText(r.name.toUpperCase(), rx1 + 10, ry1 + 22);
-    });
-
-    // Draw Markers
-    this.markers.forEach(m => {
-      const mx = mapX(m.x);
-      const my = mapY(m.z);
-
-      // Icon circle
-      ctx.beginPath();
-      ctx.arc(mx, my, 8, 0, Math.PI * 2);
-      ctx.fillStyle = m.color;
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      // Label
+    rectangle(-3, 3, 1, 4, '#566877');
+    const state = world.dungeonProgress[world.currentRealm];
+    rectangle(-2, 2, -28, -17, state.bridge ? '#82ceaa' : '#6b547e');
+    const lift = world.oscillatingPlatforms[0].mesh.position;
+    rectangle(lift.x - 2.3, lift.x + 2.3, lift.z - 2.2, lift.z + 2.2, '#9875ce');
+    for (const [index, room] of world.rooms.entries()) {
+      rectangle(...room.bounds, index === 3 ? '#553845' : '#29433f');
+      const [left, right, north, south] = room.bounds;
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
       ctx.fillStyle = '#f0e6d2';
-      ctx.font = '10px Spectral, sans-serif';
-      ctx.fillText(m.name, mx + 12, my + 4);
-    });
+      ctx.fillText(room.name, mapX((left + right) / 2), mapY((north + south) / 2), mapX(right) - mapX(left) - 7);
+    }
+    ctx.fillStyle = '#f0e6d2';
+    ctx.fillText(`Floor ${world.currentRealm} · ${world.floor.name}`, width / 2, 14);
+    ctx.fillStyle = state.defeated ? '#89f9d5' : '#e3a679';
+    ctx.fillText(state.defeated ? '◆ Portal open' : '◇ Portal locked', mapX(0), mapY(-74));
+    ctx.textAlign = 'left';
 
     // Draw Player Position Marker
     if (window.game && window.game.player) {

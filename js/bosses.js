@@ -14,6 +14,7 @@ class BossesManager {
   }
 
   clearBoss() {
+    this.clearAttack();
     if (this.activeBoss && this.activeBoss.mesh) {
       this.scene.remove(this.activeBoss.mesh);
       this.activeBoss = null;
@@ -156,7 +157,7 @@ class BossesManager {
   // =========================================================================
   // 2. THE LICH – UNDEAD KING (LV. 100) - MATCHES UPLOADED IMAGE 2
   // =========================================================================
-  spawnLich(x = 0, z = -45) {
+  spawnLich(x = 0, z = -45, sentinel = false) {
     this.clearBoss();
     const group = new THREE.Group();
     group.position.set(x, 1.8, z);
@@ -247,14 +248,14 @@ class BossesManager {
     this.scene.add(group);
 
     this.activeBoss = {
-      type: 'lich',
-      realmId: 2,
-      name: 'The Lich – Undead King',
+      type: sentinel ? 'sentinel' : 'lich',
+      realmId: sentinel ? 3 : 2,
+      name: sentinel ? 'The Harmonic Sentinel' : 'The Lich – Undead King',
       level: 100,
       mesh: group,
       position: group.position,
-      maxHp: 750,
-      hp: 750,
+      maxHp: sentinel ? 980 : 750,
+      hp: sentinel ? 980 : 750,
       staff: staffGroup,
       runeCards: runeCards,
       attackCooldown: 3.0,
@@ -265,8 +266,10 @@ class BossesManager {
     };
 
     // Spawn initial Skeleton Warriors flanking the Lich (Image 2)
-    this.spawnSkeletonWarrior(x - 4, z + 2);
-    this.spawnSkeletonWarrior(x + 4, z + 2);
+    if (!sentinel) {
+      this.spawnSkeletonWarrior(x - 4, z + 2);
+      this.spawnSkeletonWarrior(x + 4, z + 2);
+    }
 
     return this.activeBoss;
   }
@@ -432,7 +435,7 @@ class BossesManager {
 
     this.activeBoss = {
       type: 'dragon',
-      realmId: 3,
+      realmId: 4,
       name: 'Eternal Dragon',
       subtitle: 'Lv. 1000 (Final Boss)',
       level: 1000,
@@ -452,9 +455,130 @@ class BossesManager {
     return this.activeBoss;
   }
 
+  clearAttack() {
+    const marker = this.activeBoss?.attack?.marker;
+    if (!marker) return;
+    this.scene.remove(marker);
+    marker.geometry.dispose();
+    marker.material.dispose();
+    this.activeBoss.attack.marker = null;
+  }
+
+  updateAttack(delta, player, boss) {
+    const attack = boss.attack ??= { phase: 'approach', time: 2.8, index: 0 };
+    attack.time -= delta;
+    const position = boss.mesh.position;
+    const playerPos = player.position;
+
+    if (attack.phase === 'approach') {
+      const orbit = boss.type === 'witch' || boss.type === 'sentinel';
+      const x = orbit ? (attack.index % 2 === 0 ? -6 : 6) : playerPos.x;
+      const z = orbit ? -63 : playerPos.z - 3;
+      const dx = THREE.MathUtils.clamp(x, -10, 10) - position.x;
+      const dz = THREE.MathUtils.clamp(z, -71, -53) - position.z;
+      const distance = Math.hypot(dx, dz);
+      if (distance > 0.1) {
+        const step = Math.min(distance, delta * (boss.type === 'lich' ? 3.2 : 4.5)) / distance;
+        position.x += dx * step;
+        position.z += dz * step;
+      }
+      if (attack.time > 0) return;
+
+      const alternate = attack.index % 2 === 1;
+      attack.shape = boss.type === 'witch' ? (alternate ? 'pendulum' : 'ring')
+        : boss.type === 'lich' ? (alternate ? 'summon' : 'slam')
+        : boss.type === 'sentinel' ? 'harmonic'
+        : !alternate ? 'dive' : 'sweep';
+      attack.x = ['sweep', 'dive', 'harmonic'].includes(attack.shape)
+        ? THREE.MathUtils.clamp(playerPos.x, -12, 12) : position.x;
+      attack.z = position.z;
+      attack.startZ = position.z;
+      attack.targetZ = playerPos.z > position.z ? -50 : -74;
+      attack.hit = false;
+      attack.phase = 'warning';
+      attack.time = boss.realmId < 3 ? 1.2 : 0.95;
+      const ring = attack.shape === 'ring';
+      const area = attack.shape === 'slam' || attack.shape === 'summon';
+      const geometry = ring ? new THREE.RingGeometry(3.15, 4.85, 40)
+        : area ? new THREE.CircleGeometry(4.8, 36) : new THREE.PlaneGeometry(3.7, attack.shape === 'pendulum' ? 13 : 29);
+      const material = new THREE.MeshBasicMaterial({
+        color: 0xffbe60, transparent: true, opacity: 0.52, depthWrite: false, side: THREE.DoubleSide
+      });
+      attack.marker = new THREE.Mesh(geometry, material);
+      attack.marker.rotation.x = -Math.PI / 2;
+      attack.marker.position.set(attack.x, 0.075, ring || area || attack.shape === 'pendulum' ? attack.z : -62.5);
+      this.scene.add(attack.marker);
+      const tell = {
+        ring: 'Asymptote ring · stay clear of radius 4 m',
+        sweep: 'Sweep · step out of the marked lane',
+        summon: 'Summoning circle · keep clear',
+        slam: 'Staff slam · back away',
+        dive: 'Aerial pass · dodge sideways',
+        pendulum: 'Pendulum sweep · stay beyond the marked arc',
+        harmonic: 'Harmonic sweep · read the moving lane'
+      };
+      window.interfaceManager?.showToast(tell[attack.shape], 'warning');
+      return;
+    }
+
+    if (attack.phase === 'warning' && attack.time <= 0) {
+      attack.phase = 'active';
+      attack.time = 0.58;
+      attack.marker.material.color.setHex(0xff4548);
+      attack.marker.material.opacity = 0.76;
+      if (attack.shape === 'summon' && this.summonedSkeletons.filter(s => !s.isDead).length < 3) {
+        this.spawnSkeletonWarrior(position.x - 2, position.z + 2);
+        this.spawnSkeletonWarrior(position.x + 2, position.z + 2);
+      }
+    }
+
+    if (attack.shape === 'pendulum' && attack.marker) {
+      const t = attack.phase === 'warning' ? 1 - attack.time / 1.2 : 1 + (1 - attack.time / 0.58);
+      attack.angle = 0.95 * Math.cos(t * Math.PI / 2);
+      attack.marker.rotation.z = attack.angle;
+    }
+    if (attack.shape === 'harmonic' && attack.marker) {
+      attack.angle = (attack.angle ?? 0) + delta * 3.6;
+      attack.marker.position.x = THREE.MathUtils.clamp(attack.x + 3.2 * Math.sin(attack.angle), -12, 12);
+    }
+
+    if (attack.phase === 'active') {
+      if (attack.shape === 'dive') {
+        position.x = attack.x;
+        position.z = THREE.MathUtils.lerp(attack.startZ, attack.targetZ, 1 - Math.max(0, attack.time) / 0.58);
+      }
+      const distance = Math.hypot(playerPos.x - attack.x, playerPos.z - attack.z);
+      const dx = playerPos.x - attack.x;
+      const dz = playerPos.z - attack.z;
+      const pendulumHit = attack.shape === 'pendulum'
+        && Math.abs(dx * Math.cos(attack.angle) - dz * Math.sin(attack.angle)) < 1.85
+        && Math.abs(dx * Math.sin(attack.angle) + dz * Math.cos(attack.angle)) < 6.5;
+      const laneX = attack.shape === 'harmonic' ? attack.marker.position.x : attack.x;
+      const inZone = attack.shape === 'pendulum' ? pendulumHit : attack.shape === 'ring' ? Math.abs(distance - 4) < 0.85
+        : attack.shape === 'slam' || attack.shape === 'summon' ? distance < 4.8
+        : Math.abs(playerPos.x - laneX) < 1.85 && playerPos.z > -77 && playerPos.z < -48;
+      if (!attack.hit && inZone && playerPos.y < player.height + 1.15) {
+        attack.hit = true;
+        player.takeDamage(boss.attackPower);
+        if (this.activeBoss !== boss) return;
+      }
+      if (attack.time <= 0) {
+        this.clearAttack();
+        attack.phase = 'recovery';
+        attack.time = 2;
+      }
+    } else if (attack.phase === 'recovery' && attack.time <= 0) {
+      attack.phase = 'approach';
+      attack.index++;
+      attack.time = Math.max(1.15, 2.15 - ((window.game?.enemies.bossPhase || 1) - 1) * 0.45);
+    }
+  }
+
   update(delta, player) {
     if (!this.activeBoss) return;
     const boss = this.activeBoss;
+    this.updateAttack(delta, player, boss);
+    if (!this.activeBoss) return;
 
     // Face player
     boss.mesh.lookAt(player.position.x, boss.mesh.position.y, player.position.z);
@@ -472,7 +596,7 @@ class BossesManager {
         book.position.y = 2.4 + Math.sin(t * 2 + i) * 0.35;
         book.rotation.y = -angle;
       });
-    } else if (boss.type === 'lich') {
+    } else if (boss.type === 'lich' || boss.type === 'sentinel') {
       // Bob staff and spin tarot runes
       const t = Date.now() * 0.003;
       boss.staff.position.y = 1.8 + Math.sin(t) * 0.15;
@@ -496,6 +620,8 @@ class BossesManager {
           toPlayer.y = 0;
           toPlayer.normalize();
           skel.position.addScaledVector(toPlayer, skel.speed * delta);
+          skel.position.x = THREE.MathUtils.clamp(skel.position.x, -14, 14);
+          skel.position.z = THREE.MathUtils.clamp(skel.position.z, -76, -48);
         } else {
           // Attack player
           skel.attackTimer -= delta;
@@ -513,7 +639,8 @@ class BossesManager {
         wing.rotation.z = Math.sin(t * 2) * 0.25 * side;
       });
       boss.halo.rotation.z += 1.0 * delta;
-      boss.mesh.position.y = 6.0 + Math.sin(t) * 0.4;
+      const height = boss.attack.phase === 'recovery' ? 2.1 : 4.2;
+      boss.mesh.position.y = THREE.MathUtils.lerp(boss.mesh.position.y, height, 1 - Math.exp(-5 * delta));
     }
   }
 }

@@ -217,7 +217,7 @@ class DevConsoleManager {
   loadRealm(realmId) {
     if (window.game) {
       window.game.transitionToRealm(realmId);
-      this.notify(`Switched to Realm ${realmId}!`);
+      this.notify(`Switched to Floor ${realmId}!`);
     }
   }
 
@@ -227,6 +227,8 @@ class DevConsoleManager {
 
   spawnBoss(realmId) {
     if (window.game) {
+      if (window.game.world.currentRealm !== realmId) window.game.transitionToRealm(realmId);
+      window.game.player.position.set(0, window.game.player.height, -49);
       window.game.startBossEncounter(realmId);
       this.notify(`Boss for Realm ${realmId} spawned!`);
     }

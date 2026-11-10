@@ -43,10 +43,10 @@ class EnemiesManager {
 
     // Spawn 4 fierce night stalkers around player
     const spawnOffsets = [
-      { x: -22, z: 15, name: 'Night Terror Stalker', hp: 95, pwr: 24, type: 'wolf' },
-      { x: 25, z: -10, name: 'Blood Moon Beast', hp: 110, pwr: 26, type: 'wolf' },
-      { x: -15, z: -25, name: 'Nightmare Wraith', hp: 85, pwr: 22, type: 'phantom' },
-      { x: 18, z: 25, name: 'Dread Stalker', hp: 90, pwr: 20, type: 'imp' }
+      { x: -7, z: -13, name: 'Night Terror Stalker', hp: 95, pwr: 24, type: 'wolf' },
+      { x: 7, z: -10, name: 'Blood Moon Beast', hp: 110, pwr: 26, type: 'wolf' },
+      { x: -7, z: -37, name: 'Nightmare Wraith', hp: 85, pwr: 22, type: 'phantom' },
+      { x: 7, z: -42, name: 'Dread Stalker', hp: 90, pwr: 20, type: 'imp' }
     ];
 
     spawnOffsets.forEach(spec => {
@@ -73,28 +73,14 @@ class EnemiesManager {
   spawnMinionsForRealm(realmId) {
     this.clearEnemies();
 
-    switch (realmId) {
-      case 1:
-        // Forest Imps & Shadow Wolves
-        this.spawnEnemy('imp', -15, 12, 'Corrupted Forest Imp', 45, 12);
-        this.spawnEnemy('imp', 18, -14, 'Corrupted Forest Imp', 45, 12);
-        this.spawnEnemy('wolf', 8, 20, 'Shadow Wolf', 65, 18);
-        this.spawnEnemy('wolf', -20, -18, 'Shadow Wolf', 65, 18);
-        break;
-      case 2:
-        // Undead Scholars & Knights
-        this.spawnEnemy('scholar', -10, 8, 'Skeleton Scholar', 75, 16);
-        this.spawnEnemy('scholar', 12, 10, 'Skeleton Scholar', 75, 16);
-        this.spawnEnemy('knight', 0, -14, 'Undead Knight', 110, 22);
-        this.spawnEnemy('mage', -16, -18, 'Phantom Mage', 90, 20);
-        break;
-      case 3:
-        // Dimensional Phantoms
-        this.spawnEnemy('phantom', -12, 8, 'Dimensional Phantom', 120, 24);
-        this.spawnEnemy('phantom', 14, -6, 'Dimensional Phantom', 120, 24);
-        this.spawnEnemy('phantom', 0, 16, 'Infinity Voidling', 100, 20);
-        break;
-    }
+    const types = [
+      ['imp', 'wolf'], ['scholar', 'knight'], ['phantom', 'mage'], ['knight', 'phantom']
+    ][realmId - 1];
+    const positions = [[6, -11], [-6, -35], [5, -39], [7, -33], [-7, -41], [-2, -12]];
+    positions.slice(0, realmId + 2).forEach(([x, z], index) => {
+      const type = types[index % types.length];
+      this.spawnEnemy(type, x, z, type[0].toUpperCase() + type.slice(1), 28 + realmId * 28, 8 + realmId * 5);
+    });
   }
 
   spawnEnemy(type, x, z, name, hp, attackPower) {
@@ -184,15 +170,19 @@ class EnemiesManager {
 
     if (window.bossesManager) {
       if (realmId === 1) {
-        bossData = window.bossesManager.spawnDarkWitch(0, -45);
+        bossData = window.bossesManager.spawnDarkWitch(0, -63);
         theme = 'witch';
         objectiveText = 'Defeat The Dark Witch';
       } else if (realmId === 2) {
-        bossData = window.bossesManager.spawnLich(0, -38);
+        bossData = window.bossesManager.spawnLich(0, -63);
         theme = 'lich';
         objectiveText = 'Defeat The Lich';
+      } else if (realmId === 3) {
+        bossData = window.bossesManager.spawnLich(0, -63, true);
+        theme = 'lich';
+        objectiveText = 'Defeat the Harmonic Sentinel';
       } else {
-        bossData = window.bossesManager.spawnEternalDragon(0, -25);
+        bossData = window.bossesManager.spawnEternalDragon(0, -63);
         theme = 'dragon';
         objectiveText = 'Defeat The Eternal Dragon';
       }
@@ -206,6 +196,7 @@ class EnemiesManager {
       }
     }
 
+    bossData.realmId = realmId;
     this.activeBoss = bossData;
     this.bossMaxHp = bossData.maxHp;
     this.bossHp = bossData.maxHp;
@@ -366,8 +357,11 @@ class EnemiesManager {
   }
 
   damageBoss(damage) {
-    if (!this.activeBoss) return;
+    if (!this.isBossActive || !this.activeBoss) return;
 
+    if (this.activeBoss.type === 'lich' && this.activeBoss.attack?.phase === 'approach') {
+      damage = Math.max(1, Math.round(damage * 0.55));
+    }
     this.bossHp = Math.max(0, this.bossHp - damage);
     const hpRatio = this.bossHp / this.bossMaxHp;
 
@@ -401,7 +395,9 @@ class EnemiesManager {
   handleBossDefeat() {
     const boss = this.activeBoss;
     this.isBossActive = false;
-    if (boss.mesh) this.scene.remove(boss.mesh);
+    if (window.bossesManager) window.bossesManager.clearBoss();
+    else if (boss.mesh) this.scene.remove(boss.mesh);
+    this.activeBoss = null;
 
     if (window.soundEngine) window.soundEngine.playLevelUp();
     if (window.interfaceManager) {
@@ -438,12 +434,16 @@ class EnemiesManager {
         // Move towards player
         toPlayer.y = 0;
         toPlayer.normalize();
+        const x = enemy.position.x;
+        const z = enemy.position.z;
         enemy.position.addScaledVector(toPlayer, enemy.speed * delta);
         if (world) {
           if (world.resolveHorizontalCollision) {
             world.resolveHorizontalCollision(enemy.position, 0.5, enemy.position.y, enemy.position.y + 1.6);
           }
-          enemy.position.y = world.getTerrainHeight(enemy.position.x, enemy.position.z, enemy.position.y);
+          const ground = world.getTerrainHeight(enemy.position.x, enemy.position.z, enemy.position.y);
+          if (ground < -8) enemy.position.set(x, enemy.position.y, z);
+          else enemy.position.y = ground;
         }
       } else if (dist <= enemy.attackRadius) {
         // Only strike player if unobstructed by a solid wall or closed door
@@ -458,44 +458,6 @@ class EnemiesManager {
       }
     }
 
-    // Update Boss AI
-    if (this.isBossActive && this.activeBoss) {
-      const boss = this.activeBoss;
-      boss.mesh.lookAt(player.position.x, boss.mesh.position.y, player.position.z);
-
-      // Subtle floating bob
-      boss.mesh.position.y += Math.sin(Date.now() * 0.003) * 0.01;
-
-      // Animate Azrael's rings
-      if (boss.ring1 && boss.ring2) {
-        boss.ring1.rotation.x += 1.2 * delta;
-        boss.ring2.rotation.y += 1.5 * delta;
-      }
-
-      // Active Boss Calculus Mechanics (Asymptote Singularity & Orbital Hazards)
-      this.bossCalculusTimer += delta;
-      if (window.calculusEngine && window.game && window.game.player) {
-        const playerPos = window.game.player.position;
-        const bossDist = playerPos.distanceTo(boss.mesh.position);
-        
-        // Realm 1 Morgathia: Asymptote Singularity at r = 4.0
-        if (boss.realmId === 1 || !boss.realmId) {
-          const asymp = window.calculusEngine.evalAsymptoteDanger(bossDist, 4.0, 15);
-          if (asymp.inDangerZone && window.interfaceManager) {
-            window.interfaceManager.renderCalculusTelemetry({
-              title: 'MORGATHIA ASYMPTOTE SINGULARITY',
-              func: 'g(r) = 15 / |r - 4.0|',
-              details: `Radius r = ${bossDist.toFixed(2)}m (Singularity at r = 4.0m). Denominator → 0, Intensity = ${asymp.intensity.toFixed(1)}!`,
-              isWarning: true
-            });
-            if (asymp.isDeadly && this.bossCalculusTimer > 1.0) {
-              window.game.player.takeDamage(12);
-              this.bossCalculusTimer = 0;
-            }
-          }
-        }
-      }
-    }
   }
 }
 

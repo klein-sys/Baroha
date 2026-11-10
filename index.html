@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>The Forbidden Realm: The Trials of Knowledge - 3D Calculus RPG</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dungeon.css">
 </head>
 <body>
 
@@ -39,9 +40,9 @@
     <!-- Top Bar (Menu, Level, HP/MP, Themed Boss Bar, Objectives, Clock) -->
     <div class="roblox-top-bar">
       <div class="roblox-header-left">
-        <div class="roblox-menu-btn" id="btn-roblox-menu" title="Menu [ESC]">
+        <button type="button" class="roblox-menu-btn" id="btn-roblox-menu" aria-label="Pause menu">
           <span></span><span></span><span></span>
-        </div>
+        </button>
         <button class="roblox-dev-btn" id="btn-roblox-dev" title="Developer Console [F1 or ~]">🛠️ DEV</button>
         <!-- Roblox RPG Player Profile Card -->
         <div class="roblox-player-frame">
@@ -56,6 +57,13 @@
             </svg>
           </div>
           <div class="roblox-stat-stack">
+          <div class="hearts-row" id="hud-hearts-row">
+            <span class="heart-icon full"></span>
+            <span class="heart-icon full"></span>
+            <span class="heart-icon full"></span>
+            <span class="heart-icon full"></span>
+            <span class="heart-icon full"></span>
+          </div>
             <div class="roblox-level-text" id="roblox-level-display">Lv. 25</div>
             <div class="roblox-bar hp">
               <span class="roblox-bar-label">HP</span>
@@ -99,14 +107,14 @@
         <div class="roblox-objective-pill" id="roblox-objective-pill">
           <span class="roblox-obj-diamond">◆</span>
           <span class="roblox-obj-text" id="roblox-obj-text">Defeat The Dark Witch</span>
-          <span class="roblox-obj-count" id="roblox-obj-count">0 / 1</span>
+
         </div>
         <div class="roblox-time-badge" id="roblox-time-badge">
           <span id="hud-clock-text">☀️ 08:00 AM</span>
           <span id="hud-calculus-flux" class="hud-flux-pill">L: +0.50 | dL/dt: -0.22</span>
         </div>
         <button class="btn-roblox-tool" id="btn-cam-toggle" title="Switch 1st/3rd Person [V]">🎥 3RD PERSON [V]</button>
-        <button class="btn-roblox-tool" id="btn-hud-map" title="Open World Map [T]">🗺️ MAP [T]</button>
+        <button class="btn-roblox-tool" id="btn-hud-map" title="Open Dungeon Map [T]">🗺️ MAP [T]</button>
         <button class="btn-roblox-tool" id="btn-capture-mouse" title="Lock Mouse Look" style="display: none;">🖱️ LOCK</button>
       </div>
     </div>
@@ -121,13 +129,7 @@
         <div class="player-meta">
           <div class="player-name-title" id="hud-player-title">Arcane Guardian</div>
           <div class="player-class-rank" id="hud-player-class">Novice Adventurer</div>
-          <div class="hearts-row" id="hud-hearts-row">
-            <span class="heart-icon full"></span>
-            <span class="heart-icon full"></span>
-            <span class="heart-icon full"></span>
-            <span class="heart-icon full"></span>
-            <span class="heart-icon full"></span>
-          </div>
+
         </div>
       </div>
 
@@ -167,8 +169,8 @@
     <div class="hud-top-right">
       <div class="hud-top-actions">
         <div class="realm-badge">
-          <span class="realm-icon">🏰</span>
-          <span class="realm-text" id="hud-realm-text">Realm I: The Cursed Forest</span>
+          <span class="realm-icon">◆</span>
+          <span class="realm-text" id="hud-realm-text">Floor 1 · The Cursed Forest</span>
         </div>
         <button class="btn-hud-pill" id="btn-hud-controls" title="Open Controls Guide [H]">🎮 CONTROLS [H]</button>
         <button class="btn-hud-pill" id="btn-hud-settings" title="Adjust Graphics & Settings [O]">⚙️ SETTINGS [O]</button>
@@ -176,8 +178,8 @@
 
       <div class="quest-tracker-card">
         <div class="quest-tracker-title">
-          <span>ACTIVE TRIAL</span>
-          <span class="key-hint">[TAB] Journal</span>
+          <span>FLOOR OBJECTIVE</span>
+          <span class="roblox-obj-count" id="roblox-obj-count">0 / 1</span>
         </div>
         <div class="quest-name" id="hud-quest-name">The Last Guardian's Wisdom</div>
         <div class="quest-objective" id="hud-quest-desc">Speak with the Last Guardian of Knowledge at the forest glade.</div>
@@ -378,7 +380,7 @@
         <button class="btn-close-modal">✕</button>
       </div>
       <div class="fantasy-panel-body">
-        
+
         <!-- Tabs Header -->
         <div class="tabs-header">
           <button class="tab-btn active" data-tab="tab-ctrl-move">🏃 Movement</button>
@@ -678,7 +680,7 @@
         <button class="btn-close-modal">✕</button>
       </div>
       <div class="fantasy-panel-body">
-        
+
         <!-- Settings Tabs Header -->
         <div class="tabs-header">
           <button class="tab-btn active" data-tab="tab-set-graphics">🖥️ Graphics & Display</button>
@@ -688,7 +690,7 @@
 
         <!-- Tab 1: Graphics Settings -->
         <div class="tab-content active" id="tab-set-graphics">
-          
+
           <!-- Quality Presets -->
           <div class="settings-section">
             <div class="settings-section-title">Graphics Quality Presets</div>
@@ -704,7 +706,7 @@
           <!-- Fine-Grained Graphics Settings -->
           <div class="settings-section">
             <div class="settings-section-title">Display & Rendering Options</div>
-            
+
             <!-- Resolution Scale -->
             <div class="settings-row">
               <div class="settings-label">
@@ -785,7 +787,7 @@
         <div class="tab-content" id="tab-set-controls">
           <div class="settings-section">
             <div class="settings-section-title">Mouse & Look Settings</div>
-            
+
             <!-- Mouse Sensitivity -->
             <div class="settings-row">
               <div class="settings-label">
@@ -836,7 +838,7 @@
         <div class="tab-content" id="tab-set-audio">
           <div class="settings-section">
             <div class="settings-section-title">Volume Levels</div>
-            
+
             <!-- Master Volume -->
             <div class="settings-row">
               <div class="settings-label">
@@ -1030,14 +1032,13 @@
         <div class="tab-content" id="dev-tab-teleport">
           <p style="font-size: 13px; color: #a8dadc; margin-bottom: 12px;">Instant warp across realms and combat arenas:</p>
           <div class="dev-actions-grid">
-            <button class="btn-dev-action" onclick="dev.loadRealm(1)">🏰 Switch to Realm 1: Forest</button>
-            <button class="btn-dev-action" onclick="dev.loadRealm(2)">💀 Switch to Realm 2: Crypt</button>
-            <button class="btn-dev-action" onclick="dev.loadRealm(3)">🌌 Switch to Realm 3: Cosmos</button>
+            <button class="btn-dev-action" onclick="dev.loadRealm(1)">Switch to Floor 1 · Forest</button>
+            <button class="btn-dev-action" onclick="dev.loadRealm(2)">Switch to Floor 2 · Kingdom</button>
+            <button class="btn-dev-action" onclick="dev.loadRealm(3)">Switch to Floor 3 · Celestial Depths</button>
+            <button class="btn-dev-action" onclick="dev.loadRealm(4)">Switch to Floor 4 · Beyond Infinity</button>
             <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, 25)">🏡 Teleport: Starter Village Inn Bed</button>
             <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, 12)">🌲 Teleport: Forest Entrance</button>
-            <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, -45)">🔮 Teleport: Witch's Castle Gate</button>
-            <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, -38)">👑 Teleport: Lich King Throne</button>
-            <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, -25)">🐉 Teleport: Eternal Dragon Arena</button>
+            <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, -44)">Teleport: Arena Gate</button>
           </div>
         </div>
 
@@ -1046,7 +1047,8 @@
           <div class="dev-actions-grid">
             <button class="btn-dev-action" onclick="dev.spawnBoss(1)">🧙‍♀️ Spawn Boss: The Dark Witch (Lv. 50)</button>
             <button class="btn-dev-action" onclick="dev.spawnBoss(2)">💀 Spawn Boss: The Lich King (Lv. 100)</button>
-            <button class="btn-dev-action" onclick="dev.spawnBoss(3)">🐉 Spawn Boss: Eternal Dragon (Lv. 1000)</button>
+            <button class="btn-dev-action" onclick="dev.spawnBoss(3)">Spawn Boss: Harmonic Sentinel</button>
+            <button class="btn-dev-action" onclick="dev.spawnBoss(4)">🐉 Spawn Boss: Eternal Dragon (Lv. 1000)</button>
             <button class="btn-dev-action danger" onclick="dev.killBoss()">⚔️ One-Hit Kill Active Boss</button>
             <button class="btn-dev-action" onclick="dev.triggerBossTrial(1)">📝 Trigger Boss Trial (Phase 1)</button>
             <button class="btn-dev-action" onclick="dev.triggerBossTrial(2)">📝 Trigger Boss Trial (Phase 2)</button>
@@ -1130,7 +1132,9 @@
     <h2 style="font-family: var(--font-title); color: #ffd978; font-size: 38px; margin-bottom: 20px;">GAME PAUSED</h2>
     <div class="menu-actions-stack">
       <button class="btn-fantasy-cta primary" id="btn-pause-resume">RESUME PLAY</button>
-      <button class="btn-fantasy-cta" id="btn-pause-restart">RESTART REALM</button>
+      <button class="btn-fantasy-cta" id="btn-pause-restart">RESTART FLOOR</button>
+      <button class="btn-fantasy-cta" id="btn-pause-journal">JOURNAL</button>
+      <button class="btn-fantasy-cta" id="btn-pause-inventory">INVENTORY</button>
       <button class="btn-fantasy-cta" id="btn-pause-controls">🎮 CONTROLS GUIDE</button>
       <button class="btn-fantasy-cta" id="btn-pause-settings">⚙️ GRAPHICS & SETTINGS</button>
       <button class="btn-fantasy-cta dev-highlight" id="btn-pause-dev">🛠️ DEVELOPER CONSOLE [F1]</button>
@@ -1179,15 +1183,11 @@
       <div class="joystick-thumb" id="joystick-thumb"></div>
     </div>
     <div class="mobile-action-buttons">
-      <button class="btn-touch-action attack" id="btn-touch-attack">SWORD</button>
+      <button class="btn-touch-action attack" id="btn-touch-attack">ATTACK</button>
       <button class="btn-touch-action" id="btn-touch-jump">JUMP</button>
       <button class="btn-touch-action" id="btn-touch-cast">CAST</button>
       <button class="btn-touch-action" id="btn-touch-interact">USE</button>
-      <button class="btn-touch-action" id="btn-touch-potion">POTION</button>
-      <button class="btn-touch-action" id="btn-touch-journal">QUEST</button>
-      <button class="btn-touch-action" id="btn-touch-controls">GUIDE</button>
-      <button class="btn-touch-action" id="btn-touch-settings">OPT</button>
-      <button class="btn-touch-action dev" id="btn-touch-dev">DEV</button>
+      <button class="btn-touch-action secondary" id="btn-touch-potion">POTION</button>
     </div>
   </div>
 
@@ -1214,6 +1214,7 @@
   <script src="js/character.js"></script>
   <script src="js/abilities.js"></script>
   <script src="js/bosses.js"></script>
+  <script src="js/dungeon.js"></script>
   <script src="js/world.js"></script>
   <script src="js/enemies.js"></script>
   <script src="js/dark-fantasy-overhaul.js"></script>

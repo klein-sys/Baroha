@@ -304,7 +304,7 @@ class PlayerController {
     });
     canvas.addEventListener('pointermove', event => {
       if (event.pointerId !== lookPointer || !window.game?.canPlay()) return;
-      this.rotateView(event.clientX - lastX, event.clientY - lastY, 0.005);
+      this.rotateView(event.clientX - lastX, event.clientY - lastY, 2.3 / Math.min(innerWidth, innerHeight));
       lastX = event.clientX;
       lastY = event.clientY;
     });
@@ -417,7 +417,8 @@ class PlayerController {
       // Game Over
       if (window.game) window.game.handleGameOver();
     } else {
-      // Respawn at realm checkpoint
+      if (window.game?.enemies.isBossActive) window.game.resetArena();
+      // Respawn at floor checkpoint
       this.respawnAtCheckpoint();
     }
   }
@@ -568,6 +569,17 @@ class PlayerController {
     this.velocity.y -= this.gravity * delta;
 
     const world = window.game?.world;
+    if (this.isGrounded && this.velocity.y <= 0 && world) {
+      const feet = this.position.y - this.height;
+      for (const platform of world.oscillatingPlatforms) {
+        const p = platform.mesh.position;
+        if (Math.hypot(this.position.x - p.x, this.position.z - p.z) <= platform.radius
+          && Math.abs(feet - platform.previousY - 0.3) < 0.06) {
+          this.position.y += p.y - platform.previousY;
+          break;
+        }
+      }
+    }
     const isNoclip = !!(window.devConsoleManager && window.devConsoleManager.isNoclip);
 
     // Sub-step horizontal integration so running/jumping cannot tunnel through walls or closed doors

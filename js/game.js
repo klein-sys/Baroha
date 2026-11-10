@@ -100,8 +100,7 @@ class GameEngine {
     this.player.hp = this.player.maxHp;
     this.player.mana = this.player.maxMana;
 
-    // Load Realm 1 (The Witch's Cursed Forest)
-    this.transitionToRealm(1);
+    this.world.dungeonProgress = {};
 
     // Hide Main Menu
     const mainMenu = document.getElementById('main-menu');
@@ -113,6 +112,7 @@ class GameEngine {
       window.soundEngine.resume();
     }
 
+    this.transitionToRealm(1);
     this.isRunning = true;
     this.isPaused = false;
     this.isGameOver = false;
@@ -138,6 +138,7 @@ class GameEngine {
   }
 
   transitionToRealm(realmId) {
+    if (!dungeonFloors[realmId - 1]) return;
     this.nearestInteractable = null;
     this.player.velocity.set(0, 0, 0);
     window.interfaceManager?.hideInteractPrompt();
@@ -162,16 +163,12 @@ class GameEngine {
     this.player.pitch = 0;
 
     // Update HUD
-    const realmNames = [
-      'Realm I: The Cursed Forest',
-      'Realm II: The Forgotten Kingdom',
-      'Realm III: The Realm Beyond Infinity'
-    ];
+    const floorName = `Floor ${realmId} · ${this.world.floor.name}`;
     const realmText = document.getElementById('hud-realm-text');
-    if (realmText) realmText.innerText = realmNames[realmId - 1];
+    if (realmText) realmText.innerText = floorName;
 
     if (window.interfaceManager) {
-      window.interfaceManager.showToast(`ENTERING: ${realmNames[realmId - 1]}`, 'info');
+      window.interfaceManager.showToast(`ENTERING: ${floorName}`, 'info');
       window.interfaceManager.updateQuestHUD();
       window.interfaceManager.updatePlayerStatsUI();
     }
@@ -315,7 +312,7 @@ class GameEngine {
   dealAoeDamage(center, radius, damage) {
     for (let i = 0; i < this.enemies.enemies.length; i++) {
       const enemy = this.enemies.enemies[i];
-      if (!enemy.isDead && enemy.position.distanceTo(center) <= radius) {
+      if (!enemy.isDead && enemy.position.distanceTo(center) <= radius && this.world.hasLineOfSight(center, enemy.position)) {
         enemy.hp -= damage;
         if (window.interfaceManager) {
           window.interfaceManager.showFloatingText(`-${damage}`, enemy.position, 'crit');
@@ -331,7 +328,7 @@ class GameEngine {
 
     if (this.enemies.isBossActive && this.enemies.activeBoss) {
       const boss = this.enemies.activeBoss;
-      if (boss.position.distanceTo(center) <= radius) {
+      if (boss.position.distanceTo(center) <= radius && this.world.hasLineOfSight(center, boss.position)) {
         this.enemies.damageBoss(damage);
       }
     }
@@ -458,6 +455,8 @@ class GameEngine {
 
   collectItem(item) {
     item.collected = true;
+    const state = this.world.dungeonProgress[this.world.currentRealm];
+    (state.loot ??= []).push(item.name);
     this.scene.remove(item.mesh);
     this.world?.disposeHierarchy?.(item.mesh);
 
@@ -471,7 +470,6 @@ class GameEngine {
       if (window.missionsManager) window.missionsManager.recordKeyCollected();
       if (window.soundEngine) window.soundEngine.playItemPickup();
       if (window.interfaceManager) window.interfaceManager.showToast(`FOUND: ${item.name}!`, 'success');
-      this.autoSaveProgress();
     } else if (item.type === 'scroll') {
       if (window.soundEngine) window.soundEngine.playItemPickup();
       this.player.addXp(150);
@@ -479,7 +477,6 @@ class GameEngine {
       if (window.interfaceManager) {
         window.interfaceManager.showToast('📜 Ancient Calculus Scroll: New Codex Theorem Discovered (+150 XP, +50 MP)! Press [M] to inspect.', 'success');
       }
-      this.autoSaveProgress();
     } else if (item.type === 'xp') {
       this.player.addXp(150);
       if (window.soundEngine) window.soundEngine.playItemPickup();
@@ -488,8 +485,8 @@ class GameEngine {
       this.player.addXp(80);
       window.inventoryManager.addItem('potion', 'Healing Potion', '🍷', 'Restores 50 Health instantly.', 'consumable', 1);
       window.inventoryManager.addItem('mana', 'Mana Crystal', '💎', 'Restores 50 Mana instantly.', 'consumable', 1);
-      this.autoSaveProgress();
     }
+    this.autoSaveProgress();
   }
 
   // =========================================================================
@@ -497,7 +494,9 @@ class GameEngine {
   // =========================================================================
 
   startBossEncounter(realmId) {
+    if (this.enemies.isBossActive || this.world.dungeonProgress[realmId]?.defeated) return;
     this.enemies.spawnBoss(realmId);
+    window.interfaceManager?.updateQuestHUD();
   }
 
   triggerCalculusSurge(damage = 50) {
@@ -511,31 +510,17 @@ class GameEngine {
   }
 
   handleBossDefeated(realmId) {
-    // Award Crystal Fragment
-    if (window.missionsManager) {
-      window.missionsManager.awardCrystalFragment(realmId);
-    }
+    if (realmId !== this.world.currentRealm || this.world.dungeonProgress[realmId]?.defeated) return;
+    this.world.unlockDescent();
+    const fragment = realmId === 4 ? 3 : realmId;
+    if (realmId !== 3) window.missionsManager?.awardCrystalFragment(fragment);
+    this.player.addXp([500, 1000, 1200, 2000][realmId - 1]);
+    const spell = [null, 'fireball', 'lightning', 'shield', 'nova'][realmId];
+    this.abilities.unlockAbility(spell);
+    window.soundEngine?.startMusicForRealm(realmId, false);
+    window.interfaceManager?.showToast('Descent portal opened at the back of the arena.', 'success');
+    window.interfaceManager?.updateQuestHUD();
     this.autoSaveProgress();
-
-    if (realmId === 1) {
-      this.player.addXp(500);
-      this.abilities.unlockAbility('fireball');
-      setTimeout(() => {
-        this.transitionToRealm(2);
-      }, 4000);
-    } else if (realmId === 2) {
-      this.player.addXp(1000);
-      this.abilities.unlockAbility('lightning');
-      setTimeout(() => {
-        this.transitionToRealm(3);
-      }, 4000);
-    } else if (realmId === 3) {
-      this.player.addXp(2000);
-      this.abilities.unlockAbility('nova');
-      setTimeout(() => {
-        this.handleGameVictory();
-      }, 3500);
-    }
   }
 
   // =========================================================================
@@ -543,12 +528,22 @@ class GameEngine {
   // =========================================================================
 
   handleGameOver() {
+    if (this.enemies.isBossActive) this.resetArena();
     this.isGameOver = true;
     this.isRunning = false;
     if (document.exitPointerLock) document.exitPointerLock();
 
     const screen = document.getElementById('game-over-screen');
     if (screen) screen.classList.remove('hidden');
+  }
+
+  resetArena() {
+    this.bosses.clearBoss();
+    this.enemies.activeBoss = null;
+    this.enemies.isBossActive = false;
+    this.abilities.clearAllProjectiles();
+    window.interfaceManager?.hideBossBar();
+    window.interfaceManager?.updateQuestHUD();
   }
 
   retryCheckpoint() {
@@ -633,12 +628,12 @@ class GameEngine {
       // 1. Day / Night atmosphere & orbital lighting
       if (this.dayNight) this.dayNight.update(delta);
 
+      // Move lifts before resolving player contact.
+      this.world.update(delta);
+
       // 2. Update Player & 3D Third-Person Character
       this.player.update(delta);
       if (this.character) this.character.update(delta, this.player);
-
-      // 3. Update World props & animations
-      this.world.update(delta);
 
       // 4. Update Abilities & Projectiles
       this.abilities.update(delta);

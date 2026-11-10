@@ -7,6 +7,7 @@ class WorldManager {
   constructor(scene) {
     this.scene = scene;
     this.currentRealm = 1;
+    this.dungeonProgress = {};
     this.worldObjects = [];
     this.interactables = [];
     this.collectibles = [];
@@ -23,7 +24,7 @@ class WorldManager {
 
     // Terrain size
     this.terrainWidth = 140;
-    this.terrainDepth = 140;
+    this.terrainDepth = 180;
     this.terrainMesh = null;
 
     // Skybox & Atmosphere
@@ -384,20 +385,8 @@ class WorldManager {
     this.currentRealm = realmId;
     this.clearWorld();
 
-    switch (realmId) {
-      case 1:
-        this.buildCursedForest();
-        break;
-      case 2:
-        this.buildForgottenKingdom();
-        break;
-      case 3:
-        this.buildRealmBeyondInfinity();
-        break;
-      default:
-        this.buildCursedForest();
-        break;
-    }
+    this._elapsed = 0;
+    buildDungeonFloor(this);
 
     // Play realm ambient soundtrack
     if (window.soundEngine) {
@@ -406,17 +395,7 @@ class WorldManager {
   }
 
   getTerrainHeight(x, z, feetY = null) {
-    // Base procedural terrain height
-    let h = 0;
-    if (this.currentRealm === 1) {
-      h = Math.sin(x * 0.08) * Math.cos(z * 0.08) * 1.5;
-    } else if (this.currentRealm === 2) {
-      if (z < -30) h = 0;
-      else h = Math.sin(x * 0.04) * 0.6;
-    } else {
-      const dist = Math.sqrt(x * x + z * z);
-      h = dist > 45 ? -100 : Math.sin(x * 0.1) * Math.cos(z * 0.1) * 0.8;
-    }
+    let h = -100;
 
     // Walkable building floors & door steps
     if (this.walkableSurfaces) {
@@ -445,254 +424,13 @@ class WorldManager {
       for (let i = 0; i < this.oscillatingPlatforms.length; i++) {
         const p = this.oscillatingPlatforms[i];
         if (p.mesh && Math.abs(x - p.mesh.position.x) <= p.radius && Math.abs(z - p.mesh.position.z) <= p.radius) {
-          if (p.mesh.position.y + 0.3 > h) h = p.mesh.position.y + 0.3;
+          const top = p.mesh.position.y + 0.3;
+          if ((feetY === null || feetY >= top - 0.65) && top > h) h = top;
         }
       }
     }
 
     return h;
-  }
-
-  // =========================================================================
-  // REALM 1: THE WITCH'S CURSED FOREST
-  // =========================================================================
-  isClearOfLandmarks(x, z, pad = 6.5) {
-    const keepouts = [
-      { x: 0, z: 12, r: 6.5 },    // Player spawn
-      { x: 0, z: 8, r: 4.5 },     // Guardian NPC
-      { x: 0, z: 16, r: 4.5 },    // Mana well
-      { x: 0, z: 25, r: 6.5 },    // Village Inn & Bed
-      { x: -14, z: 20, r: 6.5 },  // West Village House
-      { x: 14, z: 20, r: 6.5 },   // East Village House
-      { x: 6, z: 15, r: 3.5 },    // Training dummy
-      { x: 0, z: -45, r: 7.5 },   // Castle gate
-      { x: -18, z: 18, r: 5.0 },  // Rift seal
-      { x: 22, z: -12, r: 8.5 },  // Piecewise bridge
-      { x: -8, z: -32, r: 5.0 },  // Leyline shrine
-      { x: 12, z: 0, r: 4.5 }     // Oscillating platform
-    ];
-    for (let i = 0; i < keepouts.length; i++) {
-      const k = keepouts[i];
-      const dx = x - k.x;
-      const dz = z - k.z;
-      if (dx * dx + dz * dz < (k.r + pad - 3.5) * (k.r + pad - 3.5)) return false;
-    }
-    return true;
-  }
-
-  buildCursedForest() {
-    // Dark moody atmosphere
-    this.scene.fog = new THREE.FogExp2(0x0a0c14, 0.018);
-    this.scene.background = new THREE.Color(0x060810);
-
-    // Subtle cool ambient fill (DayNightManager handles primary sun/moon/hemi lights)
-    const amb = new THREE.AmbientLight(0x2a2d4d, 0.35);
-    this.scene.add(amb);
-    this.worldObjects.push(amb);
-
-    // Ground Plane with undulating vertices
-    const geom = new THREE.PlaneGeometry(this.terrainWidth, this.terrainDepth, 48, 48);
-    geom.rotateX(-Math.PI / 2);
-
-    const pos = geom.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      const vx = pos.getX(i);
-      const vz = pos.getZ(i);
-      pos.setY(i, this.getTerrainHeight(vx, vz));
-    }
-    geom.computeVertexNormals();
-
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0x1e2c1a, // Rich forest moss
-      roughness: 0.9,
-      metalness: 0.08
-    });
-    this.terrainMesh = new THREE.Mesh(geom, mat);
-    this.terrainMesh.receiveShadow = true;
-    this.scene.add(this.terrainMesh);
-    this.worldObjects.push(this.terrainMesh);
-
-    // Spawn Forest Trees (clear of village houses, spawn, gates & seals)
-    for (let i = 0; i < 65; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const dist = 12 + Math.random() * 50;
-      const tx = Math.cos(angle) * dist;
-      const tz = Math.sin(angle) * dist;
-      if (!this.isClearOfLandmarks(tx, tz, 4.0)) continue;
-      this.spawnGothicTree(tx, tz);
-    }
-
-    // Spawn Glowing Mushrooms (kept outside buildings & walkways)
-    for (let i = 0; i < 24; i++) {
-      const mx = (Math.random() - 0.5) * 84;
-      const mz = (Math.random() - 0.5) * 84;
-      if (!this.isClearOfLandmarks(mx, mz, 2.5)) continue;
-      this.spawnGlowingMushroom(mx, mz);
-    }
-
-    // Ancient Stone Ruins & Castle Gate (North)
-    this.spawnCastleGate(0, -45);
-
-    // Core Differential Calculus Mechanics (Limits, Piecewise Continuity, IVT, Oscillators)
-    this.spawnRiftSeal(-18, 18);
-    this.spawnPiecewiseBridge(22, -12);
-    this.spawnLeylineShrine(-8, -32);
-    this.spawnOscillatingPlatform(12, 0, 3.2, 1.2, 1.0);
-    this.spawnManaWell(0, 16);
-
-    // Spawn Potions & Crystals
-    this.spawnCollectible('potion', 5, 0, 8, 'Healing Potion');
-    this.spawnCollectible('mana', -6, 0, 6, 'Mana Crystal');
-    this.spawnCollectible('xp', 12, 0, 14, 'XP Crystal');
-    this.spawnCollectible('scroll', -14, 0, -8, 'Ancient Scroll of Limits');
-    this.spawnCollectible('chest', 15, 0, -25, 'Cursed Forest Chest');
-
-    // Spawn Starter Village (Inn faces North toward Spawn; side houses face village center)
-    this.spawnVillageHouse(0, 25, true, Math.PI);       // Village Inn with sleeping bed
-    this.spawnVillageHouse(-14, 20, false, Math.PI / 2); // West House
-    this.spawnVillageHouse(14, 20, false, -Math.PI / 2); // East House
-    this.spawnTrainingDummy(6, 15);
-
-    // NPC: The Last Guardian of Knowledge (Starting Sanctuary)
-    this.spawnNPC(0, 0, 8, 'The Last Guardian of Knowledge', 'Elder of Numeria');
-  }
-
-  // =========================================================================
-  // REALM 2: THE NECROMANCER'S FORGOTTEN KINGDOM
-  // =========================================================================
-  buildForgottenKingdom() {
-    this.scene.fog = new THREE.FogExp2(0x0a1410, 0.022);
-    this.scene.background = new THREE.Color(0x050d0a);
-
-    // Ambient light (Green-tinted necrotic gloom)
-    const amb = new THREE.AmbientLight(0x1b3b1b, 0.65);
-    this.scene.add(amb);
-    this.worldObjects.push(amb);
-
-    const dir = new THREE.DirectionalLight(0x4b7f44, 1.15);
-    dir.position.set(-20, 45, 25);
-    this.scene.add(dir);
-    this.worldObjects.push(dir);
-
-    // Stone Cobblestone Floor
-    const geom = new THREE.PlaneGeometry(this.terrainWidth, this.terrainDepth, 40, 40);
-    geom.rotateX(-Math.PI / 2);
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0x22252a, // Cold stone
-      roughness: 0.8,
-      metalness: 0.2
-    });
-    this.terrainMesh = new THREE.Mesh(geom, mat);
-    this.terrainMesh.receiveShadow = true;
-    this.scene.add(this.terrainMesh);
-    this.worldObjects.push(this.terrainMesh);
-
-    // Gothic Cathedral Pillars & Walls
-    for (let x = -20; x <= 20; x += 10) {
-      this.spawnGothicPillar(x, -10);
-      this.spawnGothicPillar(x, -25);
-    }
-
-    // Cemetery Tombs (clear of player spawn & NPC)
-    for (let i = 0; i < 28; i++) {
-      const tx = (Math.random() - 0.5) * 70;
-      const tz = 8 + Math.random() * 45;
-      if (Math.hypot(tx, tz - 12) < 4.5) continue;
-      this.spawnTombstone(tx, tz);
-    }
-
-    // Green Spectral Braziers
-    this.spawnSpectralBrazier(-12, -2);
-    this.spawnSpectralBrazier(12, -2);
-    this.spawnSpectralBrazier(-12, -28);
-    this.spawnSpectralBrazier(12, -28);
-
-    // Lich Throne / Crypt Entrance (North)
-    this.spawnCryptThrone(0, -42);
-
-    // Collectibles & Quests items
-    this.spawnCollectible('potion', -4, 0, 10, 'Elixir of Life');
-    this.spawnCollectible('mana', 8, 0, 12, 'Necrotic Mana Crystal');
-    this.spawnCollectible('golden_heart', 18, 0, 25, 'Sacred Golden Heart');
-    this.spawnCollectible('scroll', -16, 0, 15, 'Codex of Trig Derivatives');
-    this.spawnCollectible('chest', 0, 0, 22, 'Ancient Reliquary');
-
-    // NPC: Hermit Scholar (Warns of Vorthak)
-    this.spawnNPC(0, 0, 2, 'Hermit Scholar Alistair', 'Keeper of Trigonometry');
-  }
-
-  // =========================================================================
-  // REALM 3: THE REALM BEYOND INFINITY
-  // =========================================================================
-  buildRealmBeyondInfinity() {
-    this.scene.fog = new THREE.FogExp2(0x0f051d, 0.016);
-    this.scene.background = new THREE.Color(0x05020a);
-
-    // Ambient celestial light
-    const amb = new THREE.AmbientLight(0x480ca8, 1.4);
-    this.scene.add(amb);
-    this.worldObjects.push(amb);
-
-    const celestial = new THREE.DirectionalLight(0xffbe0b, 1.8);
-    celestial.position.set(0, 60, 0);
-    this.scene.add(celestial);
-    this.worldObjects.push(celestial);
-
-    // Main Floating Arena Island
-    const islandGeom = new THREE.CylinderGeometry(38, 22, 12, 32);
-    const islandMat = new THREE.MeshStandardMaterial({
-      color: 0x240046,
-      roughness: 0.5,
-      metalness: 0.5
-    });
-    const island = new THREE.Mesh(islandGeom, islandMat);
-    island.position.set(0, -6, 0);
-    this.scene.add(island);
-    this.worldObjects.push(island);
-
-    // Glowing Rune Floor on Arena
-    const floorGeom = new THREE.RingGeometry(2, 36, 32);
-    floorGeom.rotateX(-Math.PI / 2);
-    const floorMat = new THREE.MeshBasicMaterial({
-      color: 0x7209b7,
-      side: THREE.DoubleSide
-    });
-    const floor = new THREE.Mesh(floorGeom, floorMat);
-    floor.position.set(0, 0.05, 0);
-    this.scene.add(floor);
-    this.worldObjects.push(floor);
-
-    // Orbiting Geometric Calculus Rings in Sky
-    for (let i = 0; i < 4; i++) {
-      const ringGeom = new THREE.TorusGeometry(12 + i * 8, 0.25, 16, 64);
-      const ringMat = new THREE.MeshBasicMaterial({
-        color: i % 2 === 0 ? 0xffd166 : 0x06d6a0,
-        wireframe: true
-      });
-      const ring = new THREE.Mesh(ringGeom, ringMat);
-      ring.position.set(0, 18 + i * 4, 0);
-      ring.rotation.x = Math.PI / 3 + i * 0.4;
-      this.scene.add(ring);
-      this.worldObjects.push(ring);
-      this.animatedLights.push({ mesh: ring, speed: 0.3 + i * 0.15 });
-    }
-
-    // 3 Ancient Dimensional Towers around perimeter
-    this.spawnDimensionalTower(-22, 0, -18, 'Limit Obelisk');
-    this.spawnDimensionalTower(22, 0, -18, 'Derivative Obelisk');
-    this.spawnDimensionalTower(0, 0, 25, 'Continuity Obelisk');
-
-    // Central Boss Nexus
-    this.spawnAzraelNexus(0, -22);
-
-    // Collectibles
-    this.spawnCollectible('potion', -10, 0, 0, 'Celestial Nectar');
-    this.spawnCollectible('mana', 10, 0, 0, 'Infinity Crystal');
-    this.spawnCollectible('golden_heart', 0, 0, 14, 'Aura of Eternity');
-    this.spawnCollectible('scroll', -14, 0, 12, 'Master Scroll of Calculus');
-
-    // NPC: Spirit of Differential Calculus
-    this.spawnNPC(0, 0, -6, 'Spirit of Calculus', 'Ancient Consciousness of Numeria');
   }
 
   // =========================================================================
@@ -1359,6 +1097,7 @@ class WorldManager {
   // =========================================================================
 
   spawnCollectible(type, x, y, z, name) {
+    if (this.dungeonProgress[this.currentRealm]?.loot?.includes(name)) return;
     const groundY = this.getTerrainHeight(x, z);
     const finalY = groundY + 0.9;
 
@@ -1477,7 +1216,7 @@ class WorldManager {
   // CALCULUS MECHANIC 1: RIFT SEAL (REMOVABLE DISCONTINUITY)
   // f(x) = (x^2 - 9)/(x - 3), undefined at x = 3, lim x->3 = 6
   // =========================================================================
-  spawnRiftSeal(x, z) {
+  spawnRiftSeal(x, z, state) {
     const groundY = this.getTerrainHeight(x, z);
     const group = new THREE.Group();
     group.position.set(x, groundY, z);
@@ -1524,8 +1263,12 @@ class WorldManager {
 
     // Tunable frequency parameters
     const frequencies = [2.70, 2.85, 2.95, 2.99, 3.00, 3.01, 3.10, 3.25];
-    let freqIndex = 0;
-    let isBreached = false;
+    let freqIndex = state.rift ? 3 : 0;
+    if (state.rift) {
+      core.scale.setScalar(1.5);
+      coreMat.emissive.setHex(0x00ff88);
+      ringMat.emissive.setHex(0x38ef7d);
+    }
 
     const riftObj = {
       type: 'calculus_rift',
@@ -1553,7 +1296,7 @@ class WorldManager {
         };
       },
       interact: () => {
-        if (isBreached) {
+        if (state.rift) {
           if (window.interfaceManager) window.interfaceManager.showToast('Rift Seal already breached and stabilized!', 'info');
           return;
         }
@@ -1571,19 +1314,20 @@ class WorldManager {
           coreMat.emissiveIntensity = 1.0;
         } else if (Math.abs(curX - 3.0) <= 0.02) {
           // Breached! Power is 6.00
-          isBreached = true;
+          state.rift = true;
           core.scale.set(1.5, 1.5, 1.5);
           coreMat.emissive.setHex(0x00ff88);
           ringMat.emissive.setHex(0x38ef7d);
           if (window.soundEngine) window.soundEngine.playChestOpen();
           if (window.interfaceManager) {
-            window.interfaceManager.showToast('✨ RIFT SEAL BREACHED! Frequency x → 3 reached Limit Power = 6.00! Claimed Forest Key of Limits I (+150 XP)!', 'success');
+            window.interfaceManager.showToast('✨ RIFT SEAL BREACHED! Frequency x → 3 reached Limit Power = 6.00! Arena ward weakened (+150 XP)!', 'success');
           }
-          if (window.missionsManager) window.missionsManager.recordKeyCollected();
-          if (window.game && window.game.player) window.game.player.addXp(150);
+          window.game?.player.addXp(150);
+          window.game?.autoSaveProgress();
+          window.interfaceManager?.updateQuestHUD();
         } else {
           const val = (curX * curX - 9) / (curX - 3);
-          if (window.soundEngine) window.soundEngine.playSpellCast();
+          if (window.soundEngine) window.soundEngine.playMagicBolt();
           if (window.interfaceManager) {
             window.interfaceManager.showToast(`Rune Frequency tuned to x = ${curX.toFixed(2)}. Resonance Power = ${val.toFixed(2)} (Target Limit = 6.00). Keep approaching x → 3!`, 'info');
           }
@@ -1598,8 +1342,8 @@ class WorldManager {
   // CALCULUS MECHANIC 2: PIECEWISE CONTINUOUS BRIDGE
   // f(x) = { kx + 3 (x <= 2), x^2 + 1 (x > 2) }. Continuous iff k = 1
   // =========================================================================
-  spawnPiecewiseBridge(x, z) {
-    const groundY = this.getTerrainHeight(x, z);
+  spawnPiecewiseBridge(x, z, state) {
+    const groundY = -0.5;
     const group = new THREE.Group();
     group.position.set(x, groundY, z);
 
@@ -1623,38 +1367,45 @@ class WorldManager {
     const pedGeom = new THREE.CylinderGeometry(0.6, 0.8, 1.8, 8);
     const pedMat = new THREE.MeshStandardMaterial({ color: 0x22223b, roughness: 0.5 });
     const pedestal = new THREE.Mesh(pedGeom, pedMat);
-    pedestal.position.set(-3.5, 0.9, 0);
+    pedestal.position.set(0, 1.4, 7.5);
     group.add(pedestal);
 
     // Glowing Rune Dial
     const dialGeom = new THREE.BoxGeometry(0.4, 0.4, 0.4);
     const dialMat = new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0xffaa00, emissiveIntensity: 0.5 });
     const dial = new THREE.Mesh(dialGeom, dialMat);
-    dial.position.set(-3.5, 2.0, 0);
+    dial.position.set(0, 2.5, 7.5);
     group.add(dial);
 
     this.scene.add(group);
     this.worldObjects.push(group);
-    this.addCylinderCollider(x - 3.5, z, 0.75, groundY, groundY + 2.2, { tag: 'bridge_pedestal', blocksSight: false });
+    this.addCylinderCollider(x, z + 7.5, 0.65, 0, 2.2, { tag: 'bridge_pedestal', blocksSight: false });
     const bridgeCollision = {
       x: x,
       z: z,
       y: groundY + 0.5,
       halfWidth: bridgeWidth / 2 + 0.5,
       halfLength: bridgeLength / 2 + 0.5,
-      isSolid: false
+      isSolid: Boolean(state.bridge)
     };
     this.solidBridges.push(bridgeCollision);
+    const makeSolid = () => {
+      bridgeCollision.isSolid = true;
+      slabMat.opacity = 0.95;
+      slabMat.color.setHex(0xd4af37);
+      slabMat.emissive.setHex(0xffaa00);
+      slabMat.emissiveIntensity = 0.4;
+    };
+    if (state.bridge) makeSolid();
 
     // Tuning k parameters: [-1, 0, 1, 2, 3]
     const kValues = [-1.0, 0.0, 1.0, 2.0];
-    let kIndex = 0;
-    let keySpawned = false;
+    let kIndex = state.bridge ? 2 : 0;
 
     const bridgeInteract = {
       type: 'calculus_bridge',
       name: 'Piecewise Bridge Rune Pedestal',
-      position: new THREE.Vector3(x - 3.5, groundY + 1.2, z),
+      position: new THREE.Vector3(x, 1.25, z + 7.5),
       radius: 3.5,
       getTelemetry: () => {
         const k = kValues[kIndex];
@@ -1680,6 +1431,7 @@ class WorldManager {
         };
       },
       interact: () => {
+        if (state.bridge) return;
         kIndex = (kIndex + 1) % kValues.length;
         const k = kValues[kIndex];
         const leftLimit = 2 * k + 3;
@@ -1688,25 +1440,18 @@ class WorldManager {
         const isContinuous = jump < 0.01;
 
         if (isContinuous) {
-          bridgeCollision.isSolid = true;
-          slabMat.opacity = 0.95;
-          slabMat.color.setHex(0xd4af37);
-          slabMat.emissive = new THREE.Color(0xffaa00);
-          slabMat.emissiveIntensity = 0.4;
-          if (window.soundEngine) window.soundEngine.playMathCorrect();
-          if (window.interfaceManager) {
-            window.interfaceManager.showToast('🌉 PIECEWISE CONTINUITY ACHIEVED! Left Limit = Right Limit = f(2) = 5.0 (Jump = 0). Bridge solidified! Cross and claim Forest Key II!', 'success');
-          }
-          if (!keySpawned) {
-            keySpawned = true;
-            this.spawnCollectible('key', x, groundY + 0.5, z + 5, 'Forest Key of Limits II');
-          }
+          makeSolid();
+          state.bridge = true;
+          window.soundEngine?.playMathCorrect();
+          window.interfaceManager?.showToast('Bridge stabilized. Left limit = right limit = f(2).', 'success');
+          window.interfaceManager?.updateQuestHUD();
+          window.game?.autoSaveProgress();
         } else {
           bridgeCollision.isSolid = false;
           slabMat.opacity = 0.35;
           slabMat.color.setHex(0x4a4e69);
           slabMat.emissive = new THREE.Color(0x000000);
-          if (window.soundEngine) window.soundEngine.playSpellCast();
+          if (window.soundEngine) window.soundEngine.playMagicBolt();
           if (window.interfaceManager) {
             window.interfaceManager.showToast(`Rune parameter tuned to k = ${k.toFixed(1)}. Left Limit = ${leftLimit.toFixed(1)}, Right Limit = 5.0. Jump Discontinuity = ${jump.toFixed(1)}! Bridge remains spectral.`, 'warning');
           }
@@ -1804,7 +1549,7 @@ class WorldManager {
           if (window.missionsManager) window.missionsManager.recordKeyCollected();
           if (window.game && window.game.player) window.game.player.addXp(150);
         } else {
-          if (window.soundEngine) window.soundEngine.playSpellCast();
+          if (window.soundEngine) window.soundEngine.playMagicBolt();
           if (window.interfaceManager) {
             window.interfaceManager.showToast(`Seeker Pulse: Interval halved to [${a.toFixed(2)}, ${b.toFixed(2)}] (Midpoint m = ${mid.toFixed(2)}, f(m) = ${fmid.toFixed(2)}). Sign change confirmed!`, 'info');
           }
@@ -1855,6 +1600,7 @@ class WorldManager {
         const y = A * Math.sin(omega * t);
         const v = A * omega * Math.cos(omega * t);
         const a = -A * omega * omega * Math.sin(omega * t);
+        platformObj.previousY = group.position.y;
         group.position.y = y0 + y;
 
         // Visual telegraph: green when v ≈ 0 (safe peak)
@@ -1961,6 +1707,19 @@ class WorldManager {
     if (this.oscillatingPlatforms) {
       for (let i = 0; i < this.oscillatingPlatforms.length; i++) {
         this.oscillatingPlatforms[i].update(t);
+      }
+    }
+
+    const player = window.game?.player;
+    for (const trap of this.traps || []) {
+      const phase = (t + trap.phase) % 4.5;
+      const active = phase >= 3.5 && phase < 4.1;
+      if (trap.sweeps) trap.mesh.position.x = trap.x + 3.5 * Math.sin((t + trap.phase) * 1.45);
+      trap.mesh.material.color.setHex(active ? 0xff5340 : phase >= 2.4 && phase < 3.5 ? 0xfbb756 : 0x5b5272);
+      const position = trap.mesh.position;
+      if (active && player && Math.abs(player.position.x - position.x) < 2.9
+        && Math.abs(player.position.z - position.z) < 1.1 && player.position.y < player.height + 0.45) {
+        player.takeDamage(7 + this.currentRealm * 4);
       }
     }
 

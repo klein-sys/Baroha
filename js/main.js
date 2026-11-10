@@ -78,6 +78,8 @@ window.addEventListener('DOMContentLoaded', () => {
   if (btnPauseDev) btnPauseDev.addEventListener('click', () => { if (window.devConsoleManager) window.devConsoleManager.toggle(); });
 
   // --- PAUSE MENU BUTTONS ---
+  document.getElementById('btn-pause-journal').onclick = () => window.interfaceManager.toggleQuestJournal();
+  document.getElementById('btn-pause-inventory').onclick = () => window.interfaceManager.toggleInventory();
   const btnResume = document.getElementById('btn-pause-resume');
   const btnRestart = document.getElementById('btn-pause-restart');
   const btnPauseControls = document.getElementById('btn-pause-controls');

@@ -199,7 +199,7 @@ class DayNightManager {
 
     // Preserve Realm 2/3 atmosphere if non-Realm 1 sky is used; modulate nicely in Realm 1
     const realmId = (window.game && window.game.world) ? window.game.world.currentRealm : 1;
-    if (realmId === 1) {
+    if (realmId === 1 && !window.game?.world?.floor) {
       if (this.scene.background && this.scene.background.isColor) {
         this.scene.background.copy(skyColor);
       }
@@ -208,9 +208,10 @@ class DayNightManager {
       }
     }
 
-    this.hemiLight.intensity = hemiIntensity;
-    this.sunLight.intensity = sunIntensity;
-    this.moonLight.intensity = moonIntensity;
+    const dungeon = Boolean(window.game?.world?.floor);
+    this.hemiLight.intensity = hemiIntensity * (dungeon ? 0.62 : 1);
+    this.sunLight.intensity = sunIntensity * (dungeon ? 0.24 : 1);
+    this.moonLight.intensity = moonIntensity * (dungeon ? 0.42 : 1);
   }
 
   handleDayNightTransition(isNight) {

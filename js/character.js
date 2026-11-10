@@ -11,7 +11,7 @@ class RobloxCharacter {
     // Movement & World Position
     this.position = new THREE.Vector3(0, 1.0, 0);
     this.velocity = new THREE.Vector3(0, 0, 0);
-    this.rotationY = 0; // facing angle
+    this.rotationY = Math.PI; // face into the dungeon at spawn
 
     // Third-person Camera Parameters
     this.cameraDistance = 4.8;
@@ -20,6 +20,8 @@ class RobloxCharacter {
     this.cameraTarget = new THREE.Vector3();
     this.cameraOffset = new THREE.Vector3(0, -0.2, 0);
     this._desiredCamPos = new THREE.Vector3();
+    this._aimTarget = new THREE.Vector3();
+    this._cameraReach = this.cameraDistance;
 
     // Animation & State Machine
     this.animState = 'idle'; // 'idle', 'walking', 'running', 'sprinting', 'jumping', 'attacking', 'heavy_attack', 'hurt', 'victory', 'sleeping'
@@ -265,7 +267,7 @@ class RobloxCharacter {
       const moveAngle = Math.atan2(playerController.velocity.x, playerController.velocity.z);
       this.rotationY = moveAngle;
     }
-    this.mesh.rotation.y = this.rotationY;
+    this.mesh.rotation.y = this.isAttacking ? playerController.yaw + Math.PI : this.rotationY;
     if (this.animState !== 'sleeping') {
       this.mesh.rotation.x = 0;
       this.mesh.rotation.z = 0;
@@ -395,26 +397,28 @@ class RobloxCharacter {
   // THIRD-PERSON ORBIT CAMERA (WITH WALL / TERRAIN OCCLUSION CLIPPING)
   // =========================================================================
   updateThirdPersonCamera(delta, playerController) {
-    // Target position is character upper torso
-    this.cameraTarget.copy(this.position).add(this.cameraOffset);
+    const yaw = playerController.yaw;
+    const pitch = playerController.pitch;
+    const sinYaw = Math.sin(yaw);
+    const cosYaw = Math.cos(yaw);
+    const flat = Math.cos(pitch);
+    this.cameraTarget.copy(playerController.position);
+    this._desiredCamPos.copy(this.cameraTarget);
+    this._desiredCamPos.x += sinYaw * flat * this.cameraDistance + cosYaw * 1.22;
+    this._desiredCamPos.y -= Math.sin(pitch) * this.cameraDistance - 0.38;
+    this._desiredCamPos.z += cosYaw * flat * this.cameraDistance - sinYaw * 1.22;
 
-    // Calculate camera position based on orbit angles (yaw and pitch from player)
-    this.cameraYaw = playerController.yaw;
-    this.cameraPitch = Math.max(-0.25, Math.min(1.1, playerController.pitch));
-
-    const cx = this.cameraTarget.x + Math.sin(this.cameraYaw) * Math.cos(this.cameraPitch) * this.cameraDistance;
-    const cy = this.cameraTarget.y + Math.sin(this.cameraPitch) * this.cameraDistance;
-    const cz = this.cameraTarget.z + Math.cos(this.cameraYaw) * Math.cos(this.cameraPitch) * this.cameraDistance;
-
-    this._desiredCamPos.set(cx, cy, cz);
-
-    // Prevent camera from clipping through house walls, closed doors, pillars, or below terrain
-    if (window.game && window.game.world && window.game.world.clipCameraRay) {
-      window.game.world.clipCameraRay(this.cameraTarget, this._desiredCamPos, 0.32);
-    }
-
-    this.camera.position.copy(this._desiredCamPos);
-    this.camera.lookAt(this.cameraTarget);
+    window.game?.world?.clipCameraRay(this.cameraTarget, this._desiredCamPos, 0.3);
+    const reach = this._desiredCamPos.distanceTo(this.cameraTarget);
+    this._cameraReach = reach < this._cameraReach ? reach
+      : THREE.MathUtils.lerp(this._cameraReach, reach, 1 - Math.exp(-9 * delta));
+    this.camera.position.copy(this.cameraTarget).lerp(this._desiredCamPos, reach > 0 ? this._cameraReach / reach : 0);
+    this._aimTarget.copy(playerController.position);
+    this._aimTarget.x -= sinYaw * flat * 14;
+    this._aimTarget.y += Math.sin(pitch) * 14;
+    this._aimTarget.z -= cosYaw * flat * 14;
+    this.camera.lookAt(this._aimTarget);
+    this.mesh.visible = this._cameraReach > 1.65;
   }
 }
 

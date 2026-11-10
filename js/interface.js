@@ -221,6 +221,23 @@ class InterfaceManager {
   }
 
   updateQuestHUD() {
+    const world = window.game?.world;
+    if (world?.floor) {
+      const state = world.dungeonProgress[world.currentRealm];
+      const active = window.game.enemies.isBossActive;
+      const name = state.defeated ? 'Portal open' : active ? 'Boss encounter' : 'Reach the arena';
+      const objective = state.defeated ? 'Use the portal at the back of the arena.'
+        : active ? `Defeat ${world.floor.boss}.`
+        : !state.rift ? 'Tune the Rift Seal near the grove or chamber entrance.'
+        : !state.bridge ? 'Tune the bridge rune until both limits match.'
+        : `Cross the gallery and enter ${world.floor.rooms[3]}.`;
+      document.getElementById('hud-quest-name').textContent = name;
+      document.getElementById('hud-quest-desc').textContent = objective;
+      document.getElementById('hud-quest-progress').style.width = state.defeated ? '100%' : active ? '75%' : `${25 * (Number(Boolean(state.rift)) + Number(Boolean(state.bridge)))}%`;
+      this.updateRobloxObjective(name, state.defeated ? '1 / 1' : '0 / 1');
+      return;
+    }
+
     if (!window.missionsManager) return;
     const quest = window.missionsManager.getCurrentActiveQuest();
     if (!quest) return;
@@ -632,7 +649,14 @@ class InterfaceManager {
     if (!body || !window.missionsManager) return;
     body.innerHTML = '';
 
-    const list = window.missionsManager.quests[`realm${window.missionsManager.currentRealm}`] || [];
+    const world = window.game?.world;
+    const state = world?.dungeonProgress[world.currentRealm];
+    const list = world?.floor ? [
+      { name: 'Stabilize the Rift Seal', desc: 'Approach the removable discontinuity at x = 3.', completed: state.rift },
+      { name: 'Cross the continuity bridge', desc: 'Tune k until the left and right limits agree.', completed: state.bridge },
+      { name: world.floor.rooms[4], desc: 'Use the harmonic lift to reach the optional side chamber.' },
+      { name: `Defeat ${world.floor.boss}`, desc: 'Enter the arena to unlock its descent portal.', completed: state.defeated }
+    ] : [];
     list.forEach(q => {
       const card = document.createElement('div');
       card.className = `quest-item-card ${q.completed ? 'completed' : ''}`;
@@ -930,8 +954,11 @@ class InterfaceManager {
     const bindBtn = (id, action) => {
       const btn = document.getElementById(id);
       if (btn) {
-        btn.addEventListener('click', () => {
-          if (window.game?.canPlay()) action();
+        btn.addEventListener('pointerdown', event => {
+          if (event.pointerType === 'touch' && window.game?.canPlay()) action();
+        });
+        btn.addEventListener('click', event => {
+          if (event.pointerType !== 'touch' && window.game?.canPlay()) action();
         });
       }
     };
@@ -954,12 +981,7 @@ class InterfaceManager {
         window.inventoryManager.useItem('potion', window.game.player);
       }
     });
-    bindBtn('btn-touch-journal', () => this.toggleQuestJournal());
-    bindBtn('btn-touch-controls', () => this.toggleControlsModal());
-    bindBtn('btn-touch-settings', () => this.toggleSettingsModal());
-    bindBtn('btn-touch-dev', () => {
-      if (window.devConsoleManager) window.devConsoleManager.toggle();
-    });
+
   }
 }
 

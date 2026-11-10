@@ -19,6 +19,16 @@ x # ⚔️ MATHBOUND – LEGENDS OF THE THREE BOSSES
 
 ---
 
+## Current build — Four-Floor Dungeon
+
+Start in the Cursed Forest sanctuary and descend through the Forgotten Kingdom and the Celestial Depths to Beyond Infinity. Each floor has connected rooms, a Rift Seal, a continuity bridge, a harmonic lift to an optional side chamber, timed traps, and a boss arena. Tune the Rift Seal close to x = 3 and set the bridge rune to k = 1. Defeat the floor boss to open the portal at the back of the arena. The game saves puzzle, loot, and portal progress locally.
+
+Use **T** for the floor map, **V** to switch perspectives, and **Q** to cast the selected spell. On touch screens, use the joystick to move and drag the scene to look while using the action buttons. The pause menu contains the journal, inventory, and settings.
+
+Run `npm test` to check the game logic and model integration. Run `npm start` to play locally, or extract the standalone ZIP and open `index.html`.
+
+The sections below include the original project background and reference material.
+
 ## 🌟 1. Project Overview & Roblox-Inspired Vision
 
 **MATHBOUND – Legends of the Three Bosses** is a complete, polished, fully explorable 3D third-person adventure RPG powered by Three.js WebGL. Transforming conventional mathematics homework into an immersive fantasy epic, this game integrates differential calculus—including **Limits**, **Continuity**, **Algebraic Factoring**, and **Trigonometric Derivatives**—directly into high-stakes action combat and survival exploration.

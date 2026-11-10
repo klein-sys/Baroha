@@ -1,0 +1,94 @@
+/* Dungeon HUD. The status bar, objective, encounter, and touch zones have separate space. */
+.roblox-top-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  padding: 8px 12px;
+}
+.roblox-header-left, .roblox-header-right { min-width: 0; gap: 6px; }
+.roblox-header-right { justify-content: flex-end; }
+.roblox-player-frame { padding: 5px 9px; }
+.roblox-bar-num, .roblox-obj-count { white-space: nowrap; }
+.roblox-bar-track { width: clamp(32px, 8vw, 104px); }
+.roblox-objective-pill, .hud-top-actions > button, .roblox-controls-card { display: none; }
+.roblox-time-badge, .btn-roblox-tool { white-space: nowrap; }
+#hud-calculus-flux { display: none; }
+.hud-top-right {
+  position: absolute;
+  top: 96px;
+  left: 12px;
+  width: min(310px, calc(100vw - 24px));
+  max-width: none;
+  align-items: stretch;
+  gap: 5px;
+}
+.hud-top-actions, .realm-badge { width: 100%; }
+.quest-tracker-title { display: flex; justify-content: space-between; gap: 8px; }
+.quest-tracker-card { padding: 8px 12px; }
+#boss-banner {
+  display: none;
+  position: absolute;
+  top: 82px;
+  left: 50%;
+  width: min(32vw, 520px);
+  translate: -50% 0;
+  pointer-events: none;
+}
+#boss-banner.active { display: flex; }
+#game-canvas { touch-action: none; }
+#game-hud { justify-content: flex-end; }
+body:has(.screen-overlay:not(.hidden), .modal-backdrop.open) #mobile-controls { visibility: hidden; }
+.screen-overlay { height: 100dvh; overflow-y: auto; justify-content: safe center; }
+.modal-backdrop { height: 100dvh; }
+body:has(#mobile-controls.active) .hud-bottom-nav { display: none; }
+body:has(#mobile-controls.active) .hud-bottom-center { padding-bottom: 118px; }
+.mobile-action-buttons { grid-template-columns: repeat(2, 50px); gap: 7px; bottom: 12px; right: 12px; }
+.btn-touch-action, .btn-touch-action.attack { width: 50px; height: 50px; font-size: 10px; }
+.btn-touch-action.attack { grid-column: auto; grid-row: auto; }
+.btn-touch-action.secondary { grid-column: 1 / -1; justify-self: end; height: 35px; width: 70px; border-radius: 10px; }
+.joystick-zone { width: 108px; height: 108px; left: 14px; bottom: 14px; }
+button:focus-visible { outline: 2px solid #a7efd3; outline-offset: 2px; }
+@media (max-width: 1020px), (max-height: 520px) {
+  .roblox-top-bar { padding: 6px; }
+  .roblox-avatar-circle, .roblox-dev-btn, .roblox-time-badge { display: none; }
+  .roblox-player-frame { padding: 4px 6px; }
+  .roblox-bar-num { min-width: 0; }
+  .roblox-bar-track { height: 6px; }
+  .btn-roblox-tool { min-height: 36px; padding: 6px; }
+  .hud-top-right { top: 62px; left: 6px; width: min(235px, calc(100vw - 12px)); }
+  .realm-badge { padding: 4px 6px; }
+  .realm-text, .quest-name { font-size: 12px; }
+  .quest-objective { font-size: 11px; }
+  .quest-tracker-title { font-size: 9px; margin-bottom: 3px; }
+  .quest-progress-bar { display: none; }
+  #boss-banner { top: 214px; width: min(70vw, 360px); }
+  #boss-banner .boss-name { font-size: 16px; }
+  #boss-banner .boss-bar-frame { height: 13px; }
+  #boss-banner .boss-level-subtitle { font-size: 10px; }
+  #boss-banner :is(.boss-skull-medallion, .boss-star-crest) { display: none; }
+  #calculus-live-hud { max-height: 26dvh; overflow-y: auto; }
+  .hud-bottom-nav { flex-wrap: wrap; justify-content: center; gap: 4px; }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  body:has(#mobile-controls.active) .hud-bottom-center { padding-bottom: 0; }
+  .hud-bottom-center { max-width: 52vw; }
+  #boss-banner { top: 64px; left: auto; right: 8px; translate: none; width: min(36vw, 310px); }
+  .hud-top-right { width: min(34vw, 235px); }
+  #interact-prompt { max-width: 48vw; }
+}
+@media (max-width: 360px) {
+  #btn-capture-mouse, .roblox-bar-num { display: none !important; }
+}
+
+.roblox-stat-stack .hearts-row { gap: 3px; margin: 0; }
+.roblox-stat-stack .heart-icon { width: 14px; height: 14px; }
+body:has(#boss-banner.active) #toast-container { top: auto; bottom: 110px; }
+@media (max-width: 1020px), (max-height: 520px) {
+  .hud-top-right { top: 88px; }
+  .btn-roblox-tool { font-size: 10px; }
+}
+@media (max-width: 380px) {
+  .roblox-bar-track { width: 29px; }
+  .btn-roblox-tool { font-size: 9px; padding: 4px; }
+}
