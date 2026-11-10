@@ -1,0 +1,51 @@
+name: Build Dark Fantasy GLB Assets
+
+on:
+  push:
+    branches:
+      - feature/dark-fantasy-3d-overhaul
+    paths:
+      - 'tools/build_models.py'
+      - 'tests/validate_dark_fantasy_assets.py'
+      - 'tests/dark-fantasy-smoke-test.js'
+      - 'js/dark-fantasy-overhaul.js'
+      - '.github/workflows/build-dark-fantasy-models.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-models:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install 3D generation dependencies
+        run: python -m pip install 'trimesh>=4,<5' numpy pillow
+      - name: Generate 43 importable GLB models
+        run: python tools/build_models.py
+      - name: Validate geometry and GLB structure
+        run: python tests/validate_dark_fantasy_assets.py
+      - name: Validate integration script
+        run: |
+          node --check js/dark-fantasy-overhaul.js
+          node tests/dark-fantasy-smoke-test.js
+      - name: Commit generated assets back to this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add game-art/dark-fantasy/ asset-manifest.json
+          if git diff --cached --quiet; then
+            echo "Generated GLBs already match the committed version."
+          else
+            git commit -m "build(art): generate 43 validated dark fantasy GLB models"
+            git push origin HEAD:feature/dark-fantasy-3d-overhaul
+          fi
