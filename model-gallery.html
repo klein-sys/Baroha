@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Baroha Dark Fantasy — GLB Model Gallery</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0c0d12;color:#eae4dc;font:14px/1.5 system-ui,'Segoe UI',sans-serif;display:grid;grid-template-columns:294px 1fr;height:100vh;overflow:hidden}
+aside{background:#16171e;border-right:1px solid #353039;padding:22px;overflow:auto}h1{font-family:Georgia,serif;font-size:24px;line-height:1.1;margin:0;color:#f0d6ab}small,.muted{color:#aaa3a5}p{margin:10px 0 20px}input{display:block;width:100%;padding:10px;border:1px solid #5b4c51;border-radius:6px;background:#23242c;color:#fff;margin-bottom:16px}
+label{display:block;color:#d7b58e;font-size:11px;font-weight:bold;letter-spacing:1.6px;margin:17px 0 8px;text-transform:uppercase}.model{display:block;text-align:left;width:100%;border:0;background:transparent;color:#dad2cb;padding:7px 10px;border-radius:6px;cursor:pointer}.model:hover{background:#30313a}.model.active{background:#5d3442;color:#fff}
+main{position:relative;min-width:0;background:radial-gradient(ellipse at 50% 35%,#30303b,#101118 72%)}canvas{display:block;width:100%;height:100%}#summary{position:absolute;bottom:18px;left:24px;right:24px;padding:16px 18px;pointer-events:none;background:rgba(18,19,26,.76);border:1px solid #554c53;border-radius:8px;backdrop-filter:blur(7px)}#summary strong{display:block;font:27px Georgia,serif;color:#f6ddbc}#info{color:#a9abae;font-size:12px}#status{position:absolute;top:20px;left:24px;background:#15161ecc;border:1px solid #4f4344;border-radius:8px;padding:8px 11px;color:#d8bea3}.badge{display:inline-block;margin-top:4px;background:#332730;padding:3px 8px;border-radius:4px;color:#cdbbba}@media(max-width:660px){body{grid-template-columns:132px 1fr}aside{padding:12px}h1{font-size:18px}#summary strong{font-size:20px}.model{font-size:12px}}
+</style></head><body>
+<aside><h1>THE FORBIDDEN REALM</h1><p class="muted">Dark Fantasy Model Gallery</p><input id="filter" placeholder="Find model…" aria-label="Filter models"><div id="list"></div><p class="muted" style="font-size:11px">Preview imports real GLB geometry with Three.js r128. Original procedural art; not scanned or rigged assets.</p></aside>
+<main><div id="status">Loading…</div><div id="summary"><strong id="title">Model Preview</strong><span id="info">Drag to rotate · scroll to zoom · select an asset on the left</span><div class="badge" id="stats">glTF 2.0 · PBR</div></div></main>
+<script src="js/three.min.js"></script>
+<script src="js/vendor/GLTFLoader.js"></script>
+<script>
+const sections={
+ 'PLAYER ARMOR':['hero_torso','hero_helmet','hero_arm','hero_leg','hero_cape','hero_runeblade'],
+ 'BOSSES':['dark_witch','lich_king','dragon_body','dragon_head','dragon_wing'],
+ 'ENEMIES':['forest_imp','shadow_wolf','skeleton_scholar','undead_knight','summoned_skeleton','dimensional_phantom','phantom_mage'],
+ 'FOREST & KINGDOM':['gothic_tree','glow_mushroom','castle_gate','crypt_gate','village_house','spectral_brazier','gothic_pillar','tombstone','adventurer_bed','training_dummy'],
+ 'COSMOS & CALCULUS':['dimensional_tower','azrael_nexus','npc_spirit','rift_seal_obelisks','piecewise_bridge_pedestal','leyline_shrine','oscillating_platform','mana_well'],
+ 'LOOT':['chest','key','potion','mana','xp','golden_heart','scroll']};
+const readable=n=>n.replace(/_/g,' ').replace(/\b\w/g,m=>m.toUpperCase());
+const camera=new THREE.PerspectiveCamera(48,1,.05,300),scene=new THREE.Scene();scene.background=new THREE.Color(0x151720);
+scene.add(new THREE.HemisphereLight(0x9caad6,0x3b2a25,2));
+const key=new THREE.DirectionalLight(0xffd7ae,2.5);key.position.set(8,15,12);scene.add(key);
+const rim=new THREE.DirectionalLight(0x9972b7,1.3);rim.position.set(-7,8,-10);scene.add(rim);
+const holder=new THREE.Group();scene.add(holder);
+const grid=new THREE.GridHelper(24,24,0x695668,0x34323a);grid.position.y=-.015;scene.add(grid);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.4;
+document.querySelector('main').appendChild(renderer.domElement);
+const resize=()=>{const p=document.querySelector('main');renderer.setSize(p.clientWidth,p.clientHeight);camera.aspect=p.clientWidth/p.clientHeight;camera.updateProjectionMatrix();};window.addEventListener('resize',resize);resize();
+const load=new THREE.GLTFLoader();let yaw=.62,pitch=.25,radius=7,model=null,sequence=0;
+function updateCamera(){const p=new THREE.Vector3(radius*Math.sin(yaw)*Math.cos(pitch),radius*Math.sin(pitch),radius*Math.cos(yaw)*Math.cos(pitch));camera.position.copy(p);camera.lookAt(0,0,0)}
+function select(name){sequence++;const mySeq=sequence;
+ document.querySelectorAll('.model').forEach(b=>b.classList.toggle('active',b.dataset.asset===name));
+ document.getElementById('title').textContent=readable(name);document.getElementById('status').textContent='Loading '+name+'.glb…';
+ load.load('game-art/dark-fantasy/'+name+'.glb',g=>{
+  if(mySeq!==sequence)return;holder.clear();model=g.scene;
+  const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+  model.position.sub(center);holder.add(model);
+  let triangles=0,parts=0;model.traverse(o=>{if(o.isMesh){parts++;triangles+=o.geometry.index?o.geometry.index.count/3:o.geometry.attributes.position.count/3;}});
+  radius=Math.max(2.5,size.length()*1.45);yaw=.6;pitch=.22;grid.position.y=-size.y/2-.02;
+  document.getElementById('status').textContent='Loaded';
+  document.getElementById('stats').textContent=parts+' material meshes · '+Math.round(triangles).toLocaleString()+' triangles · '+size.y.toFixed(2)+' units tall';
+  updateCamera();
+ },undefined,e=>{if(mySeq===sequence)document.getElementById('status').textContent='Load failed — serve from localhost. Check console.';console.error(e);});
+}
+const list=document.getElementById('list');function renderList(q=''){list.innerHTML='';Object.entries(sections).forEach(([category,names])=>{const filtered=names.filter(x=>x.includes(q.toLowerCase().trim()));if(!filtered.length)return;
+ const label=document.createElement('label');label.textContent=category;list.appendChild(label);
+ filtered.forEach(name=>{const b=document.createElement('button');b.type='button';b.className='model';b.dataset.asset=name;b.textContent=readable(name);b.onclick=()=>select(name);list.appendChild(b);});
+});}renderList();document.getElementById('filter').addEventListener('input',e=>renderList(e.target.value));
+let dragging=false,lastX=0,lastY=0;renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});
+renderer.domElement.addEventListener('pointerup',()=>dragging=false);
+renderer.domElement.addEventListener('pointermove',e=>{if(!dragging)return;yaw+=(e.clientX-lastX)*.008;pitch=Math.max(-1.1,Math.min(1.1,pitch+(lastY-e.clientY)*.008));lastX=e.clientX;lastY=e.clientY;});
+renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();radius=Math.max(1.2,Math.min(130,radius*Math.exp(e.deltaY*.001)));},{passive:false});
+function frame(){requestAnimationFrame(frame);updateCamera();renderer.render(scene,camera)}select('dark_witch');frame();
+</script></body></html>
