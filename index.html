@@ -1200,6 +1200,11 @@
   </script>
   <script src="js/vendor/GLTFLoader.js"></script>
   <script src="js/vendor/SkeletonUtils.js"></script>
+  <script>
+    if (location.protocol === 'file:') {
+      document.write('<script src="js/dark-fantasy-offline.js"><' + '/script>');
+    }
+  </script>
   <script src="js/realm-art.js"></script>
   <script src="js/calculusEngine.js"></script>
   <script src="js/audio.js"></script>

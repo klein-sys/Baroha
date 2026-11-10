@@ -10,11 +10,27 @@ const realmArt = {
 
 const realmModels = new Map();
 
+function _decodeOfflineGLB(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+
 function applyRealmModel(name, parent, fallback, height, groundOffset = 0) {
-  if (!THREE.GLTFLoader || location.protocol === 'file:') return;
+  if (!THREE.GLTFLoader) return;
+  const assetPath = realmArt[name] || '';
+  const offlineKey = assetPath.startsWith('dark-fantasy/') ? assetPath.slice('dark-fantasy/'.length).replace(/\.glb$/i, '') : '';
+  const hasOffline = !!(typeof window !== 'undefined' && window.DARK_FANTASY_OFFLINE_GLB && offlineKey && window.DARK_FANTASY_OFFLINE_GLB[offlineKey]);
+  if (location.protocol === 'file:' && !hasOffline) return;
+
   if (!realmModels.has(name)) {
     const loader = new THREE.GLTFLoader();
-    realmModels.set(name, loader.loadAsync('game-art/' + realmArt[name]).then(({scene}) => {
+    const loadPromise = (location.protocol === 'file:' && hasOffline && typeof loader.parse === 'function')
+      ? new Promise((resolve, reject) => loader.parse(_decodeOfflineGLB(window.DARK_FANTASY_OFFLINE_GLB[offlineKey]), '', resolve, reject))
+      : loader.loadAsync('game-art/' + assetPath);
+
+    realmModels.set(name, loadPromise.then(({scene}) => {
       const bounds = new THREE.Box3().setFromObject(scene);
       const center = bounds.getCenter(new THREE.Vector3());
       scene.position.set(-center.x, -bounds.min.y, -center.z);

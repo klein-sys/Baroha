@@ -44,9 +44,23 @@
       }
     });
   }
+  function decodeBase64ArrayBuffer(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+  }
+  function hasOfflineGLB(name) {
+    return !!(typeof window !== 'undefined' && window.DARK_FANTASY_OFFLINE_GLB && name && window.DARK_FANTASY_OFFLINE_GLB[name]);
+  }
   function getScene(name) {
     if (!cache.has(name)) {
-      cache.set(name, loader.loadAsync(BASE + name + '.glb')
+      const isFile = typeof location !== 'undefined' && location.protocol === 'file:';
+      const gltfPromise = (isFile && hasOfflineGLB(name) && typeof loader.parse === 'function')
+        ? new Promise((resolve, reject) => loader.parse(decodeBase64ArrayBuffer(window.DARK_FANTASY_OFFLINE_GLB[name]), '', resolve, reject))
+        : loader.loadAsync(BASE + name + '.glb');
+
+      cache.set(name, gltfPromise
         .then(({scene}) => {
           markSharedResources(scene);
           return scene;
@@ -104,9 +118,10 @@
     }
   }
   function attach(name, parent, fallback, options) {
-    if (!parent || !name || location.protocol === 'file:') {
-      if (location.protocol === 'file:' && !warningShown) {
-        console.warn('[Dark Fantasy] GLB loading needs http://localhost (not file://).');
+    const isFile = typeof location !== 'undefined' && location.protocol === 'file:';
+    if (!parent || !name || (isFile && !hasOfflineGLB(name))) {
+      if (isFile && !warningShown) {
+        console.warn('[Dark Fantasy] GLB loading needs http://localhost or dark-fantasy-offline.js (not file://).');
         warningShown = true;
       }
       return Promise.resolve(null);
@@ -249,7 +264,7 @@
     const created = this.worldObjects.slice(before.world);
     const target = created.find(o => o.isGroup) || created[0];
     if (!target || target.userData.darkFantasyVisual) return;
-    if (typeof location !== 'undefined' && location.protocol === 'file:') return;
+    if (typeof location !== 'undefined' && location.protocol === 'file:' && !hasOfflineGLB('village_house')) return;
 
     getScene('village_house').then(template => {
       if (!template || !inScene(target) || target.userData.darkFantasyVisual) return;

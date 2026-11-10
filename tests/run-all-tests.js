@@ -494,6 +494,55 @@ try {
   assert(false, `World Physics & House/Door/Sleep test: ${e.message}`);
 }
 
+// 8. Verify Offline file:// Dark Fantasy Bundle (opening index.html directly from folder)
+try {
+  const html = fs.readFileSync('index.html', 'utf8');
+  assert(
+    html.includes("location.protocol === 'file:'") && html.includes('js/dark-fantasy-offline.js'),
+    'index.html loads js/dark-fantasy-offline.js automatically on file:// opens'
+  );
+
+  vm.runInThisContext(fs.readFileSync('js/dark-fantasy-offline.js', 'utf8'), { filename: 'js/dark-fantasy-offline.js' });
+  const offlineCount = Object.keys(global.DARK_FANTASY_OFFLINE_GLB || {}).length;
+  assert(offlineCount === 43, `Offline GLB bundle embeds all 43 Dark Fantasy models (found ${offlineCount})`);
+
+  // Verify realm-art.js routes through GLTFLoader.parse on file:// when DARK_FANTASY_OFFLINE_GLB is present
+  let parseInvocations = 0;
+  const PrevGLTFLoader = global.THREE.GLTFLoader;
+  const PrevLoc = global.location;
+  global.location = { protocol: 'file:' };
+  global.THREE.Box3 = class {
+    setFromObject() { return this; }
+    getCenter() { return new global.THREE.Vector3(); }
+    getSize() { return new global.THREE.Vector3(1, 2, 1); }
+    get min() { return { y: 0 }; }
+    get max() { return { y: 2 }; }
+  };
+  global.THREE.SkeletonUtils = { clone: (s) => s.clone ? s.clone() : s };
+  global.THREE.GLTFLoader = class {
+    parse(buf, path, onLoad) {
+      parseInvocations++;
+      assert(buf instanceof ArrayBuffer && buf.byteLength > 100, 'Decoded offline GLB passes valid ArrayBuffer to GLTFLoader.parse');
+      onLoad({ scene: new global.THREE.Group() });
+    }
+    loadAsync() {
+      throw new Error('Should not call loadAsync on file:// when offline bundle is available');
+    }
+  };
+  vm.runInThisContext(fs.readFileSync('js/realm-art.js', 'utf8'), { filename: 'js/realm-art.js' });
+  const testGroup = new global.THREE.Group();
+  testGroup.parent = new global.THREE.Scene();
+  global._testGroup = testGroup;
+  vm.runInThisContext("realmArt.pine = 'dark-fantasy/gothic_tree.glb'; applyRealmModel('pine', global._testGroup, [], 6);", { filename: 'test-offline-realm-art.js' });
+  assert(parseInvocations === 1, 'realm-art uses offline GLTFLoader.parse seamlessly under file://');
+  delete global._testGroup;
+
+  global.THREE.GLTFLoader = PrevGLTFLoader;
+  global.location = PrevLoc;
+} catch (e) {
+  assert(false, `Offline file:// GLB fallback test: ${e.message}`);
+}
+
 console.log('=== TEST SUITE COMPLETED ===');
 if (failures > 0) {
   console.error(`Total failures: ${failures}`);

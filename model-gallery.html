@@ -11,6 +11,7 @@ main{position:relative;min-width:0;background:radial-gradient(ellipse at 50% 35%
 <main><div id="status">Loading…</div><div id="summary"><strong id="title">Model Preview</strong><span id="info">Drag to rotate · scroll to zoom · select an asset on the left</span><div class="badge" id="stats">glTF 2.0 · PBR</div></div></main>
 <script src="js/three.min.js"></script>
 <script src="js/vendor/GLTFLoader.js"></script>
+<script>if(location.protocol==='file:')document.write('<script src="js/dark-fantasy-offline.js"><'+'/script>');</script>
 <script>
 const sections={
  'PLAYER ARMOR':['hero_torso','hero_helmet','hero_arm','hero_leg','hero_cape','hero_runeblade'],
@@ -32,19 +33,27 @@ document.querySelector('main').appendChild(renderer.domElement);
 const resize=()=>{const p=document.querySelector('main');renderer.setSize(p.clientWidth,p.clientHeight);camera.aspect=p.clientWidth/p.clientHeight;camera.updateProjectionMatrix();};window.addEventListener('resize',resize);resize();
 const load=new THREE.GLTFLoader();let yaw=.62,pitch=.25,radius=7,model=null,sequence=0;
 function updateCamera(){const p=new THREE.Vector3(radius*Math.sin(yaw)*Math.cos(pitch),radius*Math.sin(pitch),radius*Math.cos(yaw)*Math.cos(pitch));camera.position.copy(p);camera.lookAt(0,0,0)}
+function onModelLoaded(mySeq,g){
+ if(mySeq!==sequence)return;holder.clear();model=g.scene;
+ const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+ model.position.sub(center);holder.add(model);
+ let triangles=0,parts=0;model.traverse(o=>{if(o.isMesh){parts++;triangles+=o.geometry.index?o.geometry.index.count/3:o.geometry.attributes.position.count/3;}});
+ radius=Math.max(2.5,size.length()*1.45);yaw=.6;pitch=.22;grid.position.y=-size.y/2-.02;
+ document.getElementById('status').textContent='Loaded';
+ document.getElementById('stats').textContent=parts+' material meshes · '+Math.round(triangles).toLocaleString()+' triangles · '+size.y.toFixed(2)+' units tall';
+ updateCamera();
+}
+function onModelError(mySeq,e){if(mySeq===sequence)document.getElementById('status').textContent='Load failed — serve from localhost. Check console.';console.error(e);}
 function select(name){sequence++;const mySeq=sequence;
  document.querySelectorAll('.model').forEach(b=>b.classList.toggle('active',b.dataset.asset===name));
  document.getElementById('title').textContent=readable(name);document.getElementById('status').textContent='Loading '+name+'.glb…';
- load.load('game-art/dark-fantasy/'+name+'.glb',g=>{
-  if(mySeq!==sequence)return;holder.clear();model=g.scene;
-  const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
-  model.position.sub(center);holder.add(model);
-  let triangles=0,parts=0;model.traverse(o=>{if(o.isMesh){parts++;triangles+=o.geometry.index?o.geometry.index.count/3:o.geometry.attributes.position.count/3;}});
-  radius=Math.max(2.5,size.length()*1.45);yaw=.6;pitch=.22;grid.position.y=-size.y/2-.02;
-  document.getElementById('status').textContent='Loaded';
-  document.getElementById('stats').textContent=parts+' material meshes · '+Math.round(triangles).toLocaleString()+' triangles · '+size.y.toFixed(2)+' units tall';
-  updateCamera();
- },undefined,e=>{if(mySeq===sequence)document.getElementById('status').textContent='Load failed — serve from localhost. Check console.';console.error(e);});
+ if(location.protocol==='file:'&&window.DARK_FANTASY_OFFLINE_GLB&&window.DARK_FANTASY_OFFLINE_GLB[name]){
+  const bin=atob(window.DARK_FANTASY_OFFLINE_GLB[name]),bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  load.parse(bytes.buffer,'',g=>onModelLoaded(mySeq,g),e=>onModelError(mySeq,e));
+ }else{
+  load.load('game-art/dark-fantasy/'+name+'.glb',g=>onModelLoaded(mySeq,g),undefined,e=>onModelError(mySeq,e));
+ }
 }
 const list=document.getElementById('list');function renderList(q=''){list.innerHTML='';Object.entries(sections).forEach(([category,names])=>{const filtered=names.filter(x=>x.includes(q.toLowerCase().trim()));if(!filtered.length)return;
  const label=document.createElement('label');label.textContent=category;list.appendChild(label);
