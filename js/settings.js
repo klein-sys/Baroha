@@ -74,7 +74,23 @@ class SettingsManager {
         window.game.renderer.setSize(window.innerWidth, window.innerHeight);
         const enableShadows = !!g.dynamicLighting && g.preset !== 'low';
         if (window.game.renderer.shadowMap) {
+          const prev = window.game.renderer.shadowMap.enabled;
           window.game.renderer.shadowMap.enabled = enableShadows;
+          if (prev !== enableShadows) {
+            window.game.renderer.shadowMap.needsUpdate = true;
+            if (window.game.scene && typeof window.game.scene.traverse === 'function') {
+              window.game.scene.traverse(obj => {
+                if (obj.userData && obj.userData.darkFantasyVisual && typeof obj.userData.darkFantasyVisual.traverse === 'function') {
+                  obj.userData.darkFantasyVisual.traverse(m => {
+                    if (m.isMesh) {
+                      m.castShadow = enableShadows;
+                      m.receiveShadow = enableShadows;
+                    }
+                  });
+                }
+              });
+            }
+          }
         }
         if (window.game.dayNight && window.game.dayNight.sunLight) {
           window.game.dayNight.sunLight.castShadow = enableShadows;

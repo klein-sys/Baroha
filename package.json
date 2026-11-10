@@ -6,7 +6,7 @@
   "scripts": {
     "start": "npx serve -s .",
     "dev": "npx serve -s .",
-    "test": "node tests/run-all-tests.js"
+    "test": "node tests/run-all-tests.js && node tests/dark-fantasy-smoke-test.js"
   },
   "keywords": [
     "threejs",
