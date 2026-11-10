@@ -1,0 +1,738 @@
+{
+  "project": "Baroha Dark Fantasy Overhaul",
+  "model_count": 43,
+  "total_triangles_across_unique_assets": 62470,
+  "models": [
+    {
+      "name": "adventurer_bed",
+      "size_bytes": 86404,
+      "sha256": "a4b8b21e9ae501a9839ff5f6139f2840774ed15d5f4307486c8bf197be67405e",
+      "triangles": 192,
+      "pbr_material_meshes": 4,
+      "bounds_min": [
+        -0.8381769061088562,
+        0.0,
+        -1.399999976158142
+      ],
+      "bounds_max": [
+        0.8381769061088562,
+        0.9399999976158142,
+        1.399999976158142
+      ]
+    },
+    {
+      "name": "azrael_nexus",
+      "size_bytes": 172844,
+      "sha256": "4b88bdeced6b0ac377ed8e9acfa4d65c53368bbb5ce34daa28d528519c94b4da",
+      "triangles": 4408,
+      "pbr_material_meshes": 5,
+      "bounds_min": [
+        -4.400000095367432,
+        1.600000023841858,
+        -4.009308338165283
+      ],
+      "bounds_max": [
+        4.400000095367432,
+        10.399999618530273,
+        4.009308338165283
+      ]
+    },
+    {
+      "name": "castle_gate",
+      "size_bytes": 376884,
+      "sha256": "f26c2218e4e1173a2031d748a4fa3d27e490708686be67037fb87488e45ad309",
+      "triangles": 10672,
+      "pbr_material_meshes": 6,
+      "bounds_min": [
+        -5.079999923706055,
+        0.0,
+        -1.0399999618530273
+      ],
+      "bounds_max": [
+        5.079999923706055,
+        10.399999618530273,
+        1.1799999475479126
+      ]
+    },
+    {
+      "name": "chest",
+      "size_bytes": 102028,
+      "sha256": "8f7da37a0a884894e4fd6175e1f9c4d11eab3f204f6ec6c8c388a25c40a2a4cd",
+      "triangles": 140,
+      "pbr_material_meshes": 5,
+      "bounds_min": [
+        -0.5799999833106995,
+        0.05000000074505806,
+        -0.4449999928474426
+      ],
+      "bounds_max": [
+        0.5799999833106995,
+        0.8349999785423279,
+        0.5350000262260437
+      ]
+    },
+    {
+      "name": "crypt_gate",
+      "size_bytes": 130596,
+      "sha256": "3ae3851f362e4124483e713cc193f0305d99048dac8dd547963f3bf07bd638ac",
+      "triangles": 2520,
+      "pbr_material_meshes": 4,
+      "bounds_min": [
+        -4.883200168609619,
+        -0.42800000309944153,
+        -0.4300000071525574
+      ],
+      "bounds_max": [
+        4.883200168609619,
+        9.428000450134277,
+        0.4300000071525574
+      ]
+    },
+    {
+      "name": "dark_witch",
+      "size_bytes": 228444,
+      "sha256": "e1a8801fe1a37c3cbb197ec23d3da83bcbcdb4ccd488f8fb9015bdd2efc765f9",
+      "triangles": 2128,
+      "pbr_material_meshes": 9,
+      "bounds_min": [
+        -1.2599999904632568,
+        -0.44999998807907104,
+        -0.9060231447219849
+      ],
+      "bounds_max": [
+        1.2599999904632568,
+        3.740000009536743,
+        0.9060231447219849
+      ]
+    },
+    {
+      "name": "dimensional_phantom",
+      "size_bytes": 154428,
+      "sha256": "2b6bafc83bbba1d32338883c651936a0d683695c91c18dda7888ad3a4bfbe6ed",
+      "triangles": 1004,
+      "pbr_material_meshes": 7,
+      "bounds_min": [
+        -1.0800000429153442,
+        0.12999999523162842,
+        -0.3607233166694641
+      ],
+      "bounds_max": [
+        1.0800000429153442,
+        2.440000057220459,
+        0.4449999928474426
+      ]
+    },
+    {
+      "name": "dimensional_tower",
+      "size_bytes": 107284,
+      "sha256": "028ef60c24fd0b0b40b889c8709fbb37c0589492e73413a2a2888b53eda44a3f",
+      "triangles": 1384,
+      "pbr_material_meshes": 4,
+      "bounds_min": [
+        -1.7000000476837158,
+        0.0,
+        -1.7000000476837158
+      ],
+      "bounds_max": [
+        1.7000000476837158,
+        10.140000343322754,
+        1.7000000476837158
+      ]
+    },
+    {
+      "name": "dragon_body",
+      "size_bytes": 151920,
+      "sha256": "62adc4c11f0b3ae9e1885d5e778f79755ec6daee02f5c3e73b57ba9b1060d95c",
+      "triangles": 2066,
+      "pbr_material_meshes": 5,
+      "bounds_min": [
+        -3.2200000286102295,
+        -4.590000152587891,
+        -7.518057346343994
+      ],
+      "bounds_max": [
+        3.2200000286102295,
+        3.549999952316284,
+        5.5
+      ]
+    },
+    {
+      "name": "dragon_head",
+      "size_bytes": 118504,
+      "sha256": "bbc0744c5584dd29fd3746723958b73168fa2caff8f03706de97e5d65c5ab461",
+      "triangles": 910,
+      "pbr_material_meshes": 5,
+      "bounds_min": [
+        -1.8600000143051147,
+        -1.090000033378601,
+        -1.649999976158142
+      ],
+      "bounds_max": [
+        1.8600000143051147,
+        3.1700000762939453,
+        3.7100000381469727
+      ]
+    },
+    {
+      "name": "dragon_wing",
+      "size_bytes": 94368,
+      "sha256": "ce975f613dabbb1182c761e898eff84d2a4700109c63cd9537297a60b3468039",
+      "triangles": 498,
+      "pbr_material_meshes": 4,
+      "bounds_min": [
+        -0.11169353127479553,
+        -3.0999999046325684,
+        -2.655836820602417
+      ],
+      "bounds_max": [
+        9.600000381469727,
+        4.650000095367432,
+        0.14603587985038757
+      ]
+    },
+    {
+      "name": "forest_imp",
+      "size_bytes": 176316,
+      "sha256": "4bd21f908988457daa398e4ea02ab346e69d972db2a7e9dfcb7822d898a26167",
+      "triangles": 1704,
+      "pbr_material_meshes": 7,
+      "bounds_min": [
+        -1.2666289806365967,
+        0.009999999776482582,
+        -0.4878428280353546
+      ],
+      "bounds_max": [
+        1.2676016092300415,
+        2.5,
+        0.5199999809265137
+      ]
+    },
+    {
+      "name": "glow_mushroom",
+      "size_bytes": 45508,
+      "sha256": "092b0f85b00688da4bae8158f543eb49a7e61fdb753effc2fe9235740a4fd73a",
+      "triangles": 424,
+      "pbr_material_meshes": 2,
+      "bounds_min": [
+        -0.4000000059604645,
+        0.0,
+        -0.37047260999679565
+      ],
+      "bounds_max": [
+        0.4000000059604645,
+        0.75,
+        0.37047260999679565
+      ]
+    },
+    {
+      "name": "golden_heart",
+      "size_bytes": 39492,
+      "sha256": "68b672ddb9b70330050730f47996bdcc88368a902ed8792abfa53dcb15af3e11",
+      "triangles": 116,
+      "pbr_material_meshes": 2,
+      "bounds_min": [
+        -0.3499999940395355,
+        -0.3700000047683716,
+        -0.25999999046325684
+      ],
+      "bounds_max": [
+        0.3499999940395355,
+        0.3700000047683716,
+        0.25999999046325684
+      ]
+    },
+    {
+      "name": "gothic_pillar",
+      "size_bytes": 136964,
+      "sha256": "83717ca0445af1d50913e81621130221ff3a3f70bec8576092697980de87c98c",
+      "triangles": 2980,
+      "pbr_material_meshes": 3,
+      "bounds_min": [
+        -0.974737823009491,
+        0.0,
+        -0.9195598363876343
+      ],
+      "bounds_max": [
+        0.974737823009491,
+        8.430000305175781,
+        0.9195598363876343
+      ]
+    },
+    {
+      "name": "gothic_tree",
+      "size_bytes": 68588,
+      "sha256": "2d76e1eac423534964872d6bb189e0ac8afb441ea05c79a7da4cc29f05247c5a",
+      "triangles": 1074,
+      "pbr_material_meshes": 2,
+      "bounds_min": [
+        -3.450000047683716,
+        0.0,
+        -3.75
+      ],
+      "bounds_max": [
+        3.950000047683716,
+        6.849999904632568,
+        3.3499999046325684
+      ]
+    },
+    {
+      "name": "hero_arm",
+      "size_bytes": 145716,
+      "sha256": "ba7518a0dfb41469fba8d5799870340c11c0fc7c7805aa52fe111f9189fc22f4",
+      "triangles": 1744,
+      "pbr_material_meshes": 5,
+      "bounds_min": [
+        -0.38999998569488525,
+        -1.0399999618530273,
+        -0.3100000023841858
+      ],
+      "bounds_max": [
+        0.38999998569488525,
+        0.12999999523162842,
+        0.3100000023841858
+      ]
+    },
+    {
+      "name": "hero_cape",
+      "size_bytes": 89084,
+      "sha256": "34762a196211dc27c55e74d226b74b58d6190c93d173f2b44b5e17fe3991608e",
+      "triangles": 212,
+      "pbr_material_meshes": 4,
+      "bounds_min": [
+        -0.5299999713897705,
+        -0.5899999737739563,
+        -0.2800000011920929
+      ],
+      "bounds_max": [
+        0.5299999713897705,
+        0.5,
+        0.07500000298023224
+      ]
+    },
+    {
+      "name": "hero_helmet",
+      "size_bytes": 155148,
+      "sha256": "adbd6f6a6adf8baa89a0769c5c3448af80c6711569d96829fc5deb23bad68872",
+      "triangles": 592,
+      "pbr_material_meshes": 7,
+      "bounds_min": [
+        -0.47999998927116394,
+        -0.33000001311302185,
+        -0.3499999940395355
+      ],
+      "bounds_max": [
+        0.47999998927116394,
+        0.6899999976158142,
+        0.43799999356269836
+      ]
+    },
+    {
+      "name": "hero_leg",
+      "size_bytes": 112776,
+      "sha256": "5b94b528975b03f8e6694d260e8fb44dc8d5a72be9231ec9247b7f205895c9e4",
+      "triangles": 362,
+      "pbr_material_meshes": 5,
+      "bounds_min": [
+        -0.23999999463558197,
+        -1.0399999618530273,
+        -0.20000000298023224
+      ],
+      "bounds_max": [
+        0.23999999463558197,
+        0.0,
+        0.5099999904632568
+      ]
+    },
+    {
+      "name": "hero_runeblade",
+      "size_bytes": 274896,
+      "sha256": "28575debd126f4d2eea3220e76c26bfa6c3b063d9a3d180d47a30fbc7fa4b8d5",
+      "triangles": 5656,
+      "pbr_material_meshes": 7,
+      "bounds_min": [
+        -0.5199999809265137,
+        -0.5400000214576721,
+        -0.10999999940395355
+      ],
+      "bounds_max": [
+        0.5199999809265137,
+        1.3300000429153442,
+        0.10999999940395355
+      ]
+    },
+    {
+      "name": "hero_torso",
+      "size_bytes": 191568,
+      "sha256": "db4ed0d6ca6f9561d384d3cb27fe96fe206cf49ade680d8a757d5ae836cdf623",
+      "triangles": 1280,
+      "pbr_material_meshes": 8,
+      "bounds_min": [
+        -0.5799999833106995,
+        -1.090000033378601,
+        -0.302227646112442
+      ],
+      "bounds_max": [
+        0.5799999833106995,
+        0.5978745222091675,
+        0.4359999895095825
+      ]
+    },
+    {
+      "name": "key",
+      "size_bytes": 59692,
+      "sha256": "e8eb7925150ca9b4db6907119f0c2c6285886e27fdbdd96ea9f765a524744ea3",
+      "triangles": 732,
+      "pbr_material_meshes": 2,
+      "bounds_min": [
+        -0.2816348075866699,
+        -0.5400000214576721,
+        -0.07999999821186066
+      ],
+      "bounds_max": [
+        0.2816348075866699,
+        0.5316348075866699,
+        0.07517541199922562
+      ]
+    },
+    {
+      "name": "leyline_shrine",
+      "size_bytes": 110200,
+      "sha256": "9bf9fcd028b825983f361f824119b41e5b8f83a6a1d3343fe7990b907313538b",
+      "triangles": 1616,
+      "pbr_material_meshes": 4,
+      "bounds_min": [
+        -2.0399999618530273,
+        0.0,
+        -2.0399999618530273
+      ],
+      "bounds_max": [
+        2.0399999618530273,
+        1.559999942779541,
+        2.0399999618530273
+      ]
+    },
+    {
+      "name": "lich_king",
+      "size_bytes": 218484,
+      "sha256": "a953e72673fd4742feae0959cc6435adfa1b9e884e6b569bfbb3cd22a31c2d01",
+      "triangles": 1586,
+      "pbr_material_meshes": 9,
+      "bounds_min": [
+        -1.1200000047683716,
+        -0.4000000059604645,
+        -0.6800000071525574
+      ],
+      "bounds_max": [
+        1.1200000047683716,
+        3.25,
+        0.6800000071525574
+      ]
+    },
+    {
+      "name": "mana",
+      "size_bytes": 39420,
+      "sha256": "f44a24d87ff0c89c07b8658131526d03fee78d7ba820d1ed98834d35fe2ed5d1",
+      "triangles": 116,
+      "pbr_material_meshes": 2,
+      "bounds_min": [
+        -0.3499999940395355,
+        -0.3700000047683716,
+        -0.25999999046325684
+      ],
+      "bounds_max": [
+        0.3499999940395355,
+        0.3700000047683716,
+        0.25999999046325684
+      ]
+    },
+    {
+      "name": "mana_well",
+      "size_bytes": 97240,
+      "sha256": "a0dd52c2f10e65c08d11a65b5025cad0ad393d802ff1482bcfa81dee42912f56",
+      "triangles": 1648,
+      "pbr_material_meshes": 3,
+      "bounds_min": [
+        -2.369999885559082,
+        0.0,
+        -2.3339943885803223
+      ],
+      "bounds_max": [
+        2.369999885559082,
+        0.8299999833106995,
+        2.3339943885803223
+      ]
+    },
+    {
+      "name": "npc_spirit",
+      "size_bytes": 102128,
+      "sha256": "e3cbc631da16ef1e2c1b5c95f344b028bbdf91e11debb5a1a757679b41383360",
+      "triangles": 468,
+      "pbr_material_meshes": 5,
+      "bounds_min": [
+        -0.8161423206329346,
+        0.0,
+        -0.5167117714881897
+      ],
+      "bounds_max": [
+        0.8218872547149658,
+        2.3299999237060547,
+        0.5199999809265137
+      ]
+    },
+    {
+      "name": "oscillating_platform",
+      "size_bytes": 97316,
+      "sha256": "0ca18d47b0cce2822634d0be611ae7fbdaadde1af9e851972be8963d8dea161b",
+      "triangles": 1872,
+      "pbr_material_meshes": 3,
+      "bounds_min": [
+        -2.3495054244995117,
+        -0.20258329808712006,
+        -2.3495054244995117
+      ],
+      "bounds_max": [
+        2.3495054244995117,
+        0.3119615316390991,
+        2.3495054244995117
+      ]
+    },
+    {
+      "name": "phantom_mage",
+      "size_bytes": 182744,
+      "sha256": "cb9c4796f04d48b7327a514f1902687ef75eb5c2462aea636b676c61de4603f4",
+      "triangles": 1036,
+      "pbr_material_meshes": 8,
+      "bounds_min": [
+        -1.0800000429153442,
+        0.1273290365934372,
+        -0.3607233166694641
+      ],
+      "bounds_max": [
+        1.4700000286102295,
+        3.2100000381469727,
+        0.47999998927116394
+      ]
+    },
+    {
+      "name": "piecewise_bridge_pedestal",
+      "size_bytes": 86384,
+      "sha256": "62fa4b0832086256f205b74a6440f64df96f5be15a896f3abdf76ff134158144",
+      "triangles": 912,
+      "pbr_material_meshes": 3,
+      "bounds_min": [
+        -4.349999904632568,
+        0.0,
+        -0.7200000286102295
+      ],
+      "bounds_max": [
+        -2.6500000953674316,
+        2.049999952316284,
+        0.7200000286102295
+      ]
+    },
+    {
+      "name": "potion",
+      "size_bytes": 60548,
+      "sha256": "bd02c4ab3dfab41149e792fef49f8b64e0f671bef1865cc28f9a01004a2d382e",
+      "triangles": 180,
+      "pbr_material_meshes": 3,
+      "bounds_min": [
+        -0.2199999988079071,
+        0.0,
+        -0.2199999988079071
+      ],
+      "bounds_max": [
+        0.2199999988079071,
+        0.8550000190734863,
+        0.2199999988079071
+      ]
+    },
+    {
+      "name": "rift_seal_obelisks",
+      "size_bytes": 85820,
+      "sha256": "8bcb0bb11ace227958c1413b68140a7440ca49521f0a8aaa244241957dd5d2c2",
+      "triangles": 1128,
+      "pbr_material_meshes": 3,
+      "bounds_min": [
+        -2.8692455291748047,
+        0.0,
+        -2.8692455291748047
+      ],
+      "bounds_max": [
+        2.8692455291748047,
+        4.039999961853027,
+        2.8692455291748047
+      ]
+    },
+    {
+      "name": "scroll",
+      "size_bytes": 60776,
+      "sha256": "1ff625ddbe5a1cb075ff854f31d51113a4a9288b865ee76beca0ae141b514083",
+      "triangles": 192,
+      "pbr_material_meshes": 3,
+      "bounds_min": [
+        -0.30000001192092896,
+        -0.08863269537687302,
+        -0.3100000023841858
+      ],
+      "bounds_max": [
+        0.30000001192092896,
+        0.08878730982542038,
+        0.30457234382629395
+      ]
+    },
+    {
+      "name": "shadow_wolf",
+      "size_bytes": 141736,
+      "sha256": "b0568445a25afa23a94dbab9c25c9cb98d1b5f445c0ba7fedfa277cfaec6fb2f",
+      "triangles": 1914,
+      "pbr_material_meshes": 5,
+      "bounds_min": [
+        -0.6600000262260437,
+        0.019999999552965164,
+        -1.8899999856948853
+      ],
+      "bounds_max": [
+        0.6600000262260437,
+        2.1500000953674316,
+        2.009999990463257
+      ]
+    },
+    {
+      "name": "skeleton_scholar",
+      "size_bytes": 156512,
+      "sha256": "2a0665f6f31b976dbb6cb0273d0d254342ac5c66d3b92c6fd154c1a212f3a6bd",
+      "triangles": 750,
+      "pbr_material_meshes": 7,
+      "bounds_min": [
+        -0.8999999761581421,
+        0.05999999865889549,
+        -0.38999998569488525
+      ],
+      "bounds_max": [
+        0.6970421671867371,
+        2.5299999713897705,
+        0.38999998569488525
+      ]
+    },
+    {
+      "name": "spectral_brazier",
+      "size_bytes": 80928,
+      "sha256": "333b865746b9e4efedb00ee8707dd86a20394a369a57475666032c21a2395946",
+      "triangles": 990,
+      "pbr_material_meshes": 3,
+      "bounds_min": [
+        -0.7300000190734863,
+        0.0,
+        -0.7300000190734863
+      ],
+      "bounds_max": [
+        0.7300000190734863,
+        2.5199999809265137,
+        0.7300000190734863
+      ]
+    },
+    {
+      "name": "summoned_skeleton",
+      "size_bytes": 115544,
+      "sha256": "1efdbf1ca81d5c3d4b4611472e744ff6b8e28b52d94c2335ac13f58a0a05be8e",
+      "triangles": 750,
+      "pbr_material_meshes": 5,
+      "bounds_min": [
+        -0.6933116912841797,
+        0.08322905004024506,
+        -0.25
+      ],
+      "bounds_max": [
+        0.7400000095367432,
+        2.1600000858306885,
+        0.3790000081062317
+      ]
+    },
+    {
+      "name": "tombstone",
+      "size_bytes": 95544,
+      "sha256": "be60e604771ef5485d11eeb21a17df2117cfa0eb4032bb963810b3ffa8089fda",
+      "triangles": 256,
+      "pbr_material_meshes": 4,
+      "bounds_min": [
+        -0.5149999856948853,
+        -0.02500000037252903,
+        -0.20000000298023224
+      ],
+      "bounds_max": [
+        0.5149999856948853,
+        1.399999976158142,
+        0.23000000417232513
+      ]
+    },
+    {
+      "name": "training_dummy",
+      "size_bytes": 152936,
+      "sha256": "6ce9ddfa8e6e48ffa6e2ed15f21ecf6bc9cfa9b127e2726e256ce38ee9c520d9",
+      "triangles": 2992,
+      "pbr_material_meshes": 4,
+      "bounds_min": [
+        -0.9971935153007507,
+        0.0,
+        -0.4039119780063629
+      ],
+      "bounds_max": [
+        0.9971935153007507,
+        2.630000114440918,
+        0.4039119780063629
+      ]
+    },
+    {
+      "name": "undead_knight",
+      "size_bytes": 141144,
+      "sha256": "027ea0bd9ec83ac35ae0f2973dd30ad4cb114bbf4ac2df1ced540061e44339d2",
+      "triangles": 948,
+      "pbr_material_meshes": 6,
+      "bounds_min": [
+        -0.7350000143051147,
+        0.07999999821186066,
+        -0.3100000023841858
+      ],
+      "bounds_max": [
+        0.7400000095367432,
+        2.490000009536743,
+        0.5400000214576721
+      ]
+    },
+    {
+      "name": "village_house",
+      "size_bytes": 90264,
+      "sha256": "f47d1209ca840d547117bc05f8ffbff958d374fa4939e9e6a01142dca3913ac9",
+      "triangles": 202,
+      "pbr_material_meshes": 4,
+      "bounds_min": [
+        -3.799999952316284,
+        0.0,
+        -3.3499999046325684
+      ],
+      "bounds_max": [
+        3.799999952316284,
+        7.0,
+        3.1500000953674316
+      ]
+    },
+    {
+      "name": "xp",
+      "size_bytes": 39340,
+      "sha256": "ecacb3eacdea69820e7a54e0fe5d072d77af68871abe0926126b6ee00cbd8515",
+      "triangles": 116,
+      "pbr_material_meshes": 2,
+      "bounds_min": [
+        -0.3499999940395355,
+        -0.3700000047683716,
+        -0.25999999046325684
+      ],
+      "bounds_max": [
+        0.3499999940395355,
+        0.3700000047683716,
+        0.25999999046325684
+      ]
+    }
+  ]
+}
