@@ -13,12 +13,16 @@ class EnemiesManager {
     this.bossPhase = 1;
     this.bossMaxHp = 300;
     this.bossHp = 300;
-    this.bossQuestionTimer = 0;
+    this.bossCalculusTimer = 0;
+    this._toPlayer = new THREE.Vector3();
   }
 
   clearEnemies() {
     this.enemies.forEach(e => {
-      if (e.mesh) this.scene.remove(e.mesh);
+      if (e.mesh) {
+        this.scene.remove(e.mesh);
+        window.game?.world?.disposeHierarchy?.(e.mesh);
+      }
     });
     this.enemies = [];
 
@@ -28,6 +32,7 @@ class EnemiesManager {
       window.bossesManager.clearBoss();
     } else if (this.activeBoss && this.activeBoss.mesh) {
       this.scene.remove(this.activeBoss.mesh);
+      window.game?.world?.disposeHierarchy?.(this.activeBoss.mesh);
       this.activeBoss = null;
     }
     this.isBossActive = false;
@@ -55,7 +60,10 @@ class EnemiesManager {
 
   despawnNightMonsters() {
     this.nightEnemies.forEach(e => {
-      if (e.mesh) this.scene.remove(e.mesh);
+      if (e.mesh) {
+        this.scene.remove(e.mesh);
+        window.game?.world?.disposeHierarchy?.(e.mesh);
+      }
       const idx = this.enemies.indexOf(e);
       if (idx !== -1) this.enemies.splice(idx, 1);
     });
@@ -413,7 +421,7 @@ class EnemiesManager {
       const enemy = this.enemies[i];
       if (enemy.isDead) continue;
 
-      const toPlayer = player.position.clone().sub(enemy.position);
+      const toPlayer = this._toPlayer.subVectors(player.position, enemy.position);
       const dist = toPlayer.length();
 
       const visual = enemy.mesh.userData.realmModel;
@@ -425,20 +433,27 @@ class EnemiesManager {
       // Look at player
       enemy.mesh.lookAt(player.position.x, enemy.mesh.position.y, player.position.z);
 
+      const world = window.game && window.game.world;
       if (dist < enemy.detectionRadius && dist > enemy.attackRadius) {
         // Move towards player
         toPlayer.y = 0;
         toPlayer.normalize();
         enemy.position.addScaledVector(toPlayer, enemy.speed * delta);
-        if (window.game && window.game.world) {
-          enemy.position.y = window.game.world.getTerrainHeight(enemy.position.x, enemy.position.z);
+        if (world) {
+          if (world.resolveHorizontalCollision) {
+            world.resolveHorizontalCollision(enemy.position, 0.5, enemy.position.y, enemy.position.y + 1.6);
+          }
+          enemy.position.y = world.getTerrainHeight(enemy.position.x, enemy.position.z, enemy.position.y);
         }
       } else if (dist <= enemy.attackRadius) {
-        // Attack player
-        enemy.attackTimer -= delta;
-        if (enemy.attackTimer <= 0) {
-          enemy.attackTimer = enemy.attackCooldown;
-          player.takeDamage(enemy.attackPower);
+        // Only strike player if unobstructed by a solid wall or closed door
+        const unobstructed = !world || !world.hasLineOfSight || world.hasLineOfSight(enemy.position, player.position);
+        if (unobstructed) {
+          enemy.attackTimer -= delta;
+          if (enemy.attackTimer <= 0) {
+            enemy.attackTimer = enemy.attackCooldown;
+            player.takeDamage(enemy.attackPower);
+          }
         }
       }
     }

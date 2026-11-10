@@ -20,12 +20,28 @@ global.document = {
     addEventListener: () => {},
     querySelectorAll: () => [],
     appendChild: () => {},
-    focus: () => {}
+    focus: () => {},
+    classList: { add: () => {}, remove: () => {}, contains: () => false },
+    style: {}
   }),
   querySelectorAll: () => [],
   addEventListener: () => {},
+  body: { appendChild: () => {} },
   exitPointerLock: () => {}
 };
+global.document.getElementById = (id) => ({
+  id,
+  innerText: '',
+  innerHTML: '',
+  style: {},
+  classList: { add: () => {}, remove: () => {}, contains: () => false },
+  addEventListener: () => {},
+  querySelectorAll: () => [],
+  appendChild: () => {},
+  focus: () => {}
+});
+global.location = { protocol: 'http:' };
+global.applyRealmModel = () => {};
 global.localStorage = {
   store: {},
   getItem(k) { return this.store[k] || null; },
@@ -34,6 +50,19 @@ global.localStorage = {
 };
 
 // Mock THREE.js
+const mockMat = class {
+  constructor() { this.color = { setHex() {} }; this.emissive = { setHex() {} }; }
+  dispose() {}
+};
+const mockGeom = class {
+  constructor() {
+    this.attributes = { position: { count: 0, getX: () => 0, getZ: () => 0, setY: () => {} } };
+  }
+  rotateX() {}
+  rotateY() {}
+  computeVertexNormals() {}
+  dispose() {}
+};
 global.THREE = {
   Vector3: class {
     constructor(x = 0, y = 0, z = 0) { this.x = x; this.y = y; this.z = z; }
@@ -42,12 +71,14 @@ global.THREE = {
     clone() { return new global.THREE.Vector3(this.x, this.y, this.z); }
     add(v) { this.x += v.x; this.y += v.y; this.z += v.z; return this; }
     sub(v) { this.x -= v.x; this.y -= v.y; this.z -= v.z; return this; }
+    subVectors(a, b) { this.x = a.x - b.x; this.y = a.y - b.y; this.z = a.z - b.z; return this; }
     multiplyScalar(s) { this.x *= s; this.y *= s; this.z *= s; return this; }
     addScaledVector(v, s) { this.x += v.x * s; this.y += v.y * s; this.z += v.z * s; return this; }
     length() { return Math.sqrt(this.x*this.x + this.y*this.y + this.z*this.z); }
     lengthSq() { return this.x*this.x + this.y*this.y + this.z*this.z; }
     normalize() { const l = this.length() || 1; this.x /= l; this.y /= l; this.z /= l; return this; }
     distanceTo(v) { return this.clone().sub(v).length(); }
+    dot(v) { return this.x * v.x + this.y * v.y + this.z * v.z; }
     project() { return this; }
   },
   Color: class {
@@ -56,13 +87,15 @@ global.THREE = {
     lerpColors() { return this; }
   },
   Group: class {
-    constructor() { this.children = []; this.position = new global.THREE.Vector3(); this.rotation = { x: 0, y: 0, z: 0, set() {} }; }
+    constructor() { this.children = []; this.position = new global.THREE.Vector3(); this.rotation = { x: 0, y: 0, z: 0, set() {} }; this.userData = {}; }
     add(m) { this.children.push(m); }
     remove() {}
+    traverse(fn) { fn(this); this.children.forEach(c => c.traverse ? c.traverse(fn) : fn(c)); }
     lookAt() {}
   },
   Mesh: class {
-    constructor() { this.position = new global.THREE.Vector3(); this.rotation = { x: 0, y: 0, z: 0, set() {} }; this.scale = { set() {} }; }
+    constructor(g, m) { this.geometry = g; this.material = m; this.position = new global.THREE.Vector3(); this.rotation = { x: 0, y: 0, z: 0, set() {} }; this.scale = { set() {} }; this.userData = {}; }
+    traverse(fn) { fn(this); }
     lookAt() {}
   },
   Scene: class {
@@ -70,20 +103,25 @@ global.THREE = {
     add(m) { this.children.push(m); }
     remove() {}
   },
-  BoxGeometry: class {},
-  SphereGeometry: class {},
-  CylinderGeometry: class {},
-  ConeGeometry: class { rotateX() {} },
-  RingGeometry: class {},
-  PlaneGeometry: class {},
-  OctahedronGeometry: class {},
-  TorusGeometry: class {},
-  BufferGeometry: class { setAttribute() {} computeVertexNormals() {} },
+  BoxGeometry: mockGeom,
+  SphereGeometry: mockGeom,
+  CylinderGeometry: mockGeom,
+  ConeGeometry: mockGeom,
+  RingGeometry: mockGeom,
+  PlaneGeometry: mockGeom,
+  CircleGeometry: mockGeom,
+  OctahedronGeometry: mockGeom,
+  TorusGeometry: mockGeom,
+  DodecahedronGeometry: mockGeom,
+  BufferGeometry: class { setAttribute() {} computeVertexNormals() {} dispose() {} },
   BufferAttribute: class {},
-  MeshBasicMaterial: class {},
-  MeshStandardMaterial: class {},
+  MeshBasicMaterial: mockMat,
+  MeshStandardMaterial: mockMat,
+  AmbientLight: class { constructor() { this.position = new global.THREE.Vector3(); } },
+  PointLight: class { constructor() { this.position = new global.THREE.Vector3(); } },
+  FogExp2: class {},
   HemisphereLight: class { constructor() { this.position = new global.THREE.Vector3(); } },
-  DirectionalLight: class { constructor() { this.position = new global.THREE.Vector3(); } },
+  DirectionalLight: class { constructor() { this.position = new global.THREE.Vector3(); this.shadow = { mapSize: {}, camera: {} }; this.target = new global.THREE.Mesh(); } },
   MathUtils: { lerp: (a, b, t) => a + (b - a) * t },
   DoubleSide: 2
 };
@@ -320,8 +358,114 @@ try {
     }
   }
   assert(missingCount === 0, `All referenced DOM IDs exist in index.html (missing: ${missingCount})`);
+  assert(!html.includes('roblox-logo-btn'), 'Roblox top-left icon cleanly removed from index.html');
+  assert(html.includes('sleep-countdown-box'), '5-second sleep countdown container present in index.html');
 } catch (e) {
   assert(false, `DOM ID verification: ${e.message}`);
+}
+
+// 7. Verify World Physics, House Collision, Door Hinges, LOS, Camera Clipping & DayNight Sleep
+try {
+  const worldCode = fs.readFileSync('js/world.js', 'utf8');
+  vm.runInThisContext(worldCode);
+  const wm = new global.WorldManager(new global.THREE.Scene());
+  wm.loadRealm(1);
+
+  assert(wm.colliders.length > 50, `World generated ${wm.colliders.length} physical colliders`);
+  assert(wm.walkableSurfaces.length >= 3, 'Village houses registered walkable interior floor surfaces');
+  assert(wm.animatedDoors.length === 3, 'All 3 village houses registered hinged interactive doors');
+
+  // Test solid house wall collision (Inn at 0, 25; side wall at x = ±3.11)
+  const wallProbe = new global.THREE.Vector3(3.05, 1.8, 25.0);
+  wm.resolveHorizontalCollision(wallProbe, 0.45, 0.0, 1.85);
+  assert(wallProbe.x > 3.5 || wallProbe.x < 2.6, 'Side wall collider pushes player out instead of allowing pass-through');
+
+  // Test closed Inn front door blocks entry at (0, 22.25)
+  const innDoor = wm.interactables.find(i => i.type === 'door' && Math.abs(i.position.x) < 1.0);
+  const innBed = wm.interactables.find(i => i.type === 'bed');
+  assert(innDoor !== undefined && innBed !== undefined, 'Inn door and Bed interactables registered');
+  assert(innDoor.promptText === 'Open Door', 'Closed door prompt reads "Open Door"');
+
+  // Player outside doorway trying to look at bed through closed door should fail LOS
+  const outsidePos = new global.THREE.Vector3(0, 1.8, 20.5);
+  assert(!wm.hasLineOfSight(outsidePos, innBed.position), 'Closed door blocks interaction line-of-sight to bed inside');
+  assert(wm.hasLineOfSight(outsidePos, innDoor.position, innDoor.ignoreCollider), 'Standing outside doorway has clear LOS to door itself');
+
+  // Standing behind back wall should fail LOS to door
+  const behindHousePos = new global.THREE.Vector3(0, 1.8, 29.0);
+  assert(!wm.hasLineOfSight(behindHousePos, innDoor.position, innDoor.ignoreCollider), 'Back house wall blocks LOS to front door');
+
+  // Closed door blocks movement across threshold
+  const doorPassProbe = new global.THREE.Vector3(0, 1.8, 22.3);
+  wm.resolveHorizontalCollision(doorPassProbe, 0.45, 0.0, 1.85);
+  assert(Math.abs(doorPassProbe.z - 22.3) > 0.25, 'Closed door physically blocks player from walking inside');
+
+  // Press E to Open Door
+  innDoor.interact();
+  assert(innDoor.promptText === 'Close Door', 'Open door prompt toggles to "Close Door"');
+  wm.update(0.5); // finish 0.36s opening animation
+  assert(Math.abs(wm.animatedDoors[0].pivot.rotation.y + Math.PI * 0.54) < 0.01, 'Door smoothly rotated to open angle around hinge');
+  assert(wm.hasLineOfSight(outsidePos, innBed.position), 'Open door allows LOS into the Inn');
+
+  // Walk cleanly through open doorway into the Inn!
+  const openPassProbe = new global.THREE.Vector3(0, 1.8, 22.3);
+  wm.resolveHorizontalCollision(openPassProbe, 0.45, 0.0, 1.85);
+  assert(Math.abs(openPassProbe.z - 22.3) < 0.01, 'Open doorway lets player walk cleanly through into the Inn');
+
+  // Test Camera Ray Occlusion against back wall
+  const camTarget = new global.THREE.Vector3(0, 1.6, 24.5);
+  const desiredCam = new global.THREE.Vector3(0, 1.8, 29.5); // passes through back wall at 27.5
+  wm.clipCameraRay(camTarget, desiredCam, 0.3);
+  assert(desiredCam.z < 27.6, `Third-person camera clipped inside wall bounds (z = ${desiredCam.z.toFixed(2)})`);
+
+  // Close Door cleanly syncs collision
+  innDoor.interact();
+  wm.update(0.5);
+  assert(innDoor.promptText === 'Open Door' && Math.abs(wm.animatedDoors[0].pivot.rotation.y) < 0.01, 'Closing door returns hinge to 0 and prompt to "Open Door"');
+
+  // Test DayNightManager 5-second sleep countdown to 6:00 AM
+  const dnCode = fs.readFileSync('js/daynight.js', 'utf8');
+  vm.runInThisContext(dnCode);
+  let rafQueue = [];
+  let fakeNow = 1000;
+  global.performance = { now: () => fakeNow };
+  global.requestAnimationFrame = (cb) => { rafQueue.push(cb); return rafQueue.length; };
+
+  let nightDespawned = false;
+  global.game.enemies.despawnNightMonsters = () => { nightDespawned = true; };
+  global.game.player.hp = 20;
+  global.game.player.mana = 5;
+  global.game.player.keys = { sprint: false, jump: false };
+
+  const dn = new global.DayNightManager(new global.THREE.Scene());
+  dn.timeOfDay = 23.0; // Nighttime
+  dn.isNight = true;
+
+  let finishedSleepCallback = false;
+  dn.sleepUntilMorning(() => { finishedSleepCallback = true; });
+  assert(dn.isSleeping === true, 'Sleeping enters locked isSleeping state');
+
+  // Calling again mid-countdown does not trigger double sleep
+  const qLenBefore = rafQueue.length;
+  dn.sleepUntilMorning();
+  assert(rafQueue.length === qLenBefore, 'Repeated sleep call ignored during 5s countdown');
+
+  // Advance 2.5 seconds (halfway)
+  fakeNow = 3500;
+  let cb = rafQueue.shift();
+  cb(fakeNow);
+  assert(dn.isSleeping === true && !finishedSleepCallback, 'At 2.5s sleep countdown is still active');
+
+  // Advance to 5.05 seconds (completion)
+  fakeNow = 6050;
+  cb = rafQueue.shift();
+  cb(fakeNow);
+  assert(dn.isSleeping === false && finishedSleepCallback, 'At 5.0s sleep completes cleanly and returns player control');
+  assert(dn.timeOfDay === 6.0 && dn.isNight === false, 'Game clock advances strictly to 6:00 AM Sunrise');
+  assert(global.game.player.hp === global.game.player.maxHp && global.game.player.mana === global.game.player.maxMana, 'HP & Mana restored to 100% upon waking');
+  assert(nightDespawned === true, 'Nighttime monsters cleared on morning sunrise');
+} catch (e) {
+  assert(false, `World Physics & House/Door/Sleep test: ${e.message}`);
 }
 
 console.log('=== TEST SUITE COMPLETED ===');

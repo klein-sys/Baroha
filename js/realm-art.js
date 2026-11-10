@@ -21,6 +21,22 @@ function applyRealmModel(name, parent, fallback, height, groundOffset = 0) {
       const model = new THREE.Group();
       model.add(scene);
       model.scale.setScalar(height / (bounds.max.y - bounds.min.y));
+      model.traverse(obj => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          if (obj.geometry) {
+            obj.geometry.userData = obj.geometry.userData || {};
+            obj.geometry.userData.shared = true;
+          }
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          mats.forEach(m => {
+            if (m) {
+              m.userData = m.userData || {};
+              m.userData.shared = true;
+            }
+          });
+        }
+      });
       return model;
     }).catch(error => {
       console.warn('Could not load model ' + name, error);

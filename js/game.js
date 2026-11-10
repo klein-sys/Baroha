@@ -23,8 +23,12 @@ class GameEngine {
     this.isVictory = false;
     this.clock = new THREE.Clock();
 
-    // Interaction caching
+    // Interaction caching & scratch math vectors
     this.nearestInteractable = null;
+    this._forward = new THREE.Vector3();
+    this._hitPoint = new THREE.Vector3();
+    this._viewDir = new THREE.Vector3();
+    this._toTarget = new THREE.Vector3();
 
     this.init();
   }
@@ -37,7 +41,7 @@ class GameEngine {
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     this.scene.add(this.camera);
 
-    // 3. Renderer
+    // 3. Renderer (Polished Tone Mapping + Soft Shadows)
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       antialias: true,
@@ -45,7 +49,11 @@ class GameEngine {
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = false; // Optimized for performance
+    this.renderer.outputEncoding = THREE.sRGBEncoding;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.08;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     // 4. Subsystems
     this.world = new WorldManager(this.scene);
@@ -174,13 +182,18 @@ class GameEngine {
   // =========================================================================
 
   checkMeleeHit(damage, reach) {
-    const forward = new THREE.Vector3(-Math.sin(this.player.yaw), Math.sin(this.player.pitch), -Math.cos(this.player.yaw)).normalize();
-    const hitPoint = this.player.position.clone().addScaledVector(forward, reach);
+    const forward = this._forward.set(
+      -Math.sin(this.player.yaw),
+      Math.sin(this.player.pitch),
+      -Math.cos(this.player.yaw)
+    ).normalize();
+    const hitPoint = this._hitPoint.copy(this.player.position).addScaledVector(forward, reach);
 
     let hitSomething = false;
 
     // 1. Check basic enemies
-    this.enemies.enemies.forEach(enemy => {
+    for (let i = 0; i < this.enemies.enemies.length; i++) {
+      const enemy = this.enemies.enemies[i];
       if (!enemy.isDead && enemy.position.distanceTo(hitPoint) < 2.5) {
         enemy.hp -= damage;
         hitSomething = true;
@@ -193,14 +206,16 @@ class GameEngine {
         if (enemy.hp <= 0) {
           enemy.isDead = true;
           this.scene.remove(enemy.mesh);
+          this.world?.disposeHierarchy?.(enemy.mesh);
           this.player.addXp(35);
         }
       }
-    });
+    }
 
     // 2. Check summoned Skeletons from Lich
     if (this.bosses && this.bosses.summonedSkeletons) {
-      this.bosses.summonedSkeletons.forEach(skel => {
+      for (let i = 0; i < this.bosses.summonedSkeletons.length; i++) {
+        const skel = this.bosses.summonedSkeletons[i];
         if (!skel.isDead && skel.position.distanceTo(hitPoint) < 2.5) {
           skel.hp -= damage;
           hitSomething = true;
@@ -212,10 +227,11 @@ class GameEngine {
           if (skel.hp <= 0) {
             skel.isDead = true;
             this.scene.remove(skel.mesh);
+            this.world?.disposeHierarchy?.(skel.mesh);
             this.player.addXp(40);
           }
         }
-      });
+      }
     }
 
     // 3. Check active Boss
@@ -246,6 +262,7 @@ class GameEngine {
         if (enemy.hp <= 0) {
           enemy.isDead = true;
           this.scene.remove(enemy.mesh);
+          this.world?.disposeHierarchy?.(enemy.mesh);
           this.player.addXp(35);
         }
         return true;
@@ -266,6 +283,7 @@ class GameEngine {
           if (skel.hp <= 0) {
             skel.isDead = true;
             this.scene.remove(skel.mesh);
+            this.world?.disposeHierarchy?.(skel.mesh);
             this.player.addXp(40);
           }
           return true;
@@ -295,7 +313,8 @@ class GameEngine {
   }
 
   dealAoeDamage(center, radius, damage) {
-    this.enemies.enemies.forEach(enemy => {
+    for (let i = 0; i < this.enemies.enemies.length; i++) {
+      const enemy = this.enemies.enemies[i];
       if (!enemy.isDead && enemy.position.distanceTo(center) <= radius) {
         enemy.hp -= damage;
         if (window.interfaceManager) {
@@ -304,10 +323,11 @@ class GameEngine {
         if (enemy.hp <= 0) {
           enemy.isDead = true;
           this.scene.remove(enemy.mesh);
+          this.world?.disposeHierarchy?.(enemy.mesh);
           this.player.addXp(40);
         }
       }
-    });
+    }
 
     if (this.enemies.isBossActive && this.enemies.activeBoss) {
       const boss = this.enemies.activeBoss;
@@ -321,16 +341,32 @@ class GameEngine {
     if (this.canPlay()) this.abilities.castAbility(this.player);
   }
 
+  autoSaveProgress() {
+    if (window.progressionManager && this.player && this.world) {
+      window.progressionManager.saveGame(
+        this.player,
+        this.world,
+        window.missionsManager,
+        window.inventoryManager,
+        this.abilities
+      );
+    }
+  }
+
   // =========================================================================
   // INTERACTION LOGIC
   // =========================================================================
 
   updateInteractions() {
-    let nearest = null;
-    let minDist = 3.6;
+    if (this.dayNight && this.dayNight.isSleeping) {
+      this.nearestInteractable = null;
+      window.interfaceManager?.hideInteractPrompt();
+      return;
+    }
 
     // Check Collectibles
-    for (const item of this.world.collectibles) {
+    for (let i = 0; i < this.world.collectibles.length; i++) {
+      const item = this.world.collectibles[i];
       if (!item.collected) {
         const d = this.player.position.distanceTo(item.position);
         if (d < item.radius) {
@@ -340,31 +376,56 @@ class GameEngine {
       }
     }
 
-    // Check Interactables (NPCs, gates, towers)
-    this.world.interactables.forEach(target => {
+    // Player camera forward vector for intuitive facing/view targeting
+    const viewDir = this._viewDir.set(
+      -Math.sin(this.player.yaw) * Math.cos(this.player.pitch),
+      Math.sin(this.player.pitch),
+      -Math.cos(this.player.yaw) * Math.cos(this.player.pitch)
+    ).normalize();
+
+    let bestTarget = null;
+    let bestScore = Infinity;
+
+    for (let i = 0; i < this.world.interactables.length; i++) {
+      const target = this.world.interactables[i];
       const d = this.player.position.distanceTo(target.position);
-      if (d < target.radius && d < minDist) {
-        nearest = target;
-        minDist = d;
+      if (d > target.radius) continue;
+
+      // Prevent interacting through solid house walls, closed doors, or obstructions
+      if (this.world.hasLineOfSight &&
+          !this.world.hasLineOfSight(this.player.position, target.position, target.ignoreCollider || null)) {
+        continue;
       }
-    });
 
-    this.nearestInteractable = nearest;
+      // Bias toward object player is actually looking at when two interactables overlap in range
+      this._toTarget.copy(target.position).sub(this.player.position).normalize();
+      const align = viewDir.dot(this._toTarget);
+      // Require rough front/side awareness when looking completely opposite at another close object
+      const score = d - align * 1.4;
+      if (score < bestScore) {
+        bestScore = score;
+        bestTarget = target;
+      }
+    }
 
-    if (nearest && window.interfaceManager) {
-      window.interfaceManager.showInteractPrompt(`Press [E] to interact with ${nearest.name}`);
-      if (nearest.getTelemetry) {
-        window.interfaceManager.renderCalculusTelemetry(nearest.getTelemetry());
+    this.nearestInteractable = bestTarget;
+
+    if (bestTarget && window.interfaceManager) {
+      const label = bestTarget.promptText || `Interact: ${bestTarget.name}`;
+      window.interfaceManager.showInteractPrompt(label);
+      if (bestTarget.getTelemetry) {
+        window.interfaceManager.renderCalculusTelemetry(bestTarget.getTelemetry());
       }
     } else if (window.interfaceManager) {
       window.interfaceManager.hideInteractPrompt();
       // Check if near an oscillating platform
       let nearPlatform = false;
       if (this.world && this.world.oscillatingPlatforms) {
-        for (const p of this.world.oscillatingPlatforms) {
+        for (let i = 0; i < this.world.oscillatingPlatforms.length; i++) {
+          const p = this.world.oscillatingPlatforms[i];
           if (p.mesh && this.player.position.distanceTo(p.mesh.position) < 6.5) {
             nearPlatform = true;
-            const t = Date.now() * 0.001;
+            const t = this.world._elapsed || (Date.now() * 0.001);
             const calc = window.calculusEngine ? window.calculusEngine.evalOscillatingPlatform(t, p.A, p.omega) : null;
             if (calc) {
               window.interfaceManager.renderCalculusTelemetry({
@@ -390,7 +451,7 @@ class GameEngine {
   }
 
   handleInteract() {
-    if (this.canPlay() && this.nearestInteractable) {
+    if (this.canPlay() && !this.dayNight?.isSleeping && this.nearestInteractable) {
       this.nearestInteractable.interact();
     }
   }
@@ -398,6 +459,7 @@ class GameEngine {
   collectItem(item) {
     item.collected = true;
     this.scene.remove(item.mesh);
+    this.world?.disposeHierarchy?.(item.mesh);
 
     if (item.type === 'potion') {
       window.inventoryManager.addItem('potion', 'Healing Potion', '🍷', 'Restores 50 Health instantly.', 'consumable', 1);
@@ -409,6 +471,7 @@ class GameEngine {
       if (window.missionsManager) window.missionsManager.recordKeyCollected();
       if (window.soundEngine) window.soundEngine.playItemPickup();
       if (window.interfaceManager) window.interfaceManager.showToast(`FOUND: ${item.name}!`, 'success');
+      this.autoSaveProgress();
     } else if (item.type === 'scroll') {
       if (window.soundEngine) window.soundEngine.playItemPickup();
       this.player.addXp(150);
@@ -416,6 +479,7 @@ class GameEngine {
       if (window.interfaceManager) {
         window.interfaceManager.showToast('📜 Ancient Calculus Scroll: New Codex Theorem Discovered (+150 XP, +50 MP)! Press [M] to inspect.', 'success');
       }
+      this.autoSaveProgress();
     } else if (item.type === 'xp') {
       this.player.addXp(150);
       if (window.soundEngine) window.soundEngine.playItemPickup();
@@ -424,6 +488,7 @@ class GameEngine {
       this.player.addXp(80);
       window.inventoryManager.addItem('potion', 'Healing Potion', '🍷', 'Restores 50 Health instantly.', 'consumable', 1);
       window.inventoryManager.addItem('mana', 'Mana Crystal', '💎', 'Restores 50 Mana instantly.', 'consumable', 1);
+      this.autoSaveProgress();
     }
   }
 
@@ -450,6 +515,7 @@ class GameEngine {
     if (window.missionsManager) {
       window.missionsManager.awardCrystalFragment(realmId);
     }
+    this.autoSaveProgress();
 
     if (realmId === 1) {
       this.player.addXp(500);

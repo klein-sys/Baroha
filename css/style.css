@@ -623,20 +623,31 @@ html, body {
   pointer-events: auto;
 }
 
-/* Interaction Prompt */
+/* Interaction Prompt (Compact, centered below crosshair) */
 #interact-prompt {
-  font-family: var(--font-title);
-  font-size: 14px;
-  font-weight: 700;
-  color: #fff;
-  background: rgba(15, 12, 20, 0.9);
-  border: 1px solid var(--gold-primary);
-  border-radius: 6px;
-  padding: 8px 18px;
-  box-shadow: 0 0 15px rgba(229, 185, 92, 0.5);
+  position: fixed;
+  left: 50%;
+  top: 57%;
+  transform: translateX(-50%);
+  width: fit-content;
+  max-width: 280px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #f4f1ea;
+  background: rgba(12, 10, 18, 0.84);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(229, 185, 92, 0.7);
+  border-radius: 999px;
+  padding: 5px 12px 5px 7px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
   display: none;
   align-items: center;
   gap: 8px;
+  z-index: 40;
+  pointer-events: none;
+  white-space: nowrap;
   animation: promptPulse 1.8s infinite ease-in-out;
 }
 
@@ -647,16 +658,53 @@ html, body {
 #interact-prompt .key-badge {
   background: var(--gold-primary);
   color: #110e14;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 900;
   font-family: var(--font-mono);
+  line-height: 1.4;
 }
 
 @keyframes promptPulse {
-  0% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-  100% { transform: translateY(0); }
+  0% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, -2px); }
+  100% { transform: translate(-50%, 0); }
+}
+
+/* Sleep 5-Second Countdown Box */
+.sleep-countdown-box {
+  background: rgba(12, 10, 18, 0.85);
+  border: 1px solid rgba(229, 185, 92, 0.5);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.sleep-countdown-text {
+  font-family: var(--font-title);
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffd978;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+.sleep-progress-track {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(229, 185, 92, 0.3);
+}
+
+.sleep-progress-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #4361ee, #ffd978, #ffbe0b);
+  border-radius: 999px;
+  transition: width 0.1s linear;
 }
 
 /* Abilities Hotbar */
@@ -1995,7 +2043,7 @@ input:checked + .toggle-slider:before {
   pointer-events: auto;
 }
 
-.roblox-logo-btn, .roblox-menu-btn {
+.roblox-menu-btn {
   width: 38px;
   height: 38px;
   background: rgba(16, 14, 22, 0.85);
@@ -2011,7 +2059,7 @@ input:checked + .toggle-slider:before {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
 }
 
-.roblox-logo-btn:hover, .roblox-menu-btn:hover {
+.roblox-menu-btn:hover {
   background: rgba(40, 32, 55, 0.95);
   border-color: rgba(255, 255, 255, 0.35);
   transform: translateY(-1px);

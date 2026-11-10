@@ -14,6 +14,13 @@ class WorldManager {
     this.oscillatingPlatforms = [];
     this.solidBridges = [];
 
+    // Collision & Interactive Doors Subsystems
+    this.colliders = [];
+    this.walkableSurfaces = [];
+    this.animatedDoors = [];
+    this.sharedGeom = {};
+    this.sharedMat = {};
+
     // Terrain size
     this.terrainWidth = 140;
     this.terrainDepth = 140;
@@ -24,36 +31,353 @@ class WorldManager {
     this.directionalLight = null;
   }
 
+  getSharedGeom(key, factory) {
+    if (!this.sharedGeom[key]) {
+      const g = factory();
+      g.userData = g.userData || {};
+      g.userData.shared = true;
+      this.sharedGeom[key] = g;
+    }
+    return this.sharedGeom[key];
+  }
+
+  getSharedMat(key, factory) {
+    if (!this.sharedMat[key]) {
+      const m = factory();
+      m.userData = m.userData || {};
+      m.userData.shared = true;
+      this.sharedMat[key] = m;
+    }
+    return this.sharedMat[key];
+  }
+
+  disposeHierarchy(root) {
+    if (!root || typeof root.traverse !== 'function') return;
+    root.traverse(obj => {
+      if (obj.geometry && (!obj.geometry.userData || !obj.geometry.userData.shared)) {
+        obj.geometry.dispose();
+      }
+      if (obj.material) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach(mat => {
+          if (mat && (!mat.userData || !mat.userData.shared)) {
+            if (mat.map) mat.map.dispose();
+            mat.dispose();
+          }
+        });
+      }
+    });
+  }
+
   clearWorld() {
-    this.worldObjects.forEach(obj => this.scene.remove(obj));
+    this.worldObjects.forEach(obj => {
+      this.scene.remove(obj);
+      this.disposeHierarchy(obj);
+    });
     this.worldObjects = [];
 
     this.interactables.forEach(item => {
-      if (item.mesh) this.scene.remove(item.mesh);
+      if (item.mesh) {
+        this.scene.remove(item.mesh);
+        this.disposeHierarchy(item.mesh);
+      }
     });
     this.interactables = [];
 
     this.collectibles.forEach(c => {
-      if (c.mesh) this.scene.remove(c.mesh);
+      if (c.mesh) {
+        this.scene.remove(c.mesh);
+        this.disposeHierarchy(c.mesh);
+      }
     });
     this.collectibles = [];
 
     this.oscillatingPlatforms.forEach(p => {
-      if (p.mesh) this.scene.remove(p.mesh);
+      if (p.mesh) {
+        this.scene.remove(p.mesh);
+        this.disposeHierarchy(p.mesh);
+      }
     });
     this.oscillatingPlatforms = [];
 
     this.solidBridges.forEach(b => {
-      if (b.mesh) this.scene.remove(b.mesh);
+      if (b.mesh) {
+        this.scene.remove(b.mesh);
+        this.disposeHierarchy(b.mesh);
+      }
     });
     this.solidBridges = [];
 
     this.animatedLights = [];
+    this.colliders = [];
+    this.walkableSurfaces = [];
+    this.animatedDoors = [];
 
     if (this.terrainMesh) {
       this.scene.remove(this.terrainMesh);
+      this.disposeHierarchy(this.terrainMesh);
       this.terrainMesh = null;
     }
+
+    // Dispose shared caches when unloading whole realm
+    Object.values(this.sharedGeom).forEach(g => g.dispose && g.dispose());
+    Object.values(this.sharedMat).forEach(m => m.dispose && m.dispose());
+    this.sharedGeom = {};
+    this.sharedMat = {};
+  }
+
+  // =========================================================================
+  // COLLISION & RAYCAST ENGINE (AABB / CYLINDER / WALKABLE FLOOR / LOS)
+  // =========================================================================
+
+  addBoxCollider(minX, minY, minZ, maxX, maxY, maxZ, opts = {}) {
+    const col = {
+      type: 'aabb',
+      minX: Math.min(minX, maxX),
+      minY: Math.min(minY, maxY),
+      minZ: Math.min(minZ, maxZ),
+      maxX: Math.max(minX, maxX),
+      maxY: Math.max(minY, maxY),
+      maxZ: Math.max(minZ, maxZ),
+      enabled: opts.enabled !== false,
+      blocksSight: opts.blocksSight !== false,
+      blocksCamera: opts.blocksCamera !== false,
+      blocksHorizontal: opts.blocksHorizontal !== false,
+      isCeiling: !!opts.isCeiling,
+      tag: opts.tag || ''
+    };
+    this.colliders.push(col);
+    return col;
+  }
+
+  addCylinderCollider(x, z, radius, minY, maxY, opts = {}) {
+    const col = {
+      type: 'cylinder',
+      x, z, radius,
+      minY: Math.min(minY, maxY),
+      maxY: Math.max(minY, maxY),
+      enabled: opts.enabled !== false,
+      blocksSight: opts.blocksSight !== false,
+      blocksCamera: opts.blocksCamera !== false,
+      blocksHorizontal: opts.blocksHorizontal !== false,
+      tag: opts.tag || ''
+    };
+    this.colliders.push(col);
+    return col;
+  }
+
+  addWalkableSurface(minX, maxX, minZ, maxZ, y) {
+    this.walkableSurfaces.push({
+      minX: Math.min(minX, maxX),
+      maxX: Math.max(minX, maxX),
+      minZ: Math.min(minZ, maxZ),
+      maxZ: Math.max(minZ, maxZ),
+      y
+    });
+  }
+
+  resolveHorizontalCollision(pos, radius = 0.45, feetY = null, headY = null) {
+    const bot = feetY !== null ? feetY : (pos.y - 1.8);
+    const top = headY !== null ? headY : (pos.y + 0.08);
+
+    // Two passes stabilize corner slides between adjacent walls/doors
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < this.colliders.length; i++) {
+        const c = this.colliders[i];
+        if (!c.enabled || !c.blocksHorizontal) continue;
+
+        // Vertical overlap check (skip objects completely above head or below step threshold)
+        if (top <= c.minY + 0.05 || bot >= c.maxY - 0.14) continue;
+
+        if (c.type === 'aabb') {
+          const cx = Math.max(c.minX, Math.min(pos.x, c.maxX));
+          const cz = Math.max(c.minZ, Math.min(pos.z, c.maxZ));
+          const dx = pos.x - cx;
+          const dz = pos.z - cz;
+          const distSq = dx * dx + dz * dz;
+
+          if (distSq < radius * radius) {
+            if (distSq > 1e-8) {
+              const dist = Math.sqrt(distSq);
+              const overlap = radius - dist;
+              pos.x += (dx / dist) * overlap;
+              pos.z += (dz / dist) * overlap;
+            } else {
+              // Inside box: push out along shallowest horizontal exit axis
+              const penLeft = Math.abs(pos.x - c.minX);
+              const penRight = Math.abs(c.maxX - pos.x);
+              const penBack = Math.abs(pos.z - c.minZ);
+              const penFront = Math.abs(c.maxZ - pos.z);
+              const minPen = Math.min(penLeft, penRight, penBack, penFront);
+              if (minPen === penLeft) pos.x = c.minX - radius;
+              else if (minPen === penRight) pos.x = c.maxX + radius;
+              else if (minPen === penBack) pos.z = c.minZ - radius;
+              else pos.z = c.maxZ + radius;
+            }
+          }
+        } else if (c.type === 'cylinder') {
+          const dx = pos.x - c.x;
+          const dz = pos.z - c.z;
+          const minR = radius + c.radius;
+          const distSq = dx * dx + dz * dz;
+          if (distSq < minR * minR) {
+            if (distSq > 1e-8) {
+              const dist = Math.sqrt(distSq);
+              const overlap = minR - dist;
+              pos.x += (dx / dist) * overlap;
+              pos.z += (dz / dist) * overlap;
+            } else {
+              pos.x += minR;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  checkCeilingCollision(pos, velocity, headY) {
+    for (let i = 0; i < this.colliders.length; i++) {
+      const c = this.colliders[i];
+      if (!c.enabled || !c.isCeiling) continue;
+      if (pos.x >= c.minX - 0.3 && pos.x <= c.maxX + 0.3 &&
+          pos.z >= c.minZ - 0.3 && pos.z <= c.maxZ + 0.3) {
+        if (headY >= c.minY && headY <= c.maxY && velocity.y > 0) {
+          velocity.y = 0;
+          pos.y = c.minY - 0.08;
+        }
+      }
+    }
+  }
+
+  _segmentColliderHitT(ax, ay, az, dx, dy, dz, c) {
+    if (c.type === 'aabb') {
+      let tMin = 0.0;
+      let tMax = 1.0;
+
+      // X slab
+      if (Math.abs(dx) < 1e-8) {
+        if (ax < c.minX || ax > c.maxX) return null;
+      } else {
+        const inv = 1 / dx;
+        let t1 = (c.minX - ax) * inv;
+        let t2 = (c.maxX - ax) * inv;
+        if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+        tMin = Math.max(tMin, t1);
+        tMax = Math.min(tMax, t2);
+        if (tMin > tMax) return null;
+      }
+
+      // Y slab
+      if (Math.abs(dy) < 1e-8) {
+        if (ay < c.minY || ay > c.maxY) return null;
+      } else {
+        const inv = 1 / dy;
+        let t1 = (c.minY - ay) * inv;
+        let t2 = (c.maxY - ay) * inv;
+        if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+        tMin = Math.max(tMin, t1);
+        tMax = Math.min(tMax, t2);
+        if (tMin > tMax) return null;
+      }
+
+      // Z slab
+      if (Math.abs(dz) < 1e-8) {
+        if (az < c.minZ || az > c.maxZ) return null;
+      } else {
+        const inv = 1 / dz;
+        let t1 = (c.minZ - az) * inv;
+        let t2 = (c.maxZ - az) * inv;
+        if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+        tMin = Math.max(tMin, t1);
+        tMax = Math.min(tMax, t2);
+        if (tMin > tMax) return null;
+      }
+
+      return tMin <= tMax ? tMin : null;
+    } else if (c.type === 'cylinder') {
+      const fx = ax - c.x;
+      const fz = az - c.z;
+      const a = dx * dx + dz * dz;
+      if (a < 1e-8) return null;
+      const b = 2 * (fx * dx + fz * dz);
+      const cc = fx * fx + fz * fz - c.radius * c.radius;
+      const disc = b * b - 4 * a * cc;
+      if (disc < 0) return null;
+      const sqrtD = Math.sqrt(disc);
+      const t = (-b - sqrtD) / (2 * a);
+      if (t < 0 || t > 1) return null;
+      const hitY = ay + dy * t;
+      if (hitY < c.minY || hitY > c.maxY) return null;
+      return t;
+    }
+    return null;
+  }
+
+  hasLineOfSight(fromVec, toVec, ignoreCollider = null) {
+    const dx = toVec.x - fromVec.x;
+    const dy = toVec.y - fromVec.y;
+    const dz = toVec.z - fromVec.z;
+    for (let i = 0; i < this.colliders.length; i++) {
+      const c = this.colliders[i];
+      if (!c.enabled || !c.blocksSight || c === ignoreCollider) continue;
+      const hitT = this._segmentColliderHitT(fromVec.x, fromVec.y, fromVec.z, dx, dy, dz, c);
+      if (hitT !== null && hitT > 0.02 && hitT < 0.96) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  clipCameraRay(targetVec, camVec, padding = 0.3) {
+    const dx = camVec.x - targetVec.x;
+    const dy = camVec.y - targetVec.y;
+    const dz = camVec.z - targetVec.z;
+    const totalDist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (totalDist < 0.01) return;
+
+    let bestT = 1.0;
+    for (let i = 0; i < this.colliders.length; i++) {
+      const c = this.colliders[i];
+      if (!c.enabled || !c.blocksCamera) continue;
+      const hitT = this._segmentColliderHitT(targetVec.x, targetVec.y, targetVec.z, dx, dy, dz, c);
+      if (hitT !== null && hitT > 0.05 && hitT < bestT) {
+        bestT = hitT;
+      }
+    }
+
+    if (bestT < 1.0) {
+      const clippedDist = Math.max(0.45, bestT * totalDist - padding);
+      const scale = clippedDist / totalDist;
+      camVec.x = targetVec.x + dx * scale;
+      camVec.y = targetVec.y + dy * scale;
+      camVec.z = targetVec.z + dz * scale;
+    }
+
+    // Never allow third-person camera to clip below terrain or house floors
+    const minCamY = this.getTerrainHeight(camVec.x, camVec.z) + 0.38;
+    if (camVec.y < minCamY) {
+      camVec.y = minCamY;
+    }
+  }
+
+  checkProjectileColliderHit(pos, radius = 0.18) {
+    for (let i = 0; i < this.colliders.length; i++) {
+      const c = this.colliders[i];
+      if (!c.enabled) continue;
+      if (pos.y + radius < c.minY || pos.y - radius > c.maxY) continue;
+      if (c.type === 'aabb') {
+        if (pos.x + radius >= c.minX && pos.x - radius <= c.maxX &&
+            pos.z + radius >= c.minZ && pos.z - radius <= c.maxZ) {
+          return true;
+        }
+      } else if (c.type === 'cylinder') {
+        const dx = pos.x - c.x;
+        const dz = pos.z - c.z;
+        const r = radius + c.radius;
+        if (dx * dx + dz * dz <= r * r) return true;
+      }
+    }
+    return false;
   }
 
   loadRealm(realmId) {
@@ -81,13 +405,37 @@ class WorldManager {
     }
   }
 
-  getTerrainHeight(x, z) {
+  getTerrainHeight(x, z, feetY = null) {
+    // Base procedural terrain height
+    let h = 0;
+    if (this.currentRealm === 1) {
+      h = Math.sin(x * 0.08) * Math.cos(z * 0.08) * 1.5;
+    } else if (this.currentRealm === 2) {
+      if (z < -30) h = 0;
+      else h = Math.sin(x * 0.04) * 0.6;
+    } else {
+      const dist = Math.sqrt(x * x + z * z);
+      h = dist > 45 ? -100 : Math.sin(x * 0.1) * Math.cos(z * 0.1) * 0.8;
+    }
+
+    // Walkable building floors & door steps
+    if (this.walkableSurfaces) {
+      for (let i = 0; i < this.walkableSurfaces.length; i++) {
+        const s = this.walkableSurfaces[i];
+        if (x >= s.minX && x <= s.maxX && z >= s.minZ && z <= s.maxZ) {
+          if (feetY === null || s.y <= feetY + 0.9) {
+            if (s.y > h) h = s.y;
+          }
+        }
+      }
+    }
+
     // Check solidified bridges
     if (this.solidBridges) {
       for (let i = 0; i < this.solidBridges.length; i++) {
         const b = this.solidBridges[i];
         if (b.isSolid && Math.abs(x - b.x) <= b.halfWidth && Math.abs(z - b.z) <= b.halfLength) {
-          return b.y;
+          if (b.y > h) h = b.y;
         }
       }
     }
@@ -97,45 +445,50 @@ class WorldManager {
       for (let i = 0; i < this.oscillatingPlatforms.length; i++) {
         const p = this.oscillatingPlatforms[i];
         if (p.mesh && Math.abs(x - p.mesh.position.x) <= p.radius && Math.abs(z - p.mesh.position.z) <= p.radius) {
-          return p.mesh.position.y + 0.3;
+          if (p.mesh.position.y + 0.3 > h) h = p.mesh.position.y + 0.3;
         }
       }
     }
 
-    // Terrain height evaluation
-    if (this.currentRealm === 1) {
-      // Gentle rolling forest hills
-      return Math.sin(x * 0.08) * Math.cos(z * 0.08) * 1.5;
-    } else if (this.currentRealm === 2) {
-      // Flat courtyard with stepped crypt area
-      if (z < -30) return 0;
-      return Math.sin(x * 0.04) * 0.6;
-    } else {
-      // Realm 3: Floating islands
-      const dist = Math.sqrt(x * x + z * z);
-      if (dist > 45) return -100; // Void fall
-      return Math.sin(x * 0.1) * Math.cos(z * 0.1) * 0.8;
-    }
+    return h;
   }
 
   // =========================================================================
   // REALM 1: THE WITCH'S CURSED FOREST
   // =========================================================================
+  isClearOfLandmarks(x, z, pad = 6.5) {
+    const keepouts = [
+      { x: 0, z: 12, r: 6.5 },    // Player spawn
+      { x: 0, z: 8, r: 4.5 },     // Guardian NPC
+      { x: 0, z: 16, r: 4.5 },    // Mana well
+      { x: 0, z: 25, r: 6.5 },    // Village Inn & Bed
+      { x: -14, z: 20, r: 6.5 },  // West Village House
+      { x: 14, z: 20, r: 6.5 },   // East Village House
+      { x: 6, z: 15, r: 3.5 },    // Training dummy
+      { x: 0, z: -45, r: 7.5 },   // Castle gate
+      { x: -18, z: 18, r: 5.0 },  // Rift seal
+      { x: 22, z: -12, r: 8.5 },  // Piecewise bridge
+      { x: -8, z: -32, r: 5.0 },  // Leyline shrine
+      { x: 12, z: 0, r: 4.5 }     // Oscillating platform
+    ];
+    for (let i = 0; i < keepouts.length; i++) {
+      const k = keepouts[i];
+      const dx = x - k.x;
+      const dz = z - k.z;
+      if (dx * dx + dz * dz < (k.r + pad - 3.5) * (k.r + pad - 3.5)) return false;
+    }
+    return true;
+  }
+
   buildCursedForest() {
     // Dark moody atmosphere
-    this.scene.fog = new THREE.FogExp2(0x0a0c14, 0.022);
+    this.scene.fog = new THREE.FogExp2(0x0a0c14, 0.018);
     this.scene.background = new THREE.Color(0x060810);
 
-    // Ambient light (Dim blue-violet)
-    const amb = new THREE.AmbientLight(0x22223b, 1.2);
+    // Subtle cool ambient fill (DayNightManager handles primary sun/moon/hemi lights)
+    const amb = new THREE.AmbientLight(0x2a2d4d, 0.35);
     this.scene.add(amb);
     this.worldObjects.push(amb);
-
-    // Directional moonlight
-    const moon = new THREE.DirectionalLight(0x4a4e69, 1.5);
-    moon.position.set(20, 50, 30);
-    this.scene.add(moon);
-    this.worldObjects.push(moon);
 
     // Ground Plane with undulating vertices
     const geom = new THREE.PlaneGeometry(this.terrainWidth, this.terrainDepth, 48, 48);
@@ -150,28 +503,30 @@ class WorldManager {
     geom.computeVertexNormals();
 
     const mat = new THREE.MeshStandardMaterial({
-      color: 0x1a2417, // Dark forest moss
+      color: 0x1e2c1a, // Rich forest moss
       roughness: 0.9,
-      metalness: 0.1
+      metalness: 0.08
     });
     this.terrainMesh = new THREE.Mesh(geom, mat);
+    this.terrainMesh.receiveShadow = true;
     this.scene.add(this.terrainMesh);
     this.worldObjects.push(this.terrainMesh);
 
-    // Spawn Forest Trees
-    for (let i = 0; i < 60; i++) {
+    // Spawn Forest Trees (clear of village houses, spawn, gates & seals)
+    for (let i = 0; i < 65; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const dist = 10 + Math.random() * 50;
+      const dist = 12 + Math.random() * 50;
       const tx = Math.cos(angle) * dist;
       const tz = Math.sin(angle) * dist;
-      if (Math.abs(tx) < 6 && Math.abs(tz) < 6) continue; // Keep spawn clear
+      if (!this.isClearOfLandmarks(tx, tz, 4.0)) continue;
       this.spawnGothicTree(tx, tz);
     }
 
-    // Spawn Glowing Mushrooms
+    // Spawn Glowing Mushrooms (kept outside buildings & walkways)
     for (let i = 0; i < 24; i++) {
-      const mx = (Math.random() - 0.5) * 80;
-      const mz = (Math.random() - 0.5) * 80;
+      const mx = (Math.random() - 0.5) * 84;
+      const mz = (Math.random() - 0.5) * 84;
+      if (!this.isClearOfLandmarks(mx, mz, 2.5)) continue;
       this.spawnGlowingMushroom(mx, mz);
     }
 
@@ -192,10 +547,10 @@ class WorldManager {
     this.spawnCollectible('scroll', -14, 0, -8, 'Ancient Scroll of Limits');
     this.spawnCollectible('chest', 15, 0, -25, 'Cursed Forest Chest');
 
-    // Spawn Starter Village (Beginner Kingdom area)
-    this.spawnVillageHouse(0, 25, true); // Village Inn with sleeping bed
-    this.spawnVillageHouse(-14, 20, false);
-    this.spawnVillageHouse(14, 20, false);
+    // Spawn Starter Village (Inn faces North toward Spawn; side houses face village center)
+    this.spawnVillageHouse(0, 25, true, Math.PI);       // Village Inn with sleeping bed
+    this.spawnVillageHouse(-14, 20, false, Math.PI / 2); // West House
+    this.spawnVillageHouse(14, 20, false, -Math.PI / 2); // East House
     this.spawnTrainingDummy(6, 15);
 
     // NPC: The Last Guardian of Knowledge (Starting Sanctuary)
@@ -206,15 +561,15 @@ class WorldManager {
   // REALM 2: THE NECROMANCER'S FORGOTTEN KINGDOM
   // =========================================================================
   buildForgottenKingdom() {
-    this.scene.fog = new THREE.FogExp2(0x0a1410, 0.024);
+    this.scene.fog = new THREE.FogExp2(0x0a1410, 0.022);
     this.scene.background = new THREE.Color(0x050d0a);
 
     // Ambient light (Green-tinted necrotic gloom)
-    const amb = new THREE.AmbientLight(0x132a13, 1.3);
+    const amb = new THREE.AmbientLight(0x1b3b1b, 0.65);
     this.scene.add(amb);
     this.worldObjects.push(amb);
 
-    const dir = new THREE.DirectionalLight(0x31572c, 1.4);
+    const dir = new THREE.DirectionalLight(0x4b7f44, 1.15);
     dir.position.set(-20, 45, 25);
     this.scene.add(dir);
     this.worldObjects.push(dir);
@@ -228,6 +583,7 @@ class WorldManager {
       metalness: 0.2
     });
     this.terrainMesh = new THREE.Mesh(geom, mat);
+    this.terrainMesh.receiveShadow = true;
     this.scene.add(this.terrainMesh);
     this.worldObjects.push(this.terrainMesh);
 
@@ -237,10 +593,11 @@ class WorldManager {
       this.spawnGothicPillar(x, -25);
     }
 
-    // Cemetery Tombs
+    // Cemetery Tombs (clear of player spawn & NPC)
     for (let i = 0; i < 28; i++) {
       const tx = (Math.random() - 0.5) * 70;
       const tz = 8 + Math.random() * 45;
+      if (Math.hypot(tx, tz - 12) < 4.5) continue;
       this.spawnTombstone(tx, tz);
     }
 
@@ -347,23 +704,26 @@ class WorldManager {
     const group = new THREE.Group();
     group.position.set(x, y, z);
 
-    // Trunk
-    const trunkGeom = new THREE.CylinderGeometry(0.35, 0.6, 6, 8);
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x1b140f, roughness: 0.9 });
+    // Trunk (shared geometry/material for high performance)
+    const trunkGeom = this.getSharedGeom('treeTrunk', () => new THREE.CylinderGeometry(0.35, 0.6, 6, 8));
+    const trunkMat = this.getSharedMat('treeTrunk', () => new THREE.MeshStandardMaterial({ color: 0x1b140f, roughness: 0.9 }));
     const trunk = new THREE.Mesh(trunkGeom, trunkMat);
     trunk.position.y = 3;
+    trunk.castShadow = true;
     group.add(trunk);
 
     // Twisted Foliage Crown
-    const leavesGeom = new THREE.DodecahedronGeometry(2.5, 1);
-    const leavesMat = new THREE.MeshStandardMaterial({ color: 0x112211, roughness: 0.8 });
+    const leavesGeom = this.getSharedGeom('treeLeaves', () => new THREE.DodecahedronGeometry(2.5, 1));
+    const leavesMat = this.getSharedMat('treeLeaves', () => new THREE.MeshStandardMaterial({ color: 0x112211, roughness: 0.8 }));
     const leaves = new THREE.Mesh(leavesGeom, leavesMat);
     leaves.position.y = 6.2;
+    leaves.castShadow = true;
     group.add(leaves);
 
     this.scene.add(group);
     this.worldObjects.push(group);
     group.rotation.y = Math.random() * Math.PI * 2;
+    this.addCylinderCollider(x, z, 0.6, y, y + 6.5, { tag: 'tree' });
     applyRealmModel(Math.random() < 0.7 ? 'pine' : 'bareTree', group, [trunk, leaves], 6 + Math.random() * 3);
   }
 
@@ -372,24 +732,24 @@ class WorldManager {
     const group = new THREE.Group();
     group.position.set(x, y, z);
 
-    // Stem
-    const stemGeom = new THREE.CylinderGeometry(0.08, 0.12, 0.6, 8);
-    const stemMat = new THREE.MeshStandardMaterial({ color: 0xddddcc });
+    // Stem (shared geometry/material)
+    const stemGeom = this.getSharedGeom('mushStem', () => new THREE.CylinderGeometry(0.08, 0.12, 0.6, 8));
+    const stemMat = this.getSharedMat('mushStem', () => new THREE.MeshStandardMaterial({ color: 0xddddcc }));
     const stem = new THREE.Mesh(stemGeom, stemMat);
     stem.position.y = 0.3;
     group.add(stem);
 
-    // Glowing Cap
-    const capGeom = new THREE.ConeGeometry(0.35, 0.4, 8);
-    const capMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
+    // Glowing Cap (emissive material eliminates 24 redundant PointLights while keeping bright bioluminescent glow)
+    const capGeom = this.getSharedGeom('mushCap', () => new THREE.ConeGeometry(0.35, 0.4, 8));
+    const capMat = this.getSharedMat('mushCap', () => new THREE.MeshStandardMaterial({
+      color: 0x00f5d4,
+      emissive: 0x00f5d4,
+      emissiveIntensity: 1.5,
+      roughness: 0.25
+    }));
     const cap = new THREE.Mesh(capGeom, capMat);
     cap.position.y = 0.65;
     group.add(cap);
-
-    // Point Light
-    const light = new THREE.PointLight(0x00f5d4, 0.8, 5);
-    light.position.y = 0.7;
-    group.add(light);
 
     this.scene.add(group);
     this.worldObjects.push(group);
@@ -405,16 +765,19 @@ class WorldManager {
     const pMat = new THREE.MeshStandardMaterial({ color: 0x241d24, roughness: 0.7 });
     const pLeft = new THREE.Mesh(pGeom, pMat);
     pLeft.position.set(-4, 4.5, 0);
+    pLeft.castShadow = true;
     group.add(pLeft);
 
     const pRight = new THREE.Mesh(pGeom, pMat);
     pRight.position.set(4, 4.5, 0);
+    pRight.castShadow = true;
     group.add(pRight);
 
     // Cross arch
     const archGeom = new THREE.BoxGeometry(10, 1.5, 2);
     const arch = new THREE.Mesh(archGeom, pMat);
     arch.position.set(0, 9, 0);
+    arch.castShadow = true;
     group.add(arch);
 
     // Glowing Rune Shield Barrier
@@ -432,10 +795,16 @@ class WorldManager {
     this.scene.add(group);
     this.worldObjects.push(group);
 
+    // Solid Gate Pillar & Locked Barrier Colliders
+    this.addBoxCollider(x - 5, y, z - 1, x - 3, y + 9.5, z + 1, { tag: 'gate_pillar' });
+    this.addBoxCollider(x + 3, y, z - 1, x + 5, y + 9.5, z + 1, { tag: 'gate_pillar' });
+    const barrierCollider = this.addBoxCollider(x - 3, y, z - 0.35, x + 3, y + 8.5, z + 0.35, { tag: 'gate_barrier' });
+
     // Register interactable gate
     const gateObj = {
       type: 'gate',
       name: 'Witch\'s Castle Gate',
+      promptText: 'Open Gate',
       position: new THREE.Vector3(x, y + 1.5, z),
       radius: 4.5,
       barrierMesh: barrier,
@@ -448,6 +817,8 @@ class WorldManager {
         if (window.missionsManager && window.missionsManager.hasAllForestKeys()) {
           gateObj.isUnlocked = true;
           barrier.visible = false;
+          barrierCollider.enabled = false;
+          gateObj.promptText = 'Gate Open';
           if (window.soundEngine) window.soundEngine.playChestOpen();
           if (window.interfaceManager) {
             window.interfaceManager.showToast('The 3 Keys resonate! Castle Gate Unlocked!', 'success');
@@ -465,23 +836,27 @@ class WorldManager {
 
   spawnGothicPillar(x, z) {
     const y = this.getTerrainHeight(x, z);
-    const pGeom = new THREE.CylinderGeometry(0.7, 0.8, 8, 8);
-    const pMat = new THREE.MeshStandardMaterial({ color: 0x33333d, roughness: 0.8 });
+    const pGeom = this.getSharedGeom('gothicPillar', () => new THREE.CylinderGeometry(0.7, 0.8, 8, 8));
+    const pMat = this.getSharedMat('gothicPillar', () => new THREE.MeshStandardMaterial({ color: 0x33333d, roughness: 0.8 }));
     const pillar = new THREE.Mesh(pGeom, pMat);
     pillar.position.set(x, y + 4, z);
+    pillar.castShadow = true;
     this.scene.add(pillar);
     this.worldObjects.push(pillar);
+    this.addCylinderCollider(x, z, 0.85, y, y + 8, { tag: 'pillar' });
   }
 
   spawnTombstone(x, z) {
     const y = this.getTerrainHeight(x, z);
-    const geom = new THREE.BoxGeometry(0.8, 1.4, 0.25);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x3a3d40, roughness: 0.9 });
+    const geom = this.getSharedGeom('tombstone', () => new THREE.BoxGeometry(0.8, 1.4, 0.25));
+    const mat = this.getSharedMat('tombstone', () => new THREE.MeshStandardMaterial({ color: 0x3a3d40, roughness: 0.9 }));
     const tomb = new THREE.Mesh(geom, mat);
     tomb.position.set(x, y + 0.7, z);
     tomb.rotation.y = (Math.random() - 0.5) * 0.4;
+    tomb.castShadow = true;
     this.scene.add(tomb);
     this.worldObjects.push(tomb);
+    this.addCylinderCollider(x, z, 0.5, y, y + 1.4, { tag: 'tombstone', blocksSight: false });
   }
 
   spawnSpectralBrazier(x, z) {
@@ -489,25 +864,26 @@ class WorldManager {
     const group = new THREE.Group();
     group.position.set(x, y, z);
 
-    const bGeom = new THREE.CylinderGeometry(0.5, 0.3, 1.8, 8);
-    const bMat = new THREE.MeshStandardMaterial({ color: 0x1f2421, metalness: 0.6 });
+    const bGeom = this.getSharedGeom('brazierBase', () => new THREE.CylinderGeometry(0.5, 0.3, 1.8, 8));
+    const bMat = this.getSharedMat('brazierBase', () => new THREE.MeshStandardMaterial({ color: 0x1f2421, metalness: 0.6 }));
     const base = new THREE.Mesh(bGeom, bMat);
     base.position.y = 0.9;
     group.add(base);
 
     // Green flame sphere
-    const fGeom = new THREE.SphereGeometry(0.3, 8, 8);
-    const fMat = new THREE.MeshBasicMaterial({ color: 0x06d6a0 });
+    const fGeom = this.getSharedGeom('brazierFlame', () => new THREE.SphereGeometry(0.3, 8, 8));
+    const fMat = this.getSharedMat('brazierFlame', () => new THREE.MeshBasicMaterial({ color: 0x06d6a0 }));
     const flame = new THREE.Mesh(fGeom, fMat);
     flame.position.y = 1.9;
     group.add(flame);
 
-    const light = new THREE.PointLight(0x06d6a0, 1.4, 8);
+    const light = new THREE.PointLight(0x06d6a0, 1.4, 10);
     light.position.y = 2.0;
     group.add(light);
 
     this.scene.add(group);
     this.worldObjects.push(group);
+    this.addCylinderCollider(x, z, 0.55, y, y + 2.2, { tag: 'brazier', blocksSight: false });
   }
 
   spawnCryptThrone(x, z) {
@@ -541,6 +917,7 @@ class WorldManager {
     const cryptGateObj = {
       type: 'crypt_gate',
       name: 'Throne of the Lich King',
+      promptText: 'Enter Crypt',
       position: new THREE.Vector3(x, y + 2, z),
       radius: 5.0,
       isTriggered: false,
@@ -554,79 +931,290 @@ class WorldManager {
   }
 
   // =========================================================================
-  // VILLAGE HOUSES, INN & INTERACTIVE BEDS (SLEEPING SYSTEM)
+  // VILLAGE HOUSES, INN & INTERACTIVE HINGED DOORS + BEDS (SLEEPING SYSTEM)
+  // Preserves original architectural design (6.5 x 4.2 x 5.5 + Cone Roof + Dark Door)
+  // with full solid wall collision, window collision, walkable floor & hinged door.
   // =========================================================================
-  spawnVillageHouse(x, z, hasBed = false) {
-    const y = this.getTerrainHeight(x, z);
+  _localToWorld(originX, originY, originZ, yaw, lx, ly, lz) {
+    const c = Math.cos(yaw);
+    const s = Math.sin(yaw);
+    return {
+      x: originX + lx * c + lz * s,
+      y: originY + ly,
+      z: originZ - lx * s + lz * c
+    };
+  }
+
+  _addLocalHouseCollider(originX, originY, originZ, yaw, minLx, minLy, minLz, maxLx, maxLy, maxLz, opts = {}) {
+    const p1 = this._localToWorld(originX, originY, originZ, yaw, minLx, minLy, minLz);
+    const p2 = this._localToWorld(originX, originY, originZ, yaw, maxLx, maxLy, maxLz);
+    return this.addBoxCollider(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, opts);
+  }
+
+  spawnVillageHouse(x, z, hasBed = false, facingYaw = 0) {
+    // Sample foundation corners so terrain hills never protrude through interior floor
+    const corners = [
+      this.getTerrainHeight(x, z),
+      this.getTerrainHeight(x - 3.25, z - 2.75),
+      this.getTerrainHeight(x + 3.25, z - 2.75),
+      this.getTerrainHeight(x - 3.25, z + 2.75),
+      this.getTerrainHeight(x + 3.25, z + 2.75)
+    ];
+    const baseY = Math.max(...corners);
+    const floorThicknessOffset = 0.14;
+    const innerFloorY = baseY + floorThicknessOffset;
+
     const group = new THREE.Group();
-    group.position.set(x, y, z);
+    group.position.set(x, baseY, z);
+    group.rotation.y = facingYaw;
 
-    // House Walls
-    const wallGeom = new THREE.BoxGeometry(6.5, 4.2, 5.5);
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.8 });
-    const walls = new THREE.Mesh(wallGeom, wallMat);
-    walls.position.y = 2.1;
-    group.add(walls);
+    const wallMat = this.getSharedMat('houseWall', () => new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.8 }));
+    const floorMat = this.getSharedMat('houseFloor', () => new THREE.MeshStandardMaterial({ color: 0x5c3a1d, roughness: 0.85 }));
+    const trimMat = this.getSharedMat('houseTrim', () => new THREE.MeshStandardMaterial({ color: 0x3b220d, roughness: 0.7 }));
+    const glassMat = this.getSharedMat('houseGlass', () => new THREE.MeshStandardMaterial({
+      color: 0xffe49e,
+      emissive: 0xffb347,
+      emissiveIntensity: 0.35,
+      roughness: 0.2
+    }));
 
-    // Sloped Wooden Roof
-    const roofGeom = new THREE.ConeGeometry(5.2, 2.5, 4);
-    roofGeom.rotateY(Math.PI / 4);
-    const roofMat = new THREE.MeshStandardMaterial({ color: 0x4a2c11, roughness: 0.7 });
+    // Solid Wooden Foundation & Interior Floor Slab (extends downward into ground slopes cleanly)
+    const floorGeom = this.getSharedGeom('houseFoundation', () => new THREE.BoxGeometry(6.5, 1.0, 5.5));
+    const floorMesh = new THREE.Mesh(floorGeom, floorMat);
+    floorMesh.position.set(0, floorThicknessOffset - 0.5, 0);
+    floorMesh.receiveShadow = true;
+    group.add(floorMesh);
+
+    // Front porch threshold step for smooth walking entry across doorway
+    const stepGeom = this.getSharedGeom('houseStep', () => new THREE.BoxGeometry(1.8, 0.35, 0.9));
+    const stepMesh = new THREE.Mesh(stepGeom, floorMat);
+    stepMesh.position.set(0, floorThicknessOffset - 0.22, 3.05);
+    stepMesh.receiveShadow = true;
+    group.add(stepMesh);
+
+    // Register walkable interior floor + entrance step (cardinal yaw)
+    const fp1 = this._localToWorld(x, baseY, z, facingYaw, -3.22, 0, -2.72);
+    const fp2 = this._localToWorld(x, baseY, z, facingYaw, 3.22, 0, 3.45);
+    this.addWalkableSurface(fp1.x, fp2.x, fp1.z, fp2.z, innerFloorY);
+
+    // Wall Thickness = 0.28, Total outer envelope remains exact 6.5 x 4.2 x 5.5
+    const backGeom = this.getSharedGeom('houseBackWall', () => new THREE.BoxGeometry(6.5, 4.2, 0.28));
+    const backWall = new THREE.Mesh(backGeom, wallMat);
+    backWall.position.set(0, 2.1, -2.61);
+    backWall.castShadow = true;
+    backWall.receiveShadow = true;
+    group.add(backWall);
+
+    const sideGeom = this.getSharedGeom('houseSideWall', () => new THREE.BoxGeometry(0.28, 4.2, 4.94));
+    const leftWall = new THREE.Mesh(sideGeom, wallMat);
+    leftWall.position.set(-3.11, 2.1, 0);
+    leftWall.castShadow = true;
+    leftWall.receiveShadow = true;
+    group.add(leftWall);
+
+    const rightWall = new THREE.Mesh(sideGeom, wallMat);
+    rightWall.position.set(3.11, 2.1, 0);
+    rightWall.castShadow = true;
+    rightWall.receiveShadow = true;
+    group.add(rightWall);
+
+    // Rustic framed windows on left & right walls (solid wall colliders span entire side wall!)
+    const winFrameGeom = this.getSharedGeom('houseWinFrame', () => new THREE.BoxGeometry(0.34, 1.15, 1.35));
+    const winPaneGeom = this.getSharedGeom('houseWinPane', () => new THREE.BoxGeometry(0.36, 0.9, 1.1));
+    [-3.11, 3.11].forEach(wx => {
+      const wf = new THREE.Mesh(winFrameGeom, trimMat);
+      wf.position.set(wx, 2.15, 0);
+      group.add(wf);
+      const wp = new THREE.Mesh(winPaneGeom, glassMat);
+      wp.position.set(wx, 2.15, 0);
+      group.add(wp);
+    });
+
+    // Front wall split around 1.4m wide doorway (x in [-0.70, +0.70])
+    const frontWingGeom = this.getSharedGeom('houseFrontWing', () => new THREE.BoxGeometry(2.55, 4.2, 0.28));
+    const frontLeftWall = new THREE.Mesh(frontWingGeom, wallMat);
+    frontLeftWall.position.set(-1.975, 2.1, 2.61);
+    frontLeftWall.castShadow = true;
+    frontLeftWall.receiveShadow = true;
+    group.add(frontLeftWall);
+
+    const frontRightWall = new THREE.Mesh(frontWingGeom, wallMat);
+    frontRightWall.position.set(1.975, 2.1, 2.61);
+    frontRightWall.castShadow = true;
+    frontRightWall.receiveShadow = true;
+    group.add(frontRightWall);
+
+    // Front lintel header above doorway (y = 2.48 to 4.2)
+    const lintelGeom = this.getSharedGeom('houseLintel', () => new THREE.BoxGeometry(1.4, 1.72, 0.28));
+    const lintel = new THREE.Mesh(lintelGeom, wallMat);
+    lintel.position.set(0, 3.34, 2.61);
+    lintel.castShadow = true;
+    group.add(lintel);
+
+    // Sloped Wooden Roof (Original ConeGeometry 5.2, 2.5, 4 preserved)
+    const roofGeom = this.getSharedGeom('houseRoof', () => {
+      const g = new THREE.ConeGeometry(5.2, 2.5, 4);
+      g.rotateY(Math.PI / 4);
+      return g;
+    });
+    const roofMat = this.getSharedMat('houseRoof', () => new THREE.MeshStandardMaterial({ color: 0x4a2c11, roughness: 0.7 }));
     const roof = new THREE.Mesh(roofGeom, roofMat);
     roof.position.y = 5.2;
+    roof.castShadow = true;
     group.add(roof);
 
-    // Doorway Frame
-    const doorGeom = new THREE.BoxGeometry(1.4, 2.4, 0.2);
-    const doorMat = new THREE.MeshStandardMaterial({ color: 0x2e1806 });
-    const door = new THREE.Mesh(doorGeom, doorMat);
-    door.position.set(0, 1.2, 2.8);
-    group.add(door);
+    // Hinged Wooden Door at Left Jamb (-0.70, 0.14, 2.61)
+    const doorPivot = new THREE.Group();
+    doorPivot.position.set(-0.70, floorThicknessOffset, 2.61);
 
+    const doorGeom = this.getSharedGeom('houseDoor', () => new THREE.BoxGeometry(1.4, 2.34, 0.18));
+    const doorMat = this.getSharedMat('houseDoor', () => new THREE.MeshStandardMaterial({ color: 0x2e1806, roughness: 0.75 }));
+    const doorMesh = new THREE.Mesh(doorGeom, doorMat);
+    doorMesh.position.set(0.70, 1.17, 0);
+    doorMesh.castShadow = true;
+    doorPivot.add(doorMesh);
+
+    // Brass Door Knob on both interior & exterior sides so hinge & handle side is obvious
+    const knobGeom = this.getSharedGeom('doorKnob', () => new THREE.SphereGeometry(0.065, 8, 8));
+    const knobMat = this.getSharedMat('doorKnob', () => new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.25 }));
+    const knobOut = new THREE.Mesh(knobGeom, knobMat);
+    knobOut.position.set(1.22, 1.05, 0.11);
+    doorPivot.add(knobOut);
+    const knobIn = new THREE.Mesh(knobGeom, knobMat);
+    knobIn.position.set(1.22, 1.05, -0.11);
+    doorPivot.add(knobIn);
+
+    group.add(doorPivot);
     this.scene.add(group);
     this.worldObjects.push(group);
 
+    // Register Solid Wall Colliders (matches physical geometry strictly; roof does NOT block player below)
+    this._addLocalHouseCollider(x, baseY, z, facingYaw, -3.25, -0.5, -2.75, 3.25, 4.3, -2.44, { tag: 'house_wall' });
+    this._addLocalHouseCollider(x, baseY, z, facingYaw, -3.25, -0.5, -2.75, -2.94, 4.3, 2.75, { tag: 'house_wall' });
+    this._addLocalHouseCollider(x, baseY, z, facingYaw, 2.94, -0.5, -2.75, 3.25, 4.3, 2.75, { tag: 'house_wall' });
+    this._addLocalHouseCollider(x, baseY, z, facingYaw, -3.25, -0.5, 2.44, -0.70, 4.3, 2.75, { tag: 'house_wall' });
+    this._addLocalHouseCollider(x, baseY, z, facingYaw, 0.70, -0.5, 2.44, 3.25, 4.3, 2.75, { tag: 'house_wall' });
+    // Door header lintel acts strictly as ceiling clearance above doorway (no horizontal sticking)
+    this._addLocalHouseCollider(x, baseY, z, facingYaw, -0.72, 2.48, 2.44, 0.72, 4.3, 2.75, {
+      tag: 'house_lintel', blocksHorizontal: false, blocksSight: true, blocksCamera: false, isCeiling: true
+    });
+
+    // Closed Door Collider (synchronized with door open/close animation)
+    const doorCollider = this._addLocalHouseCollider(x, baseY, z, facingYaw, -0.72, 0.0, 2.45, 0.72, 2.48, 2.78, {
+      tag: 'house_door', enabled: true, blocksSight: true, blocksCamera: true
+    });
+
+    // Register Interactive Door Control (E KEY = OPEN / CLOSE DOOR)
+    const doorWorldPos = this._localToWorld(x, innerFloorY, z, facingYaw, 0, 1.25, 2.61);
+    const doorNormalOut = this._localToWorld(0, 0, 0, facingYaw, 0, 0, 1);
+    const doorState = {
+      pivot: doorPivot,
+      isOpen: false,
+      isAnimating: false,
+      elapsed: 0,
+      duration: 0.36,
+      startRot: 0,
+      targetRot: 0
+    };
+    this.animatedDoors.push(doorState);
+
+    const doorInteractObj = {
+      type: 'door',
+      name: 'House Door',
+      ignoreCollider: doorCollider,
+      get promptText() {
+        return doorState.isOpen ? 'Close Door' : 'Open Door';
+      },
+      position: new THREE.Vector3(doorWorldPos.x, doorWorldPos.y, doorWorldPos.z),
+      radius: 2.9,
+      interact: () => {
+        if (doorState.isAnimating) return;
+        const nextOpen = !doorState.isOpen;
+
+        // If closing while player stands inside the doorway slab, gently step player clear along doorway normal
+        if (!nextOpen && window.game && window.game.player) {
+          const p = window.game.player.position;
+          const dx = p.x - doorWorldPos.x;
+          const dz = p.z - doorWorldPos.z;
+          const dotOut = dx * doorNormalOut.x + dz * doorNormalOut.z;
+          const perpDist = Math.abs(dx * doorNormalOut.z - dz * doorNormalOut.x);
+          if (Math.abs(dotOut) < 0.72 && perpDist < 0.95) {
+            const sign = dotOut >= 0 ? 1 : -1;
+            const push = (0.78 - Math.abs(dotOut)) * sign;
+            p.x += doorNormalOut.x * push;
+            p.z += doorNormalOut.z * push;
+          }
+        }
+
+        doorState.isOpen = nextOpen;
+        doorState.isAnimating = true;
+        doorState.elapsed = 0;
+        doorState.startRot = doorPivot.rotation.y;
+        doorState.targetRot = nextOpen ? -Math.PI * 0.54 : 0;
+
+        // Synchronize collision state cleanly with door state
+        doorCollider.enabled = !nextOpen;
+
+        if (window.soundEngine && window.soundEngine.playDoorToggle) {
+          window.soundEngine.playDoorToggle(nextOpen);
+        }
+      }
+    };
+    this.interactables.push(doorInteractObj);
+
     // If house contains an interactive bed (Inn)
     if (hasBed) {
-      this.spawnBed(x, y, z);
+      this.spawnBed(x, innerFloorY, z, facingYaw);
     }
   }
 
-  spawnBed(x, y, z) {
+  spawnBed(houseX, floorY, houseZ, facingYaw = 0) {
+    // Position bed comfortably in rear half of Inn so open doorway space stays unobstructed
+    const bedWorld = this._localToWorld(houseX, floorY, houseZ, facingYaw, 0, 0, -1.05);
     const group = new THREE.Group();
-    group.position.set(x, y + 0.1, z);
+    group.position.set(bedWorld.x, floorY, bedWorld.z);
+    group.rotation.y = facingYaw;
 
     // Wooden Bed Frame
-    const frameGeom = new THREE.BoxGeometry(1.6, 0.45, 2.6);
+    const frameGeom = new THREE.BoxGeometry(1.6, 0.45, 2.5);
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x5c3818, roughness: 0.7 });
     const frame = new THREE.Mesh(frameGeom, frameMat);
     frame.position.y = 0.22;
+    frame.castShadow = true;
     group.add(frame);
 
     // Mattress & Red Blanket (Roblox style)
-    const matGeom = new THREE.BoxGeometry(1.5, 0.35, 2.5);
+    const matGeom = new THREE.BoxGeometry(1.5, 0.35, 2.4);
     const matMat = new THREE.MeshStandardMaterial({ color: 0xb5179e, roughness: 0.6 });
     const mattress = new THREE.Mesh(matGeom, matMat);
     mattress.position.y = 0.55;
+    mattress.castShadow = true;
     group.add(mattress);
 
     // White Pillow
     const pilGeom = new THREE.BoxGeometry(1.2, 0.22, 0.6);
     const pilMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.4 });
     const pillow = new THREE.Mesh(pilGeom, pilMat);
-    pillow.position.set(0, 0.75, -0.85);
+    pillow.position.set(0, 0.75, -0.82);
     group.add(pillow);
 
     this.scene.add(group);
     this.worldObjects.push(group);
 
+    // Solid furniture collider on the bed (blocksSight: false so walls/door gate line-of-sight cleanly)
+    this._addLocalHouseCollider(houseX, floorY, houseZ, facingYaw, -0.82, 0.0, -2.35, 0.82, 1.05, 0.25, {
+      tag: 'furniture_bed', blocksSight: false, blocksCamera: false
+    });
+
     // Register bed with proximity interaction
     this.interactables.push({
       type: 'bed',
       name: 'Adventurer\'s Bed',
-      position: new THREE.Vector3(x, y + 0.8, z),
-      radius: 3.5,
+      promptText: 'Sleep',
+      position: new THREE.Vector3(bedWorld.x, floorY + 0.8, bedWorld.z),
+      radius: 2.8,
       interact: () => {
+        if (window.dayNightManager?.isSleeping) return;
         if (window.interfaceManager) {
           window.interfaceManager.showSleepModal();
         }
@@ -644,6 +1232,7 @@ class WorldManager {
     const postMat = new THREE.MeshStandardMaterial({ color: 0x6f4e37 });
     const post = new THREE.Mesh(postGeom, postMat);
     post.position.y = 1.1;
+    post.castShadow = true;
     group.add(post);
 
     // Straw Body
@@ -651,6 +1240,7 @@ class WorldManager {
     const strawMat = new THREE.MeshStandardMaterial({ color: 0xd4a373 });
     const straw = new THREE.Mesh(strawGeom, strawMat);
     straw.position.y = 1.3;
+    straw.castShadow = true;
     group.add(straw);
 
     // Crossbar arms
@@ -661,6 +1251,7 @@ class WorldManager {
 
     this.scene.add(group);
     this.worldObjects.push(group);
+    this.addCylinderCollider(x, z, 0.55, y, y + 2.3, { tag: 'training_dummy', blocksSight: false });
   }
 
   spawnDimensionalTower(x, y, z, name) {
@@ -687,12 +1278,14 @@ class WorldManager {
 
     this.scene.add(group);
     this.worldObjects.push(group);
+    this.addCylinderCollider(x, z, 1.4, y, y + 9.0, { tag: 'tower', blocksSight: false });
 
     // Tower activation
     let activated = false;
     this.interactables.push({
       type: 'tower',
       name: name,
+      promptText: `Activate ${name}`,
       position: new THREE.Vector3(x, y + 2, z),
       radius: 4.5,
       interact: () => {
@@ -732,6 +1325,7 @@ class WorldManager {
     const azraelGateObj = {
       type: 'azrael_gate',
       name: 'The Forbidden Equation Core',
+      promptText: 'Enter Nexus',
       position: new THREE.Vector3(x, 2, z),
       radius: 6.0,
       isTriggered: false,
@@ -851,12 +1445,14 @@ class WorldManager {
 
     this.scene.add(group);
     this.worldObjects.push(group);
+    this.addCylinderCollider(x, z, 0.55, groundY, groundY + 2.2, { tag: 'npc', blocksSight: false });
 
     // Register NPC interactable
     this.interactables.push({
       type: 'npc',
       name: name,
       role: role,
+      promptText: `Speak to ${name}`,
       position: new THREE.Vector3(x, groundY + 1.2, z),
       radius: 3.2,
       interact: () => {
@@ -883,7 +1479,11 @@ class WorldManager {
       const angle = (i * Math.PI) / 2;
       const ob = new THREE.Mesh(obeliskGeom, obeliskMat);
       ob.position.set(Math.cos(angle) * 2.2, 1.75, Math.sin(angle) * 2.2);
+      ob.castShadow = true;
       group.add(ob);
+      this.addCylinderCollider(x + Math.cos(angle) * 2.2, z + Math.sin(angle) * 2.2, 0.45, groundY, groundY + 3.5, {
+        tag: 'rift_obelisk', blocksSight: false
+      });
     }
 
     // Floating Rune Ring (Torus)
@@ -1025,8 +1625,7 @@ class WorldManager {
 
     this.scene.add(group);
     this.worldObjects.push(group);
-
-    // Register bridge in solid collision table
+    this.addCylinderCollider(x - 3.5, z, 0.75, groundY, groundY + 2.2, { tag: 'bridge_pedestal', blocksSight: false });
     const bridgeCollision = {
       x: x,
       z: z,
@@ -1133,6 +1732,7 @@ class WorldManager {
 
     this.scene.add(group);
     this.worldObjects.push(group);
+    this.addCylinderCollider(x, z, 1.75, groundY, groundY + 1.5, { tag: 'leyline_altar', blocksSight: false });
 
     let a = 0.0;
     let b = 6.0;
@@ -1289,6 +1889,7 @@ class WorldManager {
 
     this.scene.add(group);
     this.worldObjects.push(group);
+    this.addCylinderCollider(x, z, 2.05, groundY, groundY + 0.9, { tag: 'mana_well', blocksSight: false });
 
     let wellTimer = 0;
     this.interactables.push({
@@ -1325,28 +1926,51 @@ class WorldManager {
   }
 
   update(delta) {
-    const t = Date.now() * 0.001;
+    if (!this._elapsed) this._elapsed = 0;
+    this._elapsed += delta;
+    const t = this._elapsed;
 
-    // 1. Update Oscillating Platforms
-    if (this.oscillatingPlatforms) {
-      this.oscillatingPlatforms.forEach(p => p.update(t));
+    // 1. Update Animated Hinged Doors (smooth cubic ease-out)
+    if (this.animatedDoors && this.animatedDoors.length > 0) {
+      for (let i = 0; i < this.animatedDoors.length; i++) {
+        const d = this.animatedDoors[i];
+        if (d.isAnimating) {
+          d.elapsed += delta;
+          const p = Math.min(1.0, d.elapsed / d.duration);
+          const ease = 1 - Math.pow(1 - p, 3);
+          d.pivot.rotation.y = d.startRot + (d.targetRot - d.startRot) * ease;
+          if (p >= 1.0) {
+            d.pivot.rotation.y = d.targetRot;
+            d.isAnimating = false;
+          }
+        }
+      }
     }
 
-    // 2. Bob and rotate collectibles
-    this.collectibles.forEach(item => {
+    // 2. Update Oscillating Platforms
+    if (this.oscillatingPlatforms) {
+      for (let i = 0; i < this.oscillatingPlatforms.length; i++) {
+        this.oscillatingPlatforms[i].update(t);
+      }
+    }
+
+    // 3. Bob and rotate collectibles
+    for (let i = 0; i < this.collectibles.length; i++) {
+      const item = this.collectibles[i];
       if (!item.collected && item.mesh) {
         item.mesh.rotation.y += 1.8 * delta;
         item.mesh.position.y = item.baseY + Math.sin(t * 3.0 + item.position.x) * 0.15;
       }
-    });
+    }
 
-    // 3. Animate celestial rings
-    this.animatedLights.forEach(lightObj => {
+    // 4. Animate celestial rings
+    for (let i = 0; i < this.animatedLights.length; i++) {
+      const lightObj = this.animatedLights[i];
       if (lightObj.mesh) {
         lightObj.mesh.rotation.z += lightObj.speed * delta;
         lightObj.mesh.rotation.y += (lightObj.speed * 0.6) * delta;
       }
-    });
+    }
   }
 }
 

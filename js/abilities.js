@@ -244,7 +244,11 @@ class AbilitiesManager {
     bolt.position.set(targetPos.x, targetPos.y + 15, targetPos.z);
     this.scene.add(bolt);
 
-    setTimeout(() => this.scene.remove(bolt), 250);
+    setTimeout(() => {
+      this.scene.remove(bolt);
+      geom.dispose();
+      mat.dispose();
+    }, 250);
 
     // Damage enemies near target
     if (window.game) {
@@ -291,6 +295,8 @@ class AbilitiesManager {
       if (scale > 25) {
         clearInterval(interval);
         this.scene.remove(novaMesh);
+        geom.dispose();
+        mat.dispose();
       }
     }, 30);
 
@@ -298,6 +304,13 @@ class AbilitiesManager {
     if (window.game) {
       window.game.dealAoeDamage(player.position, 25.0, 150);
     }
+  }
+
+  _disposeProjectile(p) {
+    if (!p || !p.mesh) return;
+    this.scene.remove(p.mesh);
+    if (p.mesh.geometry) p.mesh.geometry.dispose();
+    if (p.mesh.material) p.mesh.material.dispose();
   }
 
   update(delta) {
@@ -308,6 +321,8 @@ class AbilitiesManager {
       }
     });
 
+    const world = window.game?.world;
+
     // Update active projectiles
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
@@ -315,23 +330,28 @@ class AbilitiesManager {
 
       p.mesh.position.addScaledVector(p.velocity, delta);
 
-      // Check collision with enemies if from player
+      // Check collision with walls, houses, closed doors, pillars
       let hit = false;
-      if (p.fromPlayer && window.game) {
+      if (world && world.checkProjectileColliderHit && world.checkProjectileColliderHit(p.mesh.position, p.radius)) {
+        hit = true;
+      }
+
+      // Check collision with enemies/player
+      if (!hit && p.fromPlayer && window.game) {
         hit = window.game.checkProjectileHitEnemy(p);
-      } else if (!p.fromPlayer && window.game) {
+      } else if (!hit && !p.fromPlayer && window.game) {
         hit = window.game.checkProjectileHitPlayer(p);
       }
 
       if (hit || p.lifetime <= 0) {
-        this.scene.remove(p.mesh);
+        this._disposeProjectile(p);
         this.projectiles.splice(i, 1);
       }
     }
   }
 
   clearAllProjectiles() {
-    this.projectiles.forEach(p => this.scene.remove(p.mesh));
+    this.projectiles.forEach(p => this._disposeProjectile(p));
     this.projectiles = [];
   }
 }

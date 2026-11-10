@@ -19,6 +19,7 @@ class RobloxCharacter {
     this.cameraYaw = 0.0;    // horizontal orbit angle (radians)
     this.cameraTarget = new THREE.Vector3();
     this.cameraOffset = new THREE.Vector3(0, -0.2, 0);
+    this._desiredCamPos = new THREE.Vector3();
 
     // Animation & State Machine
     this.animState = 'idle'; // 'idle', 'walking', 'running', 'sprinting', 'jumping', 'attacking', 'heavy_attack', 'hurt', 'victory', 'sleeping'
@@ -36,6 +37,9 @@ class RobloxCharacter {
 
     // Build the 3D Roblox Blocky Body
     this.buildRobloxBody();
+    this.mesh.traverse(obj => {
+      if (obj.isMesh) obj.castShadow = true;
+    });
 
     // Key shortcut for camera toggle
     window.addEventListener('keydown', (e) => {
@@ -231,7 +235,7 @@ class RobloxCharacter {
       btn.innerText = this.cameraMode === 'third_person' ? '🎥 3RD PERSON [V]' : '🎥 1ST PERSON [V]';
     }
     if (window.interfaceManager) {
-      window.interfaceManager.showToast(`Camera switched to ${this.cameraMode === 'third_person' ? '3rd Person (Roblox View)' : '1st Person'}`, 'info');
+      window.interfaceManager.showToast(`Camera switched to ${this.cameraMode === 'third_person' ? '3rd Person' : '1st Person'}`, 'info');
     }
     if (window.game && window.game.player) {
       if (this.cameraMode === 'first_person') {
@@ -270,7 +274,9 @@ class RobloxCharacter {
     const isSprinting = playerController.keys.sprint && isMoving;
     const isGrounded = playerController.isGrounded;
 
-    if (this.isAttacking) {
+    if (this.animState === 'sleeping') {
+      this.updateSleepAnimation();
+    } else if (this.isAttacking) {
       this.updateAttackAnimation(delta);
     } else if (!isGrounded) {
       this.setAnimationState('jumping');
@@ -281,8 +287,6 @@ class RobloxCharacter {
     } else if (isMoving) {
       this.setAnimationState('walking');
       this.updateWalkAnimation(delta, 8.0);
-    } else if (this.animState === 'sleeping') {
-      this.updateSleepAnimation();
     } else {
       this.setAnimationState('idle');
       this.updateIdleAnimation(delta);
@@ -376,9 +380,9 @@ class RobloxCharacter {
   }
 
   updateSleepAnimation() {
-    // Lie horizontally on bed
+    // Lie horizontally on bed relative to floor/ground height
     this.mesh.rotation.x = -Math.PI / 2;
-    this.mesh.position.y = 1.2;
+    this.mesh.position.y = (this.position.y - 1.8) + 0.92;
     this.leftArmPivot.rotation.set(0, 0, 0);
     this.rightArmPivot.rotation.set(0, 0, 0);
     this.leftLegPivot.rotation.set(0, 0, 0);
@@ -386,7 +390,7 @@ class RobloxCharacter {
   }
 
   // =========================================================================
-  // THIRD-PERSON ORBIT CAMERA
+  // THIRD-PERSON ORBIT CAMERA (WITH WALL / TERRAIN OCCLUSION CLIPPING)
   // =========================================================================
   updateThirdPersonCamera(delta, playerController) {
     // Target position is character upper torso
@@ -400,8 +404,14 @@ class RobloxCharacter {
     const cy = this.cameraTarget.y + Math.sin(this.cameraPitch) * this.cameraDistance;
     const cz = this.cameraTarget.z + Math.cos(this.cameraYaw) * Math.cos(this.cameraPitch) * this.cameraDistance;
 
-    // Smooth camera lag
-    this.camera.position.set(cx, cy, cz);
+    this._desiredCamPos.set(cx, cy, cz);
+
+    // Prevent camera from clipping through house walls, closed doors, pillars, or below terrain
+    if (window.game && window.game.world && window.game.world.clipCameraRay) {
+      window.game.world.clipCameraRay(this.cameraTarget, this._desiredCamPos, 0.32);
+    }
+
+    this.camera.position.copy(this._desiredCamPos);
     this.camera.lookAt(this.cameraTarget);
   }
 }

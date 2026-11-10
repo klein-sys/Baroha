@@ -12,6 +12,14 @@ class InterfaceManager {
     this.toastQueue = [];
     this.isToastShowing = false;
 
+    // Cached DOM values to prevent unnecessary 60fps reflows
+    this._uiCache = {
+      hpStr: '', mpStr: '', xpStr: '', level: -1, rank: '', hearts: -1,
+      hpPct: '', mpPct: '', xpPct: '',
+      interactVisible: false, interactText: ''
+    };
+    this._projVec = new THREE.Vector3();
+
     // Cached DOM elements
     this.initDOMElements();
 
@@ -111,8 +119,7 @@ class InterfaceManager {
     const sleepMorningBtn = document.getElementById('btn-sleep-morning');
     if (sleepMorningBtn) {
       sleepMorningBtn.onclick = () => {
-        this.hideSleepModal();
-        if (window.dayNightManager) {
+        if (window.dayNightManager && !window.dayNightManager.isSleeping) {
           window.dayNightManager.sleepUntilMorning();
         }
       };
@@ -120,45 +127,83 @@ class InterfaceManager {
 
     const sleepCancelBtn = document.getElementById('btn-sleep-cancel');
     if (sleepCancelBtn) {
-      sleepCancelBtn.onclick = () => this.hideSleepModal();
+      sleepCancelBtn.onclick = () => {
+        if (!window.dayNightManager?.isSleeping) this.hideSleepModal();
+      };
     }
 
     const closeSleepBtn = document.getElementById('btn-close-sleep');
     if (closeSleepBtn) {
-      closeSleepBtn.onclick = () => this.hideSleepModal();
+      closeSleepBtn.onclick = () => {
+        if (!window.dayNightManager?.isSleeping) this.hideSleepModal();
+      };
     }
   }
 
   updatePlayerStatsUI() {
     if (!window.game || !window.game.player) return;
     const p = window.game.player;
+    const c = this._uiCache;
 
-    // HP Bar
+    // HP Bar (update DOM only on change)
     const hpRatio = Math.max(0, Math.min(1, p.hp / p.maxHp));
-    if (this.hpBar) this.hpBar.style.width = `${hpRatio * 100}%`;
-    if (this.hpNum) this.hpNum.innerText = `${Math.ceil(p.hp)}/${p.maxHp}`;
-    if (this.robloxHpFill) this.robloxHpFill.style.width = `${hpRatio * 100}%`;
-    if (this.robloxHpNum) this.robloxHpNum.innerText = `${Math.ceil(p.hp)} / ${p.maxHp}`;
+    const hpPct = `${(hpRatio * 100).toFixed(1)}%`;
+    const hpStr = `${Math.ceil(p.hp)} / ${p.maxHp}`;
+    if (c.hpPct !== hpPct) {
+      c.hpPct = hpPct;
+      if (this.hpBar) this.hpBar.style.width = hpPct;
+      if (this.robloxHpFill) this.robloxHpFill.style.width = hpPct;
+    }
+    if (c.hpStr !== hpStr) {
+      c.hpStr = hpStr;
+      if (this.hpNum) this.hpNum.innerText = `${Math.ceil(p.hp)}/${p.maxHp}`;
+      if (this.robloxHpNum) this.robloxHpNum.innerText = hpStr;
+    }
 
     // MP Bar
     const mpRatio = Math.max(0, Math.min(1, p.mana / p.maxMana));
-    if (this.mpBar) this.mpBar.style.width = `${mpRatio * 100}%`;
-    if (this.mpNum) this.mpNum.innerText = `${Math.ceil(p.mana)}/${p.maxMana}`;
-    if (this.robloxMpFill) this.robloxMpFill.style.width = `${mpRatio * 100}%`;
-    if (this.robloxMpNum) this.robloxMpNum.innerText = `${Math.ceil(p.mana)} / ${p.maxMana}`;
+    const mpPct = `${(mpRatio * 100).toFixed(1)}%`;
+    const mpStr = `${Math.ceil(p.mana)} / ${p.maxMana}`;
+    if (c.mpPct !== mpPct) {
+      c.mpPct = mpPct;
+      if (this.mpBar) this.mpBar.style.width = mpPct;
+      if (this.robloxMpFill) this.robloxMpFill.style.width = mpPct;
+    }
+    if (c.mpStr !== mpStr) {
+      c.mpStr = mpStr;
+      if (this.mpNum) this.mpNum.innerText = `${Math.ceil(p.mana)}/${p.maxMana}`;
+      if (this.robloxMpNum) this.robloxMpNum.innerText = mpStr;
+    }
 
     // XP Bar
     const xpRatio = Math.max(0, Math.min(1, p.xp / p.xpNeeded));
-    if (this.xpBar) this.xpBar.style.width = `${xpRatio * 100}%`;
-    if (this.xpNum) this.xpNum.innerText = `${p.xp}/${p.xpNeeded} XP`;
+    const xpPct = `${(xpRatio * 100).toFixed(1)}%`;
+    const xpStr = `${p.xp}/${p.xpNeeded} XP`;
+    if (c.xpPct !== xpPct) {
+      c.xpPct = xpPct;
+      if (this.xpBar) this.xpBar.style.width = xpPct;
+    }
+    if (c.xpStr !== xpStr) {
+      c.xpStr = xpStr;
+      if (this.xpNum) this.xpNum.innerText = xpStr;
+    }
 
     // Level & Title
-    if (this.playerLevelBadge) this.playerLevelBadge.innerText = p.level;
-    if (this.robloxLevel) this.robloxLevel.innerText = `Lv. ${p.level}`;
-    if (this.playerClass) this.playerClass.innerText = p.rankTitle;
+    if (c.level !== p.level) {
+      c.level = p.level;
+      if (this.playerLevelBadge) this.playerLevelBadge.innerText = p.level;
+      if (this.robloxLevel) this.robloxLevel.innerText = `Lv. ${p.level}`;
+    }
+    if (c.rank !== p.rankTitle) {
+      c.rank = p.rankTitle;
+      if (this.playerClass) this.playerClass.innerText = p.rankTitle;
+    }
 
     // Hearts UI
-    this.updateHeartsUI(p.hearts);
+    if (c.hearts !== p.hearts) {
+      c.hearts = p.hearts;
+      this.updateHeartsUI(p.hearts);
+    }
   }
 
   updateHeartsUI(heartsCount) {
@@ -224,6 +269,7 @@ class InterfaceManager {
   }
 
   closeAllModals(exceptModalId = null) {
+    if (window.dayNightManager?.isSleeping && exceptModalId !== 'sleep-dialog-modal') return;
     const modals = document.querySelectorAll('.modal-backdrop');
     modals.forEach(m => {
       if (!exceptModalId || m.id !== exceptModalId) {
@@ -246,10 +292,25 @@ class InterfaceManager {
   }
 
   showSleepModal() {
+    if (window.dayNightManager?.isSleeping) return;
     const modal = document.getElementById('sleep-dialog-modal');
     if (!modal) return;
     this.closeAllModals('sleep-dialog-modal');
     if (document.exitPointerLock) document.exitPointerLock();
+
+    // Ensure modal opens cleanly in pre-sleep confirmation state
+    const countdownBox = document.getElementById('sleep-countdown-box');
+    const actionBtns = document.getElementById('sleep-action-buttons');
+    const closeBtn = document.getElementById('btn-close-sleep');
+    const heading = document.getElementById('sleep-modal-heading');
+    const visualIcon = document.getElementById('sleep-visual-icon');
+    const progressFill = document.getElementById('sleep-progress-fill');
+    if (countdownBox) countdownBox.style.display = 'none';
+    if (actionBtns) actionBtns.style.display = 'flex';
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (heading) heading.innerText = 'REST UNTIL MORNING?';
+    if (visualIcon) visualIcon.innerText = '🌙 ➔ ☀️';
+    if (progressFill) progressFill.style.width = '0%';
 
     const timeInfo = document.getElementById('sleep-current-time');
     if (timeInfo && window.dayNightManager) {
@@ -266,6 +327,7 @@ class InterfaceManager {
   }
 
   hideSleepModal() {
+    if (window.dayNightManager?.isSleeping) return;
     const modal = document.getElementById('sleep-dialog-modal');
     if (modal) modal.classList.remove('open');
     this.activeModal = null;
@@ -300,12 +362,17 @@ class InterfaceManager {
     const container = document.getElementById('floating-text-container');
     if (!container || !window.game || !window.game.camera) return;
 
-    // Project 3D position to 2D screen coordinates
-    const v = pos.clone();
-    v.project(window.game.camera);
+    // Cap floating combat numbers to prevent DOM buildup
+    while (container.children.length >= 12) {
+      container.firstElementChild.remove();
+    }
 
-    const x = (v.x * 0.5 + 0.5) * window.innerWidth;
-    const y = (-(v.y * 0.5) + 0.5) * window.innerHeight;
+    // Project 3D position using reusable scratch vector
+    this._projVec.copy(pos).project(window.game.camera);
+    if (this._projVec.z > 1) return; // behind camera
+
+    const x = (this._projVec.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-(this._projVec.y * 0.5) + 0.5) * window.innerHeight;
 
     const el = document.createElement('div');
     el.className = `floating-text ${type}`;
@@ -316,7 +383,7 @@ class InterfaceManager {
     container.appendChild(el);
     setTimeout(() => {
       if (el.parentNode) el.parentNode.removeChild(el);
-    }, 1200);
+    }, 1100);
   }
 
   showToast(message, type = 'info') {
@@ -366,14 +433,21 @@ class InterfaceManager {
   }
 
   showInteractPrompt(text) {
-    if (this.interactPrompt && this.interactText) {
+    if (!this.interactPrompt || !this.interactText) return;
+    if (this._uiCache.interactText !== text) {
+      this._uiCache.interactText = text;
       this.interactText.innerText = text;
+    }
+    if (!this._uiCache.interactVisible) {
+      this._uiCache.interactVisible = true;
       this.interactPrompt.classList.add('active');
     }
   }
 
   hideInteractPrompt() {
-    if (this.interactPrompt) {
+    if (!this.interactPrompt) return;
+    if (this._uiCache.interactVisible) {
+      this._uiCache.interactVisible = false;
       this.interactPrompt.classList.remove('active');
     }
   }
@@ -386,6 +460,7 @@ class InterfaceManager {
     if (!dock || !window.abilitiesManager) return;
 
     dock.innerHTML = '';
+    this._cooldownCache = {};
     window.abilitiesManager.abilities.forEach((ability, idx) => {
       const slot = document.createElement('div');
       slot.className = `ability-slot ${ability.unlocked ? '' : 'locked'} ${idx === window.abilitiesManager.selectedAbilityIndex ? 'active' : ''}`;
@@ -410,16 +485,13 @@ class InterfaceManager {
 
   updateAbilityCooldowns() {
     if (!window.abilitiesManager) return;
+    if (!this._cooldownCache) this._cooldownCache = {};
     window.abilitiesManager.abilities.forEach(ability => {
+      const pctStr = ability.timer > 0 ? `${Math.round((ability.timer / ability.cooldown) * 100)}%` : '0%';
+      if (this._cooldownCache[ability.id] === pctStr) return;
+      this._cooldownCache[ability.id] = pctStr;
       const overlay = document.getElementById(`cd-${ability.id}`);
-      if (overlay) {
-        if (ability.timer > 0) {
-          const pct = (ability.timer / ability.cooldown) * 100;
-          overlay.style.height = `${pct}%`;
-        } else {
-          overlay.style.height = '0%';
-        }
-      }
+      if (overlay) overlay.style.height = pctStr;
     });
   }
 
@@ -435,9 +507,13 @@ class InterfaceManager {
     const hud = document.getElementById('calculus-live-hud');
     if (!hud) return;
     if (!data) {
-      hud.style.display = 'none';
+      this.hideCalculusTelemetry();
       return;
     }
+    const cacheKey = data.html || `${data.title}|${data.func}|${data.details}|${data.metrics ? data.metrics.map(m => m.val).join(',') : ''}`;
+    if (this._lastTelemetryKey === cacheKey && hud.style.display === 'block') return;
+    this._lastTelemetryKey = cacheKey;
+
     hud.style.display = 'block';
     const titleEl = document.getElementById('calc-hud-title');
     const bodyEl = document.getElementById('calc-hud-body');
@@ -461,7 +537,10 @@ class InterfaceManager {
 
   hideCalculusTelemetry() {
     const hud = document.getElementById('calculus-live-hud');
-    if (hud) hud.style.display = 'none';
+    if (hud && hud.style.display !== 'none') {
+      hud.style.display = 'none';
+      this._lastTelemetryKey = '';
+    }
   }
 
   // =========================================================================
@@ -747,6 +826,7 @@ class InterfaceManager {
     document.querySelectorAll('.modal-backdrop').forEach(modal => {
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
+          if (window.dayNightManager?.isSleeping) return;
           this.closeAllModals();
           this.resumePointerLockIfActive();
         }

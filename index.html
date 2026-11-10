@@ -36,12 +36,9 @@
        ========================================================================= -->
   <div id="game-hud">
 
-    <!-- Roblox Top Bar (Icons, Level, HP/MP, Themed Boss Bar, Objectives, Clock) -->
+    <!-- Top Bar (Menu, Level, HP/MP, Themed Boss Bar, Objectives, Clock) -->
     <div class="roblox-top-bar">
       <div class="roblox-header-left">
-        <div class="roblox-logo-btn" title="Roblox Mathbound">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M5.5 2.5L21.5 6.5L18.5 22.5L2.5 18.5L5.5 2.5ZM10.2 10.2L9.2 14.2L13.8 15.2L14.8 11.2L10.2 10.2Z"/></svg>
-        </div>
         <div class="roblox-menu-btn" id="btn-roblox-menu" title="Menu [ESC]">
           <span></span><span></span><span></span>
         </div>
@@ -961,19 +958,28 @@
        SLEEP DIALOG MODAL (BED AT VILLAGE INN)
        ========================================================================= -->
   <div class="modal-backdrop" id="sleep-dialog-modal">
-    <div class="fantasy-panel" style="max-width: 520px; text-align: center;">
+    <div class="fantasy-panel sleep-inn-panel" style="max-width: 500px; text-align: center;">
       <div class="fantasy-panel-header">
         <div class="panel-title"><span>🛏️ ADVENTURER'S INN & BED</span></div>
         <button class="btn-close-modal" id="btn-close-sleep">✕</button>
       </div>
-      <div class="fantasy-panel-body" style="padding: 24px 20px;">
-        <div style="font-size: 42px; margin-bottom: 10px;">🌙 ➔ ☀️</div>
-        <h3 style="font-family: var(--font-title); color: #ffd978; font-size: 22px; margin-bottom: 8px;">REST UNTIL MORNING?</h3>
-        <p id="sleep-current-time" style="font-size: 14px; color: #a8dadc; margin-bottom: 12px;">Current Time: 10:45 PM (Dangerous Night)</p>
-        <p style="font-size: 13px; color: #c2b59b; line-height: 1.5; margin-bottom: 22px;">
+      <div class="fantasy-panel-body" style="padding: 26px 24px;">
+        <div id="sleep-visual-icon" style="font-size: 44px; margin-bottom: 12px; transition: transform 0.5s ease;">🌙 ➔ ☀️</div>
+        <h3 id="sleep-modal-heading" style="font-family: var(--font-title); color: #ffd978; font-size: 22px; margin-bottom: 10px;">REST UNTIL MORNING?</h3>
+        <p id="sleep-current-time" style="font-size: 14px; color: #a8dadc; margin-bottom: 14px;">Current Time: 10:45 PM (Dangerous Night)</p>
+        <p id="sleep-modal-desc" style="font-size: 13px; color: #c2b59b; line-height: 1.6; margin-bottom: 22px;">
           Sleeping will safely skip the perilous night, clear out aggressive monsters, restore your <strong>HP and Mana to 100%</strong>, and advance time directly to <strong>6:00 AM Sunrise</strong>!
         </p>
-        <div style="display: flex; gap: 14px; justify-content: center;">
+
+        <!-- 5-Second Sleep Countdown & Progress Indicator -->
+        <div id="sleep-countdown-box" class="sleep-countdown-box" style="display: none;">
+          <div id="sleep-countdown-text" class="sleep-countdown-text">Resting until sunrise... 5s</div>
+          <div class="sleep-progress-track">
+            <div id="sleep-progress-fill" class="sleep-progress-fill"></div>
+          </div>
+        </div>
+
+        <div id="sleep-action-buttons" style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
           <button class="btn-fantasy-cta primary" id="btn-sleep-morning">☀️ SLEEP UNTIL MORNING (6:00 AM)</button>
           <button class="btn-fantasy-cta" id="btn-sleep-cancel">CANCEL</button>
         </div>

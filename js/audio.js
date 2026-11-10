@@ -228,6 +228,31 @@ class SoundEngine {
     osc.stop(now + 0.4);
   }
 
+  // Wooden House Door Open / Close
+  playDoorToggle(isOpen = true) {
+    if (!this.ctx || !this.sfxGain) return;
+    const now = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    if (isOpen) {
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(240, now + 0.14);
+    } else {
+      osc.frequency.setValueAtTime(190, now);
+      osc.frequency.exponentialRampToValueAtTime(75, now + 0.16);
+    }
+
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(now);
+    osc.stop(now + 0.19);
+  }
+
   // Healing Aura
   playHeal() {
     if (!this.ctx) return;

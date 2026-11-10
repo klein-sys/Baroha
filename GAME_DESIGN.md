@@ -205,3 +205,4 @@ To assist course facilitators (Engr. Aquino & Engr. Gatdula) during evaluation:
 - **Cheats / God Mode:** Enable God Mode, Max Level 4, Noclip Fly, or Instant Boss Kill.
 - **Calculus Diagnostics:** Click "Run Calculus Diagnostics" to execute in-engine automated proofs verifying all differential formulas.
 - **Codex Reference:** Press **`[M]`** anytime to inspect live mathematical telemetry and step-by-step worked proofs.
+

@@ -67,11 +67,18 @@ class SettingsManager {
     if (window.game) {
       const g = this.settings.graphics;
 
-      // Resolution / Pixel Ratio
+      // Resolution / Pixel Ratio & Shadows
       if (window.game.renderer) {
-        const dpr = Math.min(window.devicePixelRatio * g.resolutionScale, 2.5);
+        const dpr = Math.min(window.devicePixelRatio * g.resolutionScale, 2.0);
         window.game.renderer.setPixelRatio(dpr);
         window.game.renderer.setSize(window.innerWidth, window.innerHeight);
+        const enableShadows = !!g.dynamicLighting && g.preset !== 'low';
+        if (window.game.renderer.shadowMap) {
+          window.game.renderer.shadowMap.enabled = enableShadows;
+        }
+        if (window.game.dayNight && window.game.dayNight.sunLight) {
+          window.game.dayNight.sunLight.castShadow = enableShadows;
+        }
       }
 
       // Camera FOV

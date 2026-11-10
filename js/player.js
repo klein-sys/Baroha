@@ -72,8 +72,11 @@ class PlayerController {
       reach: 3.5
     };
 
-    // Checkpoint
+    // Checkpoint & scratch math vectors
     this.checkpointPosition = new THREE.Vector3(0, 2, 0);
+    this._moveDir = new THREE.Vector3();
+    this._forward = new THREE.Vector3();
+    this._right = new THREE.Vector3();
 
     // Build the 3D first-person weapon model
     this.createViewmodel();
@@ -526,11 +529,11 @@ class PlayerController {
 
     // --- MOVEMENT PHYSICS ---
     const moveSpeed = this.keys.sprint ? this.sprintSpeed : this.walkSpeed;
-    const moveDir = new THREE.Vector3();
+    const moveDir = this._moveDir.set(0, 0, 0);
 
-    // Calculate forward & right vectors based on yaw
-    const forward = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
-    const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    // Calculate forward & right vectors based on yaw (zero allocation)
+    const forward = this._forward.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    const right = this._right.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
 
     // Keyboard inputs
     if (this.keys.forward) moveDir.add(forward);
@@ -549,9 +552,10 @@ class PlayerController {
       this.velocity.x = moveDir.x * moveSpeed;
       this.velocity.z = moveDir.z * moveSpeed;
     } else {
-      // Decelerate smoothly
-      this.velocity.x *= 0.75;
-      this.velocity.z *= 0.75;
+      // Frame-rate independent smooth deceleration
+      const damp = Math.exp(-15 * delta);
+      this.velocity.x *= damp;
+      this.velocity.z *= damp;
     }
 
     // Jump
@@ -563,12 +567,48 @@ class PlayerController {
     // Apply gravity
     this.velocity.y -= this.gravity * delta;
 
-    // Integrate position
-    this.position.x += this.velocity.x * delta;
-    this.position.y += this.velocity.y * delta;
-    this.position.z += this.velocity.z * delta;
-
     const world = window.game?.world;
+    const isNoclip = !!(window.devConsoleManager && window.devConsoleManager.isNoclip);
+
+    // Sub-step horizontal integration so running/jumping cannot tunnel through walls or closed doors
+    const totalDx = this.velocity.x * delta;
+    const totalDz = this.velocity.z * delta;
+    const moveDist = Math.hypot(totalDx, totalDz);
+    const steps = (!isNoclip && world) ? Math.max(1, Math.min(8, Math.ceil(moveDist / 0.22))) : 1;
+    const stepDx = totalDx / steps;
+    const stepDz = totalDz / steps;
+
+    for (let s = 0; s < steps; s++) {
+      this.position.x += stepDx;
+      this.position.z += stepDz;
+
+      if (!isNoclip && world) {
+        if (world.resolveHorizontalCollision) {
+          world.resolveHorizontalCollision(
+            this.position,
+            this.radius,
+            this.position.y - this.height,
+            this.position.y + 0.08
+          );
+        }
+
+        // Keep player safely inside Realms 1 & 2 terrain boundaries (Realm 3 retains outer floating island void drop)
+        if (world.currentRealm !== 3) {
+          const halfW = world.terrainWidth * 0.5 - 1.5;
+          const halfD = world.terrainDepth * 0.5 - 1.5;
+          this.position.x = Math.max(-halfW, Math.min(halfW, this.position.x));
+          this.position.z = Math.max(-halfD, Math.min(halfD, this.position.z));
+        }
+      }
+    }
+
+    // Integrate vertical axis
+    this.position.y += this.velocity.y * delta;
+
+    if (!isNoclip && world && world.checkCeilingCollision) {
+      world.checkCeilingCollision(this.position, this.velocity, this.position.y + 0.1);
+    }
+
     const outsideWorld = world && (Math.abs(this.position.x) > world.terrainWidth / 2
       || Math.abs(this.position.z) > world.terrainDepth / 2);
     if (this.position.y < -12) {
@@ -576,10 +616,11 @@ class PlayerController {
       return;
     }
 
-    // Ground collision test (simple floor at y = 1.8 or world height)
+    // Ground & walkable floor collision test
     let groundHeight = 1.8;
-    if (window.game && window.game.world) {
-      groundHeight = window.game.world.getTerrainHeight(this.position.x, this.position.z) + this.height;
+    if (world) {
+      const feetY = this.position.y - this.height;
+      groundHeight = world.getTerrainHeight(this.position.x, this.position.z, feetY) + this.height;
     }
 
     if (!outsideWorld && this.position.y <= groundHeight) {

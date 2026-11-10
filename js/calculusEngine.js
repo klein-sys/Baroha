@@ -364,3 +364,4 @@ class CalculusEngine {
 // Global Singleton Instance
 window.CalculusEngine = CalculusEngine;
 window.calculusEngine = new CalculusEngine();
+
