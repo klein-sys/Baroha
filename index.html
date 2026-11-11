@@ -95,6 +95,7 @@
             <div class="boss-jewel-crown" id="boss-jewel-crown">♦</div>
           </div>
           <div class="boss-level-subtitle" id="hud-boss-level-sub">Lv. 50</div>
+          <span id="boss-attack-readout" hidden></span>
           <span id="hud-boss-phase" style="display:none;">PHASE I</span>
         </div>
 
@@ -181,6 +182,7 @@
           <span>FLOOR OBJECTIVE</span>
           <span class="roblox-obj-count" id="roblox-obj-count">0 / 1</span>
         </div>
+        <div class="hud-room-name" id="hud-room-name"></div>
         <div class="quest-name" id="hud-quest-name">The Last Guardian's Wisdom</div>
         <div class="quest-objective" id="hud-quest-desc">Speak with the Last Guardian of Knowledge at the forest glade.</div>
         <div class="quest-progress-bar">
@@ -195,6 +197,10 @@
           <span class="calc-hud-title" id="calc-hud-title">ACTIVE HARMONIC FLUX</span>
         </div>
         <div class="calc-hud-body" id="calc-hud-body"></div>
+        <div class="puzzle-tools" id="puzzle-tools" hidden>
+          <button type="button" id="puzzle-hint">Hint <kbd>G</kbd></button>
+          <button type="button" id="puzzle-reset">Reset <kbd>R</kbd></button>
+        </div>
       </div>
     </div>
 
@@ -260,7 +266,16 @@
       </div>
       <div class="fantasy-panel-body">
         <div class="dialogue-speaker-wrap">
-          <div class="dialogue-portrait">🧙‍♂️</div>
+          <div class="dialogue-portrait" aria-hidden="true">
+            <svg viewBox="0 0 64 64" width="58" height="58">
+              <circle cx="32" cy="32" r="31" fill="#24293c"/>
+              <path d="M14 60c0-16 36-16 36 0" fill="#454968"/>
+              <path d="M20 33h24l-4 15-8 8-8-8z" fill="#d5d4ca"/>
+              <path d="M23 28h18v13H23z" fill="#f0c496"/>
+              <path d="M10 30l14-5 8-19 10 17 14 7z" fill="#52567e" stroke="#f7cc7d" stroke-width="2"/>
+              <path d="M26 35h3m6 0h3" stroke="#182335" stroke-width="2"/>
+            </svg>
+          </div>
           <div class="dialogue-speaker-info">
             <div class="dialogue-speaker-name" id="npc-name">The Last Guardian of Knowledge</div>
             <div class="dialogue-speaker-role" id="npc-role">Elder of Numeria</div>
@@ -1156,6 +1171,7 @@
   <div class="screen-overlay hidden" id="victory-screen">
     <div class="victory-title">NUMERIA RESTORED!</div>
     <p class="victory-sub">With the defeat of Morgathia, Vorthak, and Azrael, the three Sacred Calculus Crystals have fused together into harmonic equilibrium. The Forbidden Equation is banished forever!</p>
+    <p id="victory-lore" class="victory-sub"></p>
     <div class="stats-summary-grid">
       <div class="stat-box">
         <div class="stat-box-val" id="stat-level">4</div>
@@ -1191,6 +1207,15 @@
     </div>
   </div>
 
+  <section id="boss-intro" hidden role="dialog" aria-modal="true" aria-labelledby="boss-intro-name">
+    <div class="boss-intro-card">
+      <p id="boss-intro-title"></p>
+      <h2 id="boss-intro-name"></h2>
+      <p id="boss-intro-cue"></p>
+    </div>
+    <button id="boss-intro-skip" type="button">Skip intro <kbd>K</kbd></button>
+  </section>
+
   <!-- Scripts in dependency order -->
   <script src="js/three.min.js"></script>
   <script>
@@ -1213,6 +1238,7 @@
   <script src="js/player.js"></script>
   <script src="js/character.js"></script>
   <script src="js/abilities.js"></script>
+  <script src="js/attack-patterns.js"></script>
   <script src="js/bosses.js"></script>
   <script src="js/dungeon.js"></script>
   <script src="js/world.js"></script>
@@ -1225,6 +1251,7 @@
   <script src="js/map.js"></script>
   <script src="js/dev.js"></script>
   <script src="js/interface.js"></script>
+  <script src="js/boss-intro.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>
 

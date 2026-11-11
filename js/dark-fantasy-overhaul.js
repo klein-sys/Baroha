@@ -224,7 +224,7 @@
     attach('dark_witch', boss.mesh, boss.mesh.children.filter(c => !animated.has(c)), {position:[0,-.35,0]});
   });
   wrap(BossesManager.prototype, 'spawnLich', function (boss) {
-    if (!boss) return;
+    if (!boss || boss.type === 'sentinel') return;
     const animated = new Set([boss.staff].concat(boss.runeCards));
     attach('lich_king', boss.mesh, boss.mesh.children.filter(c => !animated.has(c)), {position:[0,-.18,0]});
   });
@@ -246,6 +246,7 @@
   // ===== WORLD: only meshes/objects with safe visual-only fallbacks =====
   function worldGroup(method,asset,keep) {
     wrap(WorldManager.prototype,method,function(_result,_args,before) {
+      if (method === 'spawnNPC' && _args[3]?.startsWith('Aster')) return;
       const created=this.worldObjects.slice(before.world);
       const target=created.find(o => o.isGroup) || created[0];
       if (!target) return;

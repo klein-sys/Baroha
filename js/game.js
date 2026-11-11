@@ -31,6 +31,7 @@ class GameEngine {
     this._toTarget = new THREE.Vector3();
 
     this.init();
+    this.bossIntroduction = new BossIntroduction(this);
   }
 
   init() {
@@ -124,7 +125,7 @@ class GameEngine {
   canPlay() {
     return this.isRunning && !this.isPaused && !this.isGameOver && !this.isVictory
       && !document.querySelector('.modal-backdrop.open')
-      && !this.dayNight.isSleeping;
+      && !this.dayNight.isSleeping && !this.bossIntroduction?.active;
   }
 
   requestMouseLook() {
@@ -139,7 +140,9 @@ class GameEngine {
 
   transitionToRealm(realmId) {
     if (!dungeonFloors[realmId - 1]) return;
+    this.bossIntroduction?.cancel();
     this.nearestInteractable = null;
+    this.currentRoom = null;
     this.player.velocity.set(0, 0, 0);
     window.interfaceManager?.hideInteractPrompt();
     window.interfaceManager?.hideBossBar();
@@ -180,9 +183,9 @@ class GameEngine {
 
   checkMeleeHit(damage, reach) {
     const forward = this._forward.set(
-      -Math.sin(this.player.yaw),
+      -Math.sin(this.player.yaw) * Math.cos(this.player.pitch),
       Math.sin(this.player.pitch),
-      -Math.cos(this.player.yaw)
+      -Math.cos(this.player.yaw) * Math.cos(this.player.pitch)
     ).normalize();
     const hitPoint = this._hitPoint.copy(this.player.position).addScaledVector(forward, reach);
 
@@ -191,17 +194,20 @@ class GameEngine {
     // 1. Check basic enemies
     for (let i = 0; i < this.enemies.enemies.length; i++) {
       const enemy = this.enemies.enemies[i];
-      if (!enemy.isDead && enemy.position.distanceTo(hitPoint) < 2.5) {
-        enemy.hp -= damage;
+      if (!enemy.isDead && enemy.position.distanceTo(hitPoint) < 2.5
+        && this.world.hasLineOfSight(this.player.position, enemy.position)) {
+        const strikeDamage = this.enemies.damageThroughGuard(enemy, damage, this.player.position);
+        enemy.hp -= strikeDamage;
         hitSomething = true;
         if (window.soundEngine) window.soundEngine.playSwordHit();
         if (window.interfaceManager) {
           window.interfaceManager.showHitmarker();
-          window.interfaceManager.showFloatingText(`-${damage}`, enemy.position, 'damage');
+          window.interfaceManager.showFloatingText(`-${strikeDamage}`, enemy.position, 'damage');
         }
 
         if (enemy.hp <= 0) {
           enemy.isDead = true;
+          this.enemies.clearStrike(enemy);
           this.scene.remove(enemy.mesh);
           this.world?.disposeHierarchy?.(enemy.mesh);
           this.player.addXp(35);
@@ -213,7 +219,7 @@ class GameEngine {
     if (this.bosses && this.bosses.summonedSkeletons) {
       for (let i = 0; i < this.bosses.summonedSkeletons.length; i++) {
         const skel = this.bosses.summonedSkeletons[i];
-        if (!skel.isDead && skel.position.distanceTo(hitPoint) < 2.5) {
+        if (!skel.isDead && skel.position.distanceTo(hitPoint) < 2.5 && this.world.hasLineOfSight(this.player.position, skel.position)) {
           skel.hp -= damage;
           hitSomething = true;
           if (window.soundEngine) window.soundEngine.playSwordHit();
@@ -223,6 +229,7 @@ class GameEngine {
           }
           if (skel.hp <= 0) {
             skel.isDead = true;
+            this.enemies.clearStrike(skel);
             this.scene.remove(skel.mesh);
             this.world?.disposeHierarchy?.(skel.mesh);
             this.player.addXp(40);
@@ -234,7 +241,7 @@ class GameEngine {
     // 3. Check active Boss
     if (this.enemies.isBossActive && this.enemies.activeBoss) {
       const boss = this.enemies.activeBoss;
-      if (boss.position.distanceTo(hitPoint) < 5.0) {
+      if (boss.position.distanceTo(hitPoint) < 5.0 && this.world.hasLineOfSight(this.player.position, boss.position)) {
         hitSomething = true;
         this.enemies.damageBoss(damage);
         if (window.interfaceManager) window.interfaceManager.showHitmarker();
@@ -249,15 +256,17 @@ class GameEngine {
     for (let i = 0; i < this.enemies.enemies.length; i++) {
       const enemy = this.enemies.enemies[i];
       if (!enemy.isDead && enemy.position.distanceTo(proj.mesh.position) < (enemy.type === 'wolf' ? 1.8 : 1.4)) {
-        enemy.hp -= proj.damage;
+        const strikeDamage = this.enemies.damageThroughGuard(enemy, proj.damage, proj.mesh.position);
+        enemy.hp -= strikeDamage;
         if (window.soundEngine) window.soundEngine.playSwordHit();
         if (window.interfaceManager) {
           window.interfaceManager.showHitmarker();
-          window.interfaceManager.showFloatingText(`-${proj.damage}`, enemy.position, 'crit');
+          window.interfaceManager.showFloatingText(`-${strikeDamage}`, enemy.position, 'crit');
         }
 
         if (enemy.hp <= 0) {
           enemy.isDead = true;
+          this.enemies.clearStrike(enemy);
           this.scene.remove(enemy.mesh);
           this.world?.disposeHierarchy?.(enemy.mesh);
           this.player.addXp(35);
@@ -279,6 +288,7 @@ class GameEngine {
           }
           if (skel.hp <= 0) {
             skel.isDead = true;
+            this.enemies.clearStrike(skel);
             this.scene.remove(skel.mesh);
             this.world?.disposeHierarchy?.(skel.mesh);
             this.player.addXp(40);
@@ -319,6 +329,7 @@ class GameEngine {
         }
         if (enemy.hp <= 0) {
           enemy.isDead = true;
+          this.enemies.clearStrike(enemy);
           this.scene.remove(enemy.mesh);
           this.world?.disposeHierarchy?.(enemy.mesh);
           this.player.addXp(40);
@@ -359,6 +370,14 @@ class GameEngine {
       this.nearestInteractable = null;
       window.interfaceManager?.hideInteractPrompt();
       return;
+    }
+
+    const { x, z } = this.player.position;
+    const room = this.world.rooms?.find(({ bounds: [left, right, north, south] }) => x >= left && x <= right && z >= north && z <= south);
+    if (room && room !== this.currentRoom) {
+      this.currentRoom = room;
+      document.getElementById('hud-room-name').textContent = room.name;
+      window.soundEngine?.playDungeonCue(this.world.currentRealm, 'room');
     }
 
     // Check Collectibles
@@ -411,8 +430,8 @@ class GameEngine {
       const label = bestTarget.promptText || `Interact: ${bestTarget.name}`;
       window.interfaceManager.showInteractPrompt(label);
       if (bestTarget.getTelemetry) {
-        window.interfaceManager.renderCalculusTelemetry(bestTarget.getTelemetry());
-      }
+        window.interfaceManager.renderCalculusTelemetry(bestTarget.getTelemetry(), bestTarget);
+      } else window.interfaceManager.hideCalculusTelemetry();
     } else if (window.interfaceManager) {
       window.interfaceManager.hideInteractPrompt();
       // Check if near an oscillating platform
@@ -422,7 +441,7 @@ class GameEngine {
           const p = this.world.oscillatingPlatforms[i];
           if (p.mesh && this.player.position.distanceTo(p.mesh.position) < 6.5) {
             nearPlatform = true;
-            const t = this.world._elapsed || (Date.now() * 0.001);
+            const t = (this.world._elapsed ?? 0) + p.phase / p.omega;
             const calc = window.calculusEngine ? window.calculusEngine.evalOscillatingPlatform(t, p.A, p.omega) : null;
             if (calc) {
               window.interfaceManager.renderCalculusTelemetry({
@@ -430,7 +449,7 @@ class GameEngine {
                 func: `y(t) = ${p.A}·sin(${p.omega}t)`,
                 details: `v(t) = y'(t) = ${(p.A * p.omega).toFixed(1)}·cos(${p.omega}t). Critical leap peak at v(t) ≈ 0!`,
                 metrics: [
-                  { label: 'Elevation y(t)', val: `${calc.y.toFixed(2)}m` },
+                  { label: 'Elevation y(t)', val: `${(p.y0 + calc.y).toFixed(2)}m` },
                   { label: 'Velocity v(t)', val: `${calc.v.toFixed(2)}m/s` },
                   { label: 'Acceleration a(t)', val: `${calc.a.toFixed(2)}m/s²` },
                   { label: 'Platform Leap State', val: calc.isAtPeak ? 'SAFE (STATIONARY PEAK)' : 'ACTIVE (v ≠ 0)' }
@@ -441,10 +460,18 @@ class GameEngine {
           }
         }
       }
-      if (!nearPlatform && (!this.enemies || !this.enemies.isBossActive)) {
+      if (!nearPlatform) {
         window.interfaceManager.hideCalculusTelemetry();
       }
     }
+  }
+
+  puzzleAction(action) {
+    const target = this.nearestInteractable;
+    if (!this.canPlay() || !target?.[action]) return;
+    const result = target[action]();
+    window.interfaceManager?.showToast(action === 'hint' ? result : result ? 'Dial reset.' : 'This mechanism is already stable.', 'info');
+    window.interfaceManager?.renderCalculusTelemetry(target.getTelemetry(), target);
   }
 
   handleInteract() {
@@ -496,6 +523,7 @@ class GameEngine {
   startBossEncounter(realmId) {
     if (this.enemies.isBossActive || this.world.dungeonProgress[realmId]?.defeated) return;
     this.enemies.spawnBoss(realmId);
+    this.bossIntroduction.start(realmId, this.enemies.activeBoss);
     window.interfaceManager?.updateQuestHUD();
   }
 
@@ -511,7 +539,9 @@ class GameEngine {
 
   handleBossDefeated(realmId) {
     if (realmId !== this.world.currentRealm || this.world.dungeonProgress[realmId]?.defeated) return;
+    this.bossIntroduction?.cancel();
     this.world.unlockDescent();
+    window.soundEngine?.playDungeonCue(realmId, 'portal');
     const fragment = realmId === 4 ? 3 : realmId;
     if (realmId !== 3) window.missionsManager?.awardCrystalFragment(fragment);
     this.player.addXp([500, 1000, 1200, 2000][realmId - 1]);
@@ -538,6 +568,7 @@ class GameEngine {
   }
 
   resetArena() {
+    this.bossIntroduction?.cancel();
     this.bosses.clearBoss();
     this.enemies.activeBoss = null;
     this.enemies.isBossActive = false;
@@ -568,6 +599,11 @@ class GameEngine {
     this.isVictory = true;
     this.isRunning = false;
     if (document.exitPointerLock) document.exitPointerLock();
+
+    const records = Object.values(this.world.dungeonProgress).filter(floor => floor.discovered).length;
+    document.getElementById('victory-lore').textContent = records
+      ? `The ${records} recovered floor record${records === 1 ? ' explains' : 's explain'} the fracture. Together, the restored wards hold Numeria again.`
+      : 'The four thresholds hold again. Aster’s lantern burns steadily at the surface.';
 
     // Populate final stats
     document.getElementById('stat-level').innerText = this.player.level;
@@ -623,6 +659,7 @@ class GameEngine {
     }
 
     const delta = Math.min(this.clock.getDelta(), 0.1);
+    this.bossIntroduction?.update(delta);
 
     if (this.canPlay()) {
       // 1. Day / Night atmosphere & orbital lighting
@@ -659,7 +696,7 @@ class GameEngine {
 
     // Render Scene
     if (this.renderer && this.scene && this.camera) {
-      this.renderer.render(this.scene, this.camera);
+      this.renderer.render(this.scene, this.bossIntroduction?.active?.camera || this.camera);
     }
   }
 }

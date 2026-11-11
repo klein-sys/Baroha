@@ -19,6 +19,7 @@ class EnemiesManager {
 
   clearEnemies() {
     this.enemies.forEach(e => {
+      this.clearStrike(e);
       if (e.mesh) {
         this.scene.remove(e.mesh);
         window.game?.world?.disposeHierarchy?.(e.mesh);
@@ -60,6 +61,7 @@ class EnemiesManager {
 
   despawnNightMonsters() {
     this.nightEnemies.forEach(e => {
+      this.clearStrike(e);
       if (e.mesh) {
         this.scene.remove(e.mesh);
         window.game?.world?.disposeHierarchy?.(e.mesh);
@@ -79,7 +81,7 @@ class EnemiesManager {
     const positions = [[6, -11], [-6, -35], [5, -39], [7, -33], [-7, -41], [-2, -12]];
     positions.slice(0, realmId + 2).forEach(([x, z], index) => {
       const type = types[index % types.length];
-      this.spawnEnemy(type, x, z, type[0].toUpperCase() + type.slice(1), 28 + realmId * 28, 8 + realmId * 5);
+      this.spawnEnemy(type, x, z, enemyPatterns[type].name, 28 + realmId * 28, 8 + realmId * 5);
     });
   }
 
@@ -127,6 +129,13 @@ class EnemiesManager {
     eyeR.position.set(0.2, 1.3, 0.4);
     group.add(eyeR);
 
+    if (type === 'knight') {
+      const shield = new THREE.Mesh(new THREE.BoxGeometry(0.75, 1.1, 0.14),
+        new THREE.MeshStandardMaterial({ color: 0x506d78, metalness: 0.5, roughness: 0.48 }));
+      shield.position.set(-0.56, 0.99, 0.43);
+      group.add(shield);
+      group.userData.shield = shield;
+    }
     this.scene.add(group);
     if (type === 'knight' || type === 'scholar') {
       applyRealmModel(type, group, [body, eyeL, eyeR], 1.8);
@@ -411,55 +420,102 @@ class EnemiesManager {
     }
   }
 
-  update(delta, player) {
-    // Update basic enemies
-    for (let i = this.enemies.length - 1; i >= 0; i--) {
-      const enemy = this.enemies[i];
-      if (enemy.isDead) continue;
+  clearStrike(enemy) {
+    const marker = enemy.strike?.marker;
+    if (!marker) return;
+    this.scene.remove(marker);
+    marker.geometry.dispose();
+    marker.material.dispose();
+    enemy.strike = null;
+  }
 
-      const toPlayer = this._toPlayer.subVectors(player.position, enemy.position);
-      const dist = toPlayer.length();
+  damageThroughGuard(enemy, damage, source) {
+    if (enemy.type !== 'knight' || enemy.strike || enemy.recovery > 0) return damage;
+    const dx = source.x - enemy.position.x;
+    const dz = source.z - enemy.position.z;
+    const yaw = enemy.mesh.rotation.y;
+    return dx * Math.sin(yaw) + dz * Math.cos(yaw) > Math.hypot(dx, dz) * 0.4
+      ? Math.max(1, Math.round(damage * 0.45)) : damage;
+  }
 
-      const visual = enemy.mesh.userData.realmModel;
-      if (visual) {
-        const moving = dist < enemy.detectionRadius && dist > enemy.attackRadius;
-        visual.position.y = moving ? Math.abs(Math.sin(performance.now() * 0.01)) * 0.13 : 0;
-      }
-
-      // Look at player
-      enemy.mesh.lookAt(player.position.x, enemy.mesh.position.y, player.position.z);
-
-      const world = window.game && window.game.world;
-      if (dist < enemy.detectionRadius && dist > enemy.attackRadius) {
-        // Move towards player
-        toPlayer.y = 0;
-        toPlayer.normalize();
-        const x = enemy.position.x;
-        const z = enemy.position.z;
-        enemy.position.addScaledVector(toPlayer, enemy.speed * delta);
-        if (world) {
-          if (world.resolveHorizontalCollision) {
-            world.resolveHorizontalCollision(enemy.position, 0.5, enemy.position.y, enemy.position.y + 1.6);
-          }
-          const ground = world.getTerrainHeight(enemy.position.x, enemy.position.z, enemy.position.y);
-          if (ground < -8) enemy.position.set(x, enemy.position.y, z);
-          else enemy.position.y = ground;
-        }
-      } else if (dist <= enemy.attackRadius) {
-        // Only strike player if unobstructed by a solid wall or closed door
-        const unobstructed = !world || !world.hasLineOfSight || world.hasLineOfSight(enemy.position, player.position);
-        if (unobstructed) {
-          enemy.attackTimer -= delta;
-          if (enemy.attackTimer <= 0) {
-            enemy.attackTimer = enemy.attackCooldown;
-            player.takeDamage(enemy.attackPower);
-          }
-        }
-      }
+  updateThreat(delta, player, enemy) {
+    const world = window.game?.world;
+    if (enemy.isDead) {
+      this.clearStrike(enemy);
+      return;
     }
+    const pattern = enemyPatterns[enemy.type] || enemyPatterns.imp;
+    const dx = player.position.x - enemy.position.x;
+    const dz = player.position.z - enemy.position.z;
+    const distance = Math.hypot(dx, dz);
+    const visible = () => !world || world.hasLineOfSight(enemy.position, player.position);
+    const visual = enemy.mesh.userData.darkFantasyVisual || enemy.mesh.userData.realmModel;
+    if (enemy.strike) {
+      const strike = enemy.strike;
+      strike.time -= delta;
+      if (strike.time > 0) {
+        if (visual) visual.rotation.x = -0.18;
+        strike.marker.material.opacity = 0.30 + 0.33 * (1 - strike.time / pattern.windup);
+        return;
+      }
+      if (!strike.hit) {
+        strike.hit = true;
+        strike.marker.material.color.setHex(0xff5b57);
+        strike.marker.material.opacity = 0.75;
+        const forward = dx * strike.x + dz * strike.z;
+        const lateral = dx * strike.z - dz * strike.x;
+        const inZone = pattern.kind === 'circle' ? distance < pattern.reach
+          : forward > 0 && forward < pattern.reach && Math.abs(lateral) < pattern.width / 2;
+        if (visual) visual.rotation.x = 0.22;
+        if (inZone && player.position.y - enemy.position.y < player.height + 1 && visible()) {
+          player.takeDamage(enemy.attackPower);
+        }
+      }
+      if (strike.time < -0.16) {
+        this.clearStrike(enemy);
+        enemy.recovery = 0.95;
+        if (visual) visual.rotation.x = 0;
+      }
+      return;
+    }
+    if (enemy.recovery > 0) {
+      enemy.recovery -= delta;
+      return;
+    }
+    if (distance > enemy.detectionRadius || !visible()) return;
+    enemy.mesh.lookAt(player.position.x, enemy.position.y, player.position.z);
+    if (distance <= pattern.range) {
+      const x = dx / (distance || 1);
+      const z = dz / (distance || 1);
+      const lane = pattern.kind === 'lane';
+      const geometry = lane ? new THREE.PlaneGeometry(pattern.width, pattern.reach) : new THREE.CircleGeometry(pattern.reach, 28);
+      const marker = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+        color: 0xffcd83, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false
+      }));
+      marker.rotation.set(-Math.PI / 2, 0, lane ? Math.atan2(x, z) : 0);
+      marker.position.set(enemy.position.x + (lane ? x * pattern.reach / 2 : 0),
+        enemy.position.y + 0.065, enemy.position.z + (lane ? z * pattern.reach / 2 : 0));
+      this.scene.add(marker);
+      enemy.strike = { time: pattern.windup, marker, x, z, hit: false };
+      recordAttack(pattern.move, pattern.kind, pattern.tip);
+      return;
+    }
+    const x = enemy.position.x;
+    const z = enemy.position.z;
+    const step = Math.min(distance, enemy.speed * delta) / distance;
+    enemy.position.x += dx * step;
+    enemy.position.z += dz * step;
+    if (world) {
+      world.resolveHorizontalCollision(enemy.position, 0.5, enemy.position.y, enemy.position.y + 1.6);
+      const ground = world.getTerrainHeight(enemy.position.x, enemy.position.z, enemy.position.y);
+      if (ground < -8) enemy.position.set(x, enemy.position.y, z);
+      else enemy.position.y = ground;
+    }
+  }
 
+  update(delta, player) {
+    for (const enemy of this.enemies) this.updateThreat(delta, player, enemy);
   }
 }
 
 window.EnemiesManager = EnemiesManager;
-

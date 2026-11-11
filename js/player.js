@@ -200,6 +200,12 @@ class PlayerController {
         case 'KeyE': case 'KeyF':
           if (window.game) window.game.handleInteract();
           break;
+        case 'KeyG':
+          if (playing) window.game.puzzleAction('hint');
+          break;
+        case 'KeyR':
+          if (playing) window.game.puzzleAction('reset');
+          break;
         case 'KeyQ':
           if (window.game) window.game.castEquippedAbility();
           break;
@@ -278,18 +284,12 @@ class PlayerController {
     canvas.addEventListener('click', () => window.game?.requestMouseLook());
     document.getElementById('btn-capture-mouse').addEventListener('click', () => window.game?.requestMouseLook());
 
-    const resetInput = () => {
-      Object.keys(this.keys).forEach(key => { this.keys[key] = false; });
-      this.touchMoveVector.x = 0;
-      this.touchMoveVector.y = 0;
-      this.isBlocking = false;
-    };
-    window.addEventListener('blur', resetInput);
+    window.addEventListener('blur', () => this.resetInput());
 
     document.addEventListener('pointerlockchange', () => {
       this.isPointerLocked = (document.pointerLockElement === canvas);
       document.body.classList.toggle('mouse-look', this.isPointerLocked);
-      if (!this.isPointerLocked) resetInput();
+      if (!this.isPointerLocked) this.resetInput();
     });
 
     let lookPointer = null;
@@ -340,6 +340,13 @@ class PlayerController {
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
+  resetInput() {
+    Object.keys(this.keys).forEach(key => { this.keys[key] = false; });
+    this.touchMoveVector.x = 0;
+    this.touchMoveVector.y = 0;
+    this.isBlocking = false;
+  }
+
   rotateView(dx, dy, sensitivity) {
     const controls = window.settingsManager?.settings.controls;
     const speed = sensitivity * (controls?.mouseSensitivity ?? 1);
@@ -362,10 +369,7 @@ class PlayerController {
       window.game.character.triggerAttack('basic');
     }
 
-    // Perform melee raycast against enemies in front
-    if (window.game) {
-      window.game.checkMeleeHit(this.equippedWeapon.damage, this.equippedWeapon.reach);
-    }
+
   }
 
   takeDamage(amount) {
@@ -381,6 +385,7 @@ class PlayerController {
     }
 
     this.hp -= finalDamage;
+    if (!this.isBlocking) window.game?.character?.cuePose('hurt', 0.24);
 
     // Trigger visual feedback (red vignette)
     const vig = document.getElementById('damage-vignette');
@@ -516,6 +521,18 @@ class PlayerController {
     }
 
     // Attack cooldown timers
+    if (this.isAttacking) {
+      const previous = this.attackProgress;
+      this.attackProgress += delta / this.attackDuration;
+      if (previous < 0.3 && this.attackProgress >= 0.3) {
+        window.game?.checkMeleeHit(this.equippedWeapon.damage, this.equippedWeapon.reach);
+      }
+      if (this.attackProgress >= 1) {
+        this.isAttacking = false;
+        this.attackProgress = 0;
+      }
+    }
+
     if (this.attackCooldown > 0) {
       this.attackCooldown -= delta;
     }
@@ -550,8 +567,9 @@ class PlayerController {
 
     if (moveDir.lengthSq() > 0) {
       if (moveDir.lengthSq() > 1) moveDir.normalize();
-      this.velocity.x = moveDir.x * moveSpeed;
-      this.velocity.z = moveDir.z * moveSpeed;
+      const blend = 1 - Math.exp(-22 * delta);
+      this.velocity.x += (moveDir.x * moveSpeed - this.velocity.x) * blend;
+      this.velocity.z += (moveDir.z * moveSpeed - this.velocity.z) * blend;
     } else {
       // Frame-rate independent smooth deceleration
       const damp = Math.exp(-15 * delta);
@@ -679,8 +697,6 @@ class PlayerController {
       this.swordMesh.rotation.set(0.6, -0.8, 1.2);
     } else if (this.isAttacking) {
       // Slash animation swing
-      this.attackProgress += delta / this.attackDuration;
-
       if (this.attackProgress < 0.3) {
         // Wind-up: pull back up right
         const t = this.attackProgress / 0.3;

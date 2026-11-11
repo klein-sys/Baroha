@@ -115,8 +115,12 @@ class WorldMapManager {
 
     const world = window.game?.world;
     if (!world?.rooms) return;
-    const mapX = x => (x + 32) / 64 * width;
-    const mapY = z => (z + 84) / 122 * height;
+    const west = Math.min(...world.rooms.map(room => room.bounds[0])) - 5;
+    const east = Math.max(...world.rooms.map(room => room.bounds[1])) + 5;
+    const north = Math.min(...world.rooms.map(room => room.bounds[2])) - 8;
+    const south = Math.max(...world.rooms.map(room => room.bounds[3])) + 6;
+    const mapX = x => (x - west) / (east - west) * width;
+    const mapY = z => (z - north) / (south - north) * height;
     const rectangle = (x1, x2, z1, z2, color) => {
       ctx.fillStyle = color;
       ctx.fillRect(mapX(x1), mapY(z1), mapX(x2) - mapX(x1), mapY(z2) - mapY(z1));
@@ -125,8 +129,9 @@ class WorldMapManager {
     rectangle(-3, 3, 1, 4, '#566877');
     const state = world.dungeonProgress[world.currentRealm];
     rectangle(-2, 2, -28, -17, state.bridge ? '#82ceaa' : '#6b547e');
-    const lift = world.oscillatingPlatforms[0].mesh.position;
-    rectangle(lift.x - 2.3, lift.x + 2.3, lift.z - 2.2, lift.z + 2.2, '#9875ce');
+    for (const { mesh: { position: lift } } of world.oscillatingPlatforms) {
+      rectangle(lift.x - 2.3, lift.x + 2.3, lift.z - 2.2, lift.z + 2.2, '#9875ce');
+    }
     for (const [index, room] of world.rooms.entries()) {
       rectangle(...room.bounds, index === 3 ? '#553845' : '#29433f');
       const [left, right, north, south] = room.bounds;

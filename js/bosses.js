@@ -20,6 +20,7 @@ class BossesManager {
       this.activeBoss = null;
     }
     this.summonedSkeletons.forEach(s => {
+      window.game?.enemies?.clearStrike(s);
       if (s.mesh) this.scene.remove(s.mesh);
     });
     this.summonedSkeletons = [];
@@ -265,6 +266,24 @@ class BossesManager {
       attackPower: 26
     };
 
+    if (sentinel) {
+      const keep = new Set([staffGroup, ...runeCards]);
+      const trim = new THREE.MeshStandardMaterial({ color: 0x505881, metalness: 0.5, roughness: 0.4 });
+      for (const part of [...group.children]) {
+        if (!keep.has(part)) {
+          group.remove(part);
+          window.game?.world.disposeHierarchy(part);
+        }
+      }
+      const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.89), trim);
+      core.scale.set(1.12, 1.85, 0.78);
+      core.position.y = 1.64;
+      group.add(core);
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(1.34, 0.11, 10, 30),
+        new THREE.MeshBasicMaterial({ color: 0x91b3ff }));
+      halo.position.y = 2.28;
+      group.add(halo);
+    }
     // Spawn initial Skeleton Warriors flanking the Lich (Image 2)
     if (!sentinel) {
       this.spawnSkeletonWarrior(x - 4, z + 2);
@@ -315,6 +334,8 @@ class BossesManager {
       position: group.position,
       hp: 75,
       maxHp: 75,
+      type: 'summoned',
+      detectionRadius: 24,
       attackPower: 12,
       speed: 3.5,
       attackCooldown: 1.8,
@@ -517,12 +538,16 @@ class BossesManager {
         pendulum: 'Pendulum sweep · stay beyond the marked arc',
         harmonic: 'Harmonic sweep · read the moving lane'
       };
+      const [label, kind, tip] = bossPatterns[attack.shape];
+      recordAttack(label, kind, tip);
+      window.interfaceManager?.showBossAttack(label, 'Prepare');
       window.interfaceManager?.showToast(tell[attack.shape], 'warning');
       return;
     }
 
     if (attack.phase === 'warning' && attack.time <= 0) {
       attack.phase = 'active';
+      window.interfaceManager?.showBossAttack(bossPatterns[attack.shape][0], 'Strike');
       attack.time = 0.58;
       attack.marker.material.color.setHex(0xff4548);
       attack.marker.material.opacity = 0.76;
@@ -565,10 +590,12 @@ class BossesManager {
       if (attack.time <= 0) {
         this.clearAttack();
         attack.phase = 'recovery';
+        window.interfaceManager?.showBossAttack(bossPatterns[attack.shape][0], 'Recovery');
         attack.time = 2;
       }
     } else if (attack.phase === 'recovery' && attack.time <= 0) {
       attack.phase = 'approach';
+      window.interfaceManager?.showBossAttack();
       attack.index++;
       attack.time = Math.max(1.15, 2.15 - ((window.game?.enemies.bossPhase || 1) - 1) * 0.45);
     }
@@ -582,6 +609,7 @@ class BossesManager {
 
     // Face player
     boss.mesh.lookAt(player.position.x, boss.mesh.position.y, player.position.z);
+    boss.mesh.rotation.x = boss.attack.phase === 'recovery' ? 0.13 : boss.attack.phase === 'warning' ? -0.10 : 0;
 
     if (boss.type === 'witch') {
       // Rotate magic circle
@@ -606,30 +634,10 @@ class BossesManager {
         card.rotation.y = angle;
       });
 
-      // Update summoned skeletons AI
-      for (let i = this.summonedSkeletons.length - 1; i >= 0; i--) {
-        const skel = this.summonedSkeletons[i];
-        if (skel.isDead) continue;
-
-        const toPlayer = player.position.clone().sub(skel.position);
-        const dist = toPlayer.length();
-
-        skel.mesh.lookAt(player.position.x, skel.mesh.position.y, player.position.z);
-
-        if (dist > 2.0) {
-          toPlayer.y = 0;
-          toPlayer.normalize();
-          skel.position.addScaledVector(toPlayer, skel.speed * delta);
-          skel.position.x = THREE.MathUtils.clamp(skel.position.x, -14, 14);
-          skel.position.z = THREE.MathUtils.clamp(skel.position.z, -76, -48);
-        } else {
-          // Attack player
-          skel.attackTimer -= delta;
-          if (skel.attackTimer <= 0) {
-            skel.attackTimer = skel.attackCooldown;
-            player.takeDamage(skel.attackPower);
-          }
-        }
+      for (const skeleton of this.summonedSkeletons) {
+        window.game?.enemies.updateThreat(delta, player, skeleton);
+        skeleton.position.x = THREE.MathUtils.clamp(skeleton.position.x, -14, 14);
+        skeleton.position.z = THREE.MathUtils.clamp(skeleton.position.z, -76, -48);
       }
     } else if (boss.type === 'dragon') {
       // Flap massive wings

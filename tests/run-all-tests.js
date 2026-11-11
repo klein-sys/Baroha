@@ -13,6 +13,7 @@ console.log('=== RUNNING MATHBOUND COMPREHENSIVE TEST SUITE ===');
 global.window = global;
 global.window.addEventListener = () => {};
 global.document = {
+  createElement: () => ({}),
   getElementById: (id) => ({
     innerText: '',
     style: {},
@@ -95,8 +96,9 @@ global.THREE = {
     lookAt() {}
   },
   Mesh: class {
-    constructor(g, m) { this.geometry = g; this.material = m; this.position = new global.THREE.Vector3(); this.rotation = { x: 0, y: 0, z: 0, set() {} }; this.scale = { set() {}, setScalar() {} }; this.userData = {}; }
-    traverse(fn) { fn(this); }
+    constructor(g, m) { this.geometry = g; this.material = m; this.children = []; this.position = new global.THREE.Vector3(); this.rotation = { x: 0, y: 0, z: 0, set() {} }; this.scale = { set() {}, setScalar() {} }; this.userData = {}; }
+    add(child) { this.children.push(child); }
+    traverse(fn) { fn(this); this.children.forEach(child => child.traverse(fn)); }
     lookAt() {}
   },
   Scene: class {
@@ -119,7 +121,7 @@ global.THREE = {
   MeshBasicMaterial: mockMat,
   MeshStandardMaterial: mockMat,
   AmbientLight: class { constructor() { this.position = new global.THREE.Vector3(); } },
-  PointLight: class { constructor() { this.position = new global.THREE.Vector3(); } },
+  PointLight: class { constructor() { this.position = new global.THREE.Vector3(); this.color = new global.THREE.Color(); } },
   FogExp2: class {},
   HemisphereLight: class { constructor() { this.position = new global.THREE.Vector3(); } },
   DirectionalLight: class { constructor() { this.position = new global.THREE.Vector3(); this.shadow = { mapSize: {}, camera: {} }; this.target = new global.THREE.Mesh(); } },
@@ -379,6 +381,8 @@ try {
   assert(wm.animatedDoors.length === 1, 'The sanctuary house registered its hinged door');
 
   assert(wm.rooms.length === 5, 'Floor 1 contains authored rooms');
+  assert(wm.colliders.some(c => c.tag === 'dungeon_ceiling' && c.isCeiling && c.minY === 7.5),
+    'Sanctuary ceiling blocks upward movement at the authored height');
   assert(wm.getTerrainHeight(0, -22.5) === -100, 'Unsolved continuity crossing is a physical gap');
   const bridge = wm.interactables.find(item => item.type === 'calculus_bridge');
   bridge.interact();

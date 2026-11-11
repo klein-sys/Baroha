@@ -218,6 +218,10 @@ class RobloxCharacter {
     this.animTime = 0;
   }
 
+  cuePose(type, duration) {
+    this.poseCue = { type, remaining: duration };
+  }
+
   triggerAttack(type = 'basic') {
     if (this.isAttacking) return;
     this.isAttacking = true;
@@ -225,9 +229,6 @@ class RobloxCharacter {
     this.attackType = type;
     this.animState = 'attacking';
 
-    if (window.soundEngine) {
-      window.soundEngine.playSwordSlash();
-    }
   }
 
   toggleCameraMode() {
@@ -277,6 +278,21 @@ class RobloxCharacter {
     const isMoving = playerController.velocity.lengthSq() > 0.5;
     const isSprinting = playerController.keys.sprint && isMoving;
     const isGrounded = playerController.isGrounded;
+    const floor = window.game?.world.currentRealm ?? 1;
+    if (isGrounded && this.wasGrounded === false) {
+      this.cuePose('land', 0.15);
+      window.soundEngine?.playDungeonCue(floor, 'land');
+    }
+    this.wasGrounded = isGrounded;
+    this.stepTimer = (this.stepTimer || 0) - delta;
+    if (isGrounded && isMoving && this.stepTimer <= 0) {
+      window.soundEngine?.playDungeonCue(floor, 'step');
+      this.stepTimer = isSprinting ? 0.24 : 0.38;
+    }
+    if (this.poseCue) {
+      this.poseCue.remaining -= delta;
+      if (this.poseCue.remaining <= 0) this.poseCue = null;
+    }
 
     if (this.animState === 'sleeping') {
       this.updateSleepAnimation();
@@ -294,6 +310,19 @@ class RobloxCharacter {
     } else {
       this.setAnimationState('idle');
       this.updateIdleAnimation(delta);
+    }
+
+    if (!this.isAttacking && isGrounded) {
+      const cue = this.poseCue?.type;
+      if (cue === 'cast' || playerController.isBlocking) {
+        this.leftArmPivot.rotation.x = cue === 'cast' ? -1.38 : -1.1;
+        this.leftArmPivot.rotation.z = -0.27;
+        this.mesh.rotation.y = playerController.yaw + Math.PI;
+      } else if (cue === 'land') {
+        this.torso.position.y -= 0.12 * Math.min(1, this.poseCue.remaining / 0.11);
+      } else if (cue === 'hurt') {
+        this.mesh.rotation.x = -0.10 * Math.min(1, this.poseCue.remaining / 0.17);
+      }
     }
 
     // Update Camera

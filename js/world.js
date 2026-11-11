@@ -122,7 +122,10 @@ class WorldManager {
 
     // Dispose shared caches when unloading whole realm
     Object.values(this.sharedGeom).forEach(g => g.dispose && g.dispose());
-    Object.values(this.sharedMat).forEach(m => m.dispose && m.dispose());
+    Object.values(this.sharedMat).forEach(m => {
+      m.map?.dispose();
+      m.dispose();
+    });
     this.sharedGeom = {};
     this.sharedMat = {};
   }
@@ -423,7 +426,7 @@ class WorldManager {
     if (this.oscillatingPlatforms) {
       for (let i = 0; i < this.oscillatingPlatforms.length; i++) {
         const p = this.oscillatingPlatforms[i];
-        if (p.mesh && Math.abs(x - p.mesh.position.x) <= p.radius && Math.abs(z - p.mesh.position.z) <= p.radius) {
+        if (p.mesh && Math.hypot(x - p.mesh.position.x, z - p.mesh.position.z) <= p.radius) {
           const top = p.mesh.position.y + 0.3;
           if ((feetY === null || feetY >= top - 0.65) && top > h) h = top;
         }
@@ -1184,6 +1187,29 @@ class WorldManager {
     head.position.y = 1.9;
     group.add(head);
 
+    const mentor = name.startsWith('Aster');
+    if (mentor) {
+      bodyMat.color.setHex(0x27344c);
+      headMat.color.setHex(0xf0c496);
+      const cloth = new THREE.MeshStandardMaterial({ color: 0x454968, roughness: 0.85 });
+      const wood = new THREE.MeshStandardMaterial({ color: 0x725037, roughness: 0.85 });
+      const gold = new THREE.MeshBasicMaterial({ color: 0xf7cc7d });
+      const part = (geometry, material, x, y, z) => {
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(x, y, z);
+        group.add(mesh);
+        return mesh;
+      };
+      part(new THREE.CylinderGeometry(0.58, 0.65, 0.12, 10), cloth, 0, 2.14, 0);
+      part(new THREE.ConeGeometry(0.44, 0.66, 9), cloth, 0, 2.49, 0).rotation.z = 0.14;
+      part(new THREE.CylinderGeometry(0.42, 0.45, 0.08, 8), gold, 0, 2.22, 0);
+      part(new THREE.ConeGeometry(0.27, 0.6, 7), new THREE.MeshStandardMaterial({ color: 0xd5d4ca }), 0, 1.67, 0.25).rotation.x = Math.PI;
+      part(new THREE.CylinderGeometry(0.06, 0.08, 2.18, 7), wood, 0.71, 1.12, 0.35);
+      const focus = part(new THREE.OctahedronGeometry(0.18), gold, 0.71, 2.33, 0.35);
+      this.animatedLights.push({ mesh: focus, speed: 1.2 });
+      group.rotation.y = 0.65;
+    }
+
     // Magical Aura Ring
     const auraGeom = new THREE.RingGeometry(0.8, 1.0, 16);
     auraGeom.rotateX(-Math.PI / 2);
@@ -1261,78 +1287,63 @@ class WorldManager {
     this.scene.add(group);
     this.worldObjects.push(group);
 
-    // Tunable frequency parameters
-    const frequencies = [2.70, 2.85, 2.95, 2.99, 3.00, 3.01, 3.10, 3.25];
-    let freqIndex = state.rift ? 3 : 0;
-    if (state.rift) {
-      core.scale.setScalar(1.5);
-      coreMat.emissive.setHex(0x00ff88);
-      ringMat.emissive.setHex(0x38ef7d);
-    }
-
+    const target = this.currentRealm + 2;
+    const values = [-0.30, -0.15, -0.05, -0.01, 0, 0.01, 0.10, 0.25];
+    let index = state.rift ? 3 : 0;
+    let hint = 0;
+    const evaluate = () => window.calculusEngine.evalRiftSeal(target + values[index], target);
+    const style = () => {
+      const result = evaluate();
+      core.scale.setScalar(state.rift ? 1.5 : 1);
+      coreMat.emissive.setHex(state.rift ? 0x00ff88 : result.isHole ? 0xff0044 : 0x00d4ff);
+      ringMat.emissive.setHex(state.rift ? 0x38ef7d : 0x7b2cbf);
+    };
+    style();
     const riftObj = {
       type: 'calculus_rift',
-      name: 'Corrupted Limit Rift Seal',
+      name: 'Rift Seal',
+      promptText: state.rift ? 'Rift Seal stable' : 'Tune Rift Seal',
       position: new THREE.Vector3(x, groundY + 1.5, z),
       radius: 4.5,
       getTelemetry: () => {
-        const curX = frequencies[freqIndex];
-        const isHole = Math.abs(curX - 3.0) < 0.001;
-        const val = isHole ? null : (curX * curX - 9) / (curX - 3);
+        const result = evaluate();
         return {
-          title: 'RIFT SEAL (REMOVABLE DISCONTINUITY)',
-          func: 'f(x) = (x² - 9) / (x - 3) [Undefined at x = 3]',
-          details: isHole
-            ? '⚠️ HOLE DETECTED at x = 3.0 (0/0 Indeterminate). Approach limit, do not stand on hole!'
-            : `Tuning frequency x → 3 channels Limit Power = 6.00. Current Resonance: ${val.toFixed(2)}.`,
-          isWarning: isHole,
+          title: 'Rift Seal',
+          func: `f(x) = (x² − ${target * target}) / (x − ${target})`,
+          details: state.rift ? 'Seal stable. Continue to the bridge.' : result.isHole ? 'Undefined at the gap. Approach from either side.' : 'Tune close to the boundary without landing on it.',
           metrics: [
-            { label: 'Frequency x', val: curX.toFixed(2) },
-            { label: 'Resonance f(x)', val: isHole ? 'UNDEFINED (0/0)' : val.toFixed(2) },
-            { label: 'Target Limit', val: '6.00' },
-            { label: 'x = 2.99', val: '5.99' },
-            { label: 'x = 3.01', val: '6.01' }
+            { label: 'Dial', val: result.x.toFixed(2) },
+            { label: 'Output', val: result.value === null ? 'Undefined' : result.value.toFixed(2) },
+            { label: 'Boundary', val: target }
           ]
         };
       },
+      hint: () => [
+        'Watch the output as the dial approaches the boundary.',
+        `Cancel (x − ${target}) away from the boundary. The remaining expression is x + ${target}.`,
+        `Tune to ${(target - 0.01).toFixed(2)}. The output approaches ${2 * target}.`
+      ][Math.min(hint++, 2)],
+      reset: () => {
+        if (state.rift) return false;
+        index = 0;
+        hint = 0;
+        style();
+        return true;
+      },
       interact: () => {
-        if (state.rift) {
-          if (window.interfaceManager) window.interfaceManager.showToast('Rift Seal already breached and stabilized!', 'info');
-          return;
-        }
-
-        freqIndex = (freqIndex + 1) % frequencies.length;
-        const curX = frequencies[freqIndex];
-        const isHole = Math.abs(curX - 3.0) < 0.001;
-
-        if (isHole) {
-          if (window.soundEngine) window.soundEngine.playMathError();
-          if (window.interfaceManager) {
-            window.interfaceManager.showToast('⚠️ SINGULARITY HOLE at x = 3.0! (0/0 Indeterminate) — Function undefined here. Approach limit without standing on the hole!', 'error');
-          }
-          coreMat.emissive.setHex(0xff0044);
-          coreMat.emissiveIntensity = 1.0;
-        } else if (Math.abs(curX - 3.0) <= 0.02) {
-          // Breached! Power is 6.00
+        if (state.rift) return;
+        index = (index + 1) % values.length;
+        const result = evaluate();
+        if (!result.isHole && Math.abs(result.x - target) <= 0.02) {
           state.rift = true;
-          core.scale.set(1.5, 1.5, 1.5);
-          coreMat.emissive.setHex(0x00ff88);
-          ringMat.emissive.setHex(0x38ef7d);
-          if (window.soundEngine) window.soundEngine.playChestOpen();
-          if (window.interfaceManager) {
-            window.interfaceManager.showToast('✨ RIFT SEAL BREACHED! Frequency x → 3 reached Limit Power = 6.00! Arena ward weakened (+150 XP)!', 'success');
-          }
+          riftObj.promptText = 'Rift Seal stable';
+          window.soundEngine?.playMathCorrect();
           window.game?.player.addXp(150);
           window.game?.autoSaveProgress();
           window.interfaceManager?.updateQuestHUD();
-        } else {
-          const val = (curX * curX - 9) / (curX - 3);
-          if (window.soundEngine) window.soundEngine.playMagicBolt();
-          if (window.interfaceManager) {
-            window.interfaceManager.showToast(`Rune Frequency tuned to x = ${curX.toFixed(2)}. Resonance Power = ${val.toFixed(2)} (Target Limit = 6.00). Keep approaching x → 3!`, 'info');
-          }
-          coreMat.emissive.setHex(0x00d4ff);
-        }
+        } else if (result.isHole) window.soundEngine?.playMathError();
+        else window.soundEngine?.playMagicBolt();
+        style();
       }
     };
     this.interactables.push(riftObj);
@@ -1384,8 +1395,8 @@ class WorldManager {
       x: x,
       z: z,
       y: groundY + 0.5,
-      halfWidth: bridgeWidth / 2 + 0.5,
-      halfLength: bridgeLength / 2 + 0.5,
+      halfWidth: bridgeWidth / 2,
+      halfLength: bridgeLength / 2,
       isSolid: Boolean(state.bridge)
     };
     this.solidBridges.push(bridgeCollision);
@@ -1398,64 +1409,56 @@ class WorldManager {
     };
     if (state.bridge) makeSolid();
 
-    // Tuning k parameters: [-1, 0, 1, 2, 3]
-    const kValues = [-1.0, 0.0, 1.0, 2.0];
+    const boundary = this.currentRealm + 1;
+    const required = window.calculusEngine.evalPiecewiseBridge(0, boundary).requiredK;
+    const kValues = [required - 2, required - 1, required, required + 1];
     let kIndex = state.bridge ? 2 : 0;
-
+    let hint = 0;
+    const evaluate = () => window.calculusEngine.evalPiecewiseBridge(kValues[kIndex], boundary);
     const bridgeInteract = {
       type: 'calculus_bridge',
-      name: 'Piecewise Bridge Rune Pedestal',
+      name: 'Continuity Bridge',
+      promptText: state.bridge ? 'Bridge stable' : 'Adjust bridge rune',
       position: new THREE.Vector3(x, 1.25, z + 7.5),
       radius: 3.5,
       getTelemetry: () => {
-        const k = kValues[kIndex];
-        const leftLimit = 2 * k + 3;
-        const rightLimit = 5.0;
-        const jump = Math.abs(leftLimit - rightLimit);
-        const isContinuous = jump < 0.01;
+        const result = evaluate();
         return {
-          title: 'PIECEWISE CONTINUOUS BRIDGE',
-          func: 'f(x) = { kx + 3 (x ≤ 2), x² + 1 (x > 2) }',
-          details: isContinuous
-            ? '✨ CONTINUOUS! Left Limit (5.0) = Right Limit (5.0) = f(2). Jump = 0. Bridge solidified!'
-            : `FRACTURED! Left Limit (${leftLimit.toFixed(1)}) ≠ Right Limit (${rightLimit.toFixed(1)}). Jump Discontinuity = ${jump.toFixed(1)}.`,
-          isWarning: !isContinuous,
+          title: 'Continuity Bridge',
+          func: `kx + 3 (x ≤ ${boundary}) · x² + 1 (x > ${boundary})`,
+          details: state.bridge ? 'The limits match. The crossing is solid.' : 'Match the limits to lock the crossing.',
           metrics: [
-            { label: 'Rune k', val: k.toFixed(1) },
-            { label: 'Left Limit (x→2⁻)', val: leftLimit.toFixed(1) },
-            { label: 'Right Limit (x→2⁺)', val: '5.0' },
-            { label: 'f(2)', val: leftLimit.toFixed(1) },
-            { label: 'Jump Δ', val: jump.toFixed(1) },
-            { label: 'Bridge Physical State', val: isContinuous ? 'SOLID (WALKABLE)' : 'SPECTRAL (UNSTABLE)' }
+            { label: 'Rune k', val: result.k.toFixed(2) },
+            { label: 'Left', val: result.leftLimit.toFixed(2) },
+            { label: 'Right', val: result.rightLimit.toFixed(2) }
           ]
         };
+      },
+      hint: () => [
+        'Compare the left and right values on the dial.',
+        `Substitute ${boundary} on both sides. The two results must match.`,
+        `Set k to ${required.toFixed(2)} to make both sides equal ${boundary * boundary + 1}.`
+      ][Math.min(hint++, 2)],
+      reset: () => {
+        if (state.bridge) return false;
+        kIndex = 0;
+        hint = 0;
+        return true;
       },
       interact: () => {
         if (state.bridge) return;
         kIndex = (kIndex + 1) % kValues.length;
-        const k = kValues[kIndex];
-        const leftLimit = 2 * k + 3;
-        const rightLimit = 5.0;
-        const jump = Math.abs(leftLimit - rightLimit);
-        const isContinuous = jump < 0.01;
-
-        if (isContinuous) {
-          makeSolid();
-          state.bridge = true;
-          window.soundEngine?.playMathCorrect();
-          window.interfaceManager?.showToast('Bridge stabilized. Left limit = right limit = f(2).', 'success');
-          window.interfaceManager?.updateQuestHUD();
-          window.game?.autoSaveProgress();
-        } else {
-          bridgeCollision.isSolid = false;
-          slabMat.opacity = 0.35;
-          slabMat.color.setHex(0x4a4e69);
-          slabMat.emissive = new THREE.Color(0x000000);
-          if (window.soundEngine) window.soundEngine.playMagicBolt();
-          if (window.interfaceManager) {
-            window.interfaceManager.showToast(`Rune parameter tuned to k = ${k.toFixed(1)}. Left Limit = ${leftLimit.toFixed(1)}, Right Limit = 5.0. Jump Discontinuity = ${jump.toFixed(1)}! Bridge remains spectral.`, 'warning');
-          }
+        if (!evaluate().isContinuous) {
+          window.soundEngine?.playMagicBolt();
+          return;
         }
+        makeSolid();
+        state.bridge = true;
+        bridgeInteract.promptText = 'Bridge stable';
+        window.soundEngine?.playMathCorrect();
+        window.interfaceManager?.showToast('The crossing has locked into place.', 'success');
+        window.interfaceManager?.updateQuestHUD();
+        window.game?.autoSaveProgress();
       }
     };
     this.interactables.push(bridgeInteract);
@@ -1563,7 +1566,7 @@ class WorldManager {
   // CALCULUS MECHANIC 4: HARMONIC OSCILLATING PLATFORM
   // y(t) = A*sin(w*t), v(t) = A*w*cos(w*t), a(t) = -A*w^2*sin(w*t)
   // =========================================================================
-  spawnOscillatingPlatform(x, z, A = 3.5, omega = 1.2, y0 = 1.0) {
+  spawnOscillatingPlatform(x, z, A = 3.5, omega = 1.2, y0 = 1.0, phase = 0) {
     const group = new THREE.Group();
     group.position.set(x, y0, z);
 
@@ -1595,11 +1598,12 @@ class WorldManager {
       A: A,
       omega: omega,
       y0: y0,
-      radius: 2.4,
+      phase,
+      radius: 2.2,
       update: (t) => {
-        const y = A * Math.sin(omega * t);
-        const v = A * omega * Math.cos(omega * t);
-        const a = -A * omega * omega * Math.sin(omega * t);
+        const y = A * Math.sin(omega * t + phase);
+        const v = A * omega * Math.cos(omega * t + phase);
+        const a = -A * omega * omega * Math.sin(omega * t + phase);
         platformObj.previousY = group.position.y;
         group.position.y = y0 + y;
 
@@ -1623,6 +1627,34 @@ class WorldManager {
   // CALCULUS MECHANIC 5: MANA WELL (HORIZONTAL ASYMPTOTE PLATEAU)
   // M(t) = 100t / (t + 5) -> 100 as t -> infinity
   // =========================================================================
+  spawnPracticeSeal(x, z) {
+    const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.65, 1.25, 8),
+      new THREE.MeshStandardMaterial({ color: 0x353d58 }));
+    pedestal.position.set(x, 0.625, z);
+    const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.29), new THREE.MeshBasicMaterial({ color: 0x72bcff }));
+    crystal.position.set(x, 1.61, z);
+    this.scene.add(pedestal, crystal);
+    this.worldObjects.push(pedestal, crystal);
+    this.animatedLights.push({ mesh: crystal, speed: 1.45 });
+    let dial = 0;
+    const samples = [2.5, 2.9, 2.99, 3, 3.01, 3.1];
+    this.interactables.push({
+      type: 'practice_seal', promptText: 'Try Aster’s practice seal', position: crystal.position, radius: 2.5,
+      getTelemetry: () => {
+        const result = window.calculusEngine.evalRiftSeal(samples[dial]);
+        return {
+          title: 'Practice Seal', func: '(x² − 9) / (x − 3)',
+          details: result.isHole ? 'The expression is undefined here. Try the next sample.' : 'Watch the output approach 6 on both sides.',
+          metrics: [{ label: 'Dial', val: samples[dial] }, { label: 'Output', val: result.value?.toFixed(2) ?? 'Undefined' }]
+        };
+      },
+      interact: () => {
+        dial = (dial + 1) % samples.length;
+        crystal.material.color.setHex(dial === 3 ? 0xffb972 : 0x72bcff);
+      }
+    });
+  }
+
   spawnManaWell(x, z) {
     const groundY = this.getTerrainHeight(x, z);
     const group = new THREE.Group();
@@ -1714,6 +1746,7 @@ class WorldManager {
     for (const trap of this.traps || []) {
       const phase = (t + trap.phase) % 4.5;
       const active = phase >= 3.5 && phase < 4.1;
+      trap.mesh.material.opacity = active ? 0.82 : phase >= 2.4 && phase < 3.5 ? 0.52 : 0.28;
       if (trap.sweeps) trap.mesh.position.x = trap.x + 3.5 * Math.sin((t + trap.phase) * 1.45);
       trap.mesh.material.color.setHex(active ? 0xff5340 : phase >= 2.4 && phase < 3.5 ? 0xfbb756 : 0x5b5272);
       const position = trap.mesh.position;

@@ -27,6 +27,8 @@ class InterfaceManager {
     this.joystickActive = false;
     this.joystickCenter = { x: 0, y: 0 };
     this.setupMobileControls();
+    document.getElementById('puzzle-hint')?.addEventListener('click', () => window.game?.puzzleAction('hint'));
+    document.getElementById('puzzle-reset')?.addEventListener('click', () => window.game?.puzzleAction('reset'));
     this.setupModalTabs();
   }
 
@@ -362,7 +364,16 @@ class InterfaceManager {
     if (this.bossLevelSub) this.bossLevelSub.innerText = phaseText;
   }
 
+  showBossAttack(name, phase) {
+    const readout = document.getElementById('boss-attack-readout');
+    if (!readout) return;
+    readout.hidden = !name;
+    readout.textContent = name ? name + ' · ' + phase : '';
+    readout.dataset.phase = phase || '';
+  }
+
   hideBossBar() {
+    this.showBossAttack();
     if (this.bossContainer) {
       this.bossContainer.classList.remove('active');
     }
@@ -520,7 +531,9 @@ class InterfaceManager {
     this.showToast(`📐 ${title}: ${message}`, 'info');
   }
 
-  renderCalculusTelemetry(data) {
+  renderCalculusTelemetry(data, target) {
+    const tools = document.getElementById('puzzle-tools');
+    if (tools) tools.hidden = !target?.hint;
     const hud = document.getElementById('calculus-live-hud');
     if (!hud) return;
     if (!data) {
@@ -577,26 +590,32 @@ class InterfaceManager {
     choices.innerHTML = '';
 
     if (name.includes('Guardian')) {
-      speechText.innerText = 'Greetings, chosen one. The Kingdom of Numeria has fractured under the Forbidden Equation. Collect the 3 Sacred Keys in this forest to open Morgathia\'s Castle Gate. Remember: Limits reveal the true behavior of functions at the boundary!';
-      
-      const b1 = document.createElement('button');
-      b1.className = 'dialogue-choice-btn';
-      b1.innerText = '▶ "How do I evaluate limits with indeterminate forms 0/0?"';
-      b1.onclick = () => {
-        speechText.innerText = 'When direct substitution gives 0/0, factor the polynomial numerator and denominator to cancel common factors, or multiply by the conjugate if radicals are present!';
+      const game = window.game;
+      const state = game.world.dungeonProgress[1];
+      speechText.innerText = state.defeated
+        ? 'The forest can breathe again. Take the open portal and look for the names Vorthak buried.'
+        : state.rift
+          ? 'You held the seal steady. Now listen to both sides of the bridge. They must agree before you cross.'
+          : game.player.hearts < game.player.maxHearts
+            ? 'Sit a moment. The sanctuary is safe. The practice dial can help you see what the seal is doing.'
+            : 'I’m Aster. Numeria cracked where its wards should have joined. Morgathia guards the first fracture. Try my practice seal beside us, then follow the lanterns to the grove.';
+      const option = (label, action) => {
+        const button = document.createElement('button');
+        button.className = 'dialogue-choice-btn';
+        button.textContent = label;
+        button.onclick = action;
+        choices.appendChild(button);
       };
-      choices.appendChild(b1);
-
-      const b2 = document.createElement('button');
-      b2.className = 'dialogue-choice-btn';
-      b2.innerText = '▶ "I am ready to restore Numeria."';
-      b2.onclick = () => {
-        modal.classList.remove('open');
-        this.activeModal = null;
+      option('What should I watch on the dial?', () => {
+        speechText.innerText = 'Watch the output from either side of the gap. It approaches six even though the expression is undefined at three. Try the blue crystal by my side before you head north.';
+      });
+      option('What happened to the wards?', () => {
+        speechText.innerText = 'Four guardians once kept their wards in balance. Read the records you find near each refuge. They tell us what each guardian tried to protect.';
+      });
+      option('I’ll head to the grove.', () => {
+        this.closeAllModals();
         this.resumePointerLockIfActive();
-        if (window.missionsManager) window.missionsManager.completeQuest('r1_m1');
-      };
-      choices.appendChild(b2);
+      });
     } else if (name.includes('Scholar')) {
       speechText.innerText = 'Beware traveler! Lich King Vorthak draws power from trigonometric derivatives. Remember the golden laws: d/dx[sin(x)] = cos(x), d/dx[cos(x)] = -sin(x), and d/dx[tan(x)] = sec²(x)!';
       const b1 = document.createElement('button');
@@ -652,7 +671,7 @@ class InterfaceManager {
     const world = window.game?.world;
     const state = world?.dungeonProgress[world.currentRealm];
     const list = world?.floor ? [
-      { name: 'Stabilize the Rift Seal', desc: 'Approach the removable discontinuity at x = 3.', completed: state.rift },
+      { name: 'Stabilize the Rift Seal', desc: 'Approach the boundary from either side without landing on the gap.', completed: state.rift },
       { name: 'Cross the continuity bridge', desc: 'Tune k until the left and right limits agree.', completed: state.bridge },
       { name: world.floor.rooms[4], desc: 'Use the harmonic lift to reach the optional side chamber.' },
       { name: `Defeat ${world.floor.boss}`, desc: 'Enter the arena to unlock its descent portal.', completed: state.defeated }
@@ -669,6 +688,34 @@ class InterfaceManager {
       `;
       body.appendChild(card);
     });
+    if (state?.discovered) {
+      const record = document.createElement('p');
+      record.className = 'quest-item-card';
+      record.textContent = world.floorLore;
+      body.appendChild(record);
+    }
+    const patterns = Object.entries(state?.patterns || {});
+    if (patterns.length) {
+      const heading = document.createElement('h3');
+      heading.textContent = 'Attack patterns witnessed';
+      body.appendChild(heading);
+    }
+    for (const [name, pattern] of patterns) {
+      const card = document.createElement('article');
+      card.className = 'quest-item-card pattern-card';
+      const figure = document.createElement('span');
+      figure.className = 'attack-diagram';
+      figure.dataset.kind = ['ring', 'lane', 'circle'].includes(pattern.kind) ? pattern.kind : 'circle';
+      figure.setAttribute('aria-label', figure.dataset.kind + ' danger zone');
+      const text = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = name;
+      const tip = document.createElement('p');
+      tip.textContent = pattern.tip;
+      text.append(title, tip);
+      card.append(figure, text);
+      body.appendChild(card);
+    }
   }
 
   // =========================================================================

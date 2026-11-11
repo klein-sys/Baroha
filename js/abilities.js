@@ -130,6 +130,7 @@ class AbilitiesManager {
     // Deduct mana & apply cooldown
     player.mana -= ability.manaCost;
     ability.timer = ability.cooldown;
+    window.game?.character?.cuePose('cast', 0.28);
 
     const colors = { bolt: 0x6adfff, fireball: 0xff8142, lightning: 0xe1c7ff, shield: 0x77aaff, heal: 0x75e8ac, nova: 0xffdc82 };
     this.showSpellPulse(player.position, colors[ability.id], 0.65);
@@ -163,7 +164,7 @@ class AbilitiesManager {
   spawnMagicBolt(player) {
     if (window.soundEngine) window.soundEngine.playMagicBolt();
 
-    let forward = new THREE.Vector3(-Math.sin(player.yaw), Math.sin(player.pitch), -Math.cos(player.yaw)).normalize();
+    let forward = new THREE.Vector3(-Math.sin(player.yaw) * Math.cos(player.pitch), Math.sin(player.pitch), -Math.cos(player.yaw) * Math.cos(player.pitch));
     const spawnPos = player.position.clone().add(new THREE.Vector3(0, -0.2, 0)).addScaledVector(forward, 0.8);
 
     // Apply Calculus Small-Angle Aim Assist: lim theta->0 [sin(theta)/theta] = 1

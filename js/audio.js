@@ -87,6 +87,25 @@ class SoundEngine {
      SOUND EFFECTS
      ------------------------------------------------------------- */
   
+  playDungeonCue(floor, cue) {
+    if (!this.ctx || !this.sfxGain) return;
+    const now = this.ctx.currentTime;
+    const base = [108, 74, 178, 61][floor - 1] || 108;
+    const durations = { step: 0.07, land: 0.17, room: 0.34, reveal: 0.66, portal: 0.56 };
+    const duration = durations[cue] || 0.1;
+    const oscillator = this.ctx.createOscillator();
+    const envelope = this.ctx.createGain();
+    oscillator.type = cue === 'step' || cue === 'land' ? 'triangle' : 'sine';
+    oscillator.frequency.setValueAtTime(base * (cue === 'portal' ? 1.5 : 1), now);
+    oscillator.frequency.exponentialRampToValueAtTime(base * (cue === 'portal' ? 3 : cue === 'room' ? 1.35 : 0.55), now + duration);
+    envelope.gain.setValueAtTime(cue === 'step' ? 0.028 : 0.08, now);
+    envelope.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    oscillator.connect(envelope);
+    envelope.connect(this.sfxGain);
+    oscillator.start(now);
+    oscillator.stop(now + duration);
+  }
+
   // Sword slash whoosh
   playSwordSlash() {
     if (!this.ctx) return;
@@ -448,6 +467,7 @@ class SoundEngine {
         this.startCryptAmbience();
         break;
       case 3:
+      case 4:
         this.startCosmicAmbience();
         break;
       default:

@@ -92,3 +92,22 @@ body:has(#boss-banner.active) #toast-container { top: auto; bottom: 110px; }
   .roblox-bar-track { width: 29px; }
   .btn-roblox-tool { font-size: 9px; padding: 4px; }
 }
+#boss-intro { position: fixed; inset: 0; z-index: 170; display: grid; align-items: end; justify-items: center; padding: 20px 16px max(32px, env(safe-area-inset-bottom)); background: linear-gradient(transparent 42%, rgba(7, 9, 16, .96)); }
+#boss-intro[hidden] { display: none; }
+.boss-intro-card { width: min(100%, 580px); text-align: center; color: #f8edd6; padding: 12px; }
+#boss-intro-title { color: #bda0ff; text-transform: uppercase; font-size: .77rem; letter-spacing: .14em; }
+#boss-intro-name { font-size: clamp(26px, 7vw, 60px); line-height: 1; margin: .22em 0; }
+#boss-intro-cue { font-size: clamp(13px, 2vw, 16px); }
+#boss-intro-skip { position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); background: #1c1729; border: 1px solid #a88bce; border-radius: 8px; padding: 11px 15px; color: #fff4df; cursor: pointer; }
+body:has(#boss-intro:not([hidden])) :is(#game-hud, #mobile-controls, #crosshair, #toast-container, #hitmarker) { visibility: hidden; }
+.puzzle-tools { display: flex; gap: 8px; margin: 4px 0 2px; }
+.puzzle-tools[hidden], #boss-attack-readout[hidden] { display: none; }
+.puzzle-tools button { background: #241f34; color: #f5dfb2; padding: 6px 10px; border: 1px solid #8f7ca4; border-radius: 5px; min-height: 34px; cursor: pointer; }
+#boss-attack-readout { color: #ffe1a8; padding: 2px 8px; border-radius: 5px; background: #181324; font-size: 11px; font-weight: 700; }
+#boss-attack-readout[data-phase="Strike"] { color: #ffaba4; }
+#boss-attack-readout[data-phase="Recovery"] { color: #a9f4d4; }
+.pattern-card { display: flex; align-items: center; gap: 12px; }
+.attack-diagram { width: 32px; height: 32px; flex: 0 0 32px; background: #d37765; border: 2px solid #ffd39b; border-radius: 50%; }
+.attack-diagram[data-kind="ring"] { background: none; border-width: 6px; }
+.attack-diagram[data-kind="lane"] { border-radius: 3px; transform: scaleX(.6) rotate(18deg); }
+.hud-room-name { color: #c6b6e0; font-size: 10px; text-transform: uppercase; letter-spacing: .09em; margin-bottom: 3px; }
