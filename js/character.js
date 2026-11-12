@@ -170,6 +170,7 @@ class RobloxCharacter {
     this.swordMesh.position.set(0, -0.85, 0.2);
     this.swordMesh.rotation.set(-Math.PI / 2, 0, 0);
     this.rightArm.add(this.swordMesh);
+    if (typeof WardArt !== 'undefined') WardArt.wardrunner(this);
   }
 
   buildGreatsword() {
@@ -237,9 +238,6 @@ class RobloxCharacter {
     if (btn) {
       btn.innerText = this.cameraMode === 'third_person' ? '🎥 3RD PERSON [V]' : '🎥 1ST PERSON [V]';
     }
-    if (window.interfaceManager) {
-      window.interfaceManager.showToast(`Camera switched to ${this.cameraMode === 'third_person' ? '3rd Person' : '1st Person'}`, 'info');
-    }
     if (window.game && window.game.player) {
       if (this.cameraMode === 'first_person') {
         this.mesh.visible = false;
@@ -259,7 +257,7 @@ class RobloxCharacter {
     // Snap character feet to ground (playerController.position.y is eye-height at terrainHeight + 1.8)
     // Procedural feet bottom is at -0.4 (-1.4m offset), whereas dark-fantasy armored legs reach -0.51 (-1.30m offset).
     const hasDFLegs = !!(this.leftLegPivot && this.leftLegPivot.userData && this.leftLegPivot.userData.darkFantasyVisual);
-    const groundEyeOffset = hasDFLegs ? 1.30 : 1.4;
+    const groundEyeOffset = this.mesh.userData.wardrunner ? 1.29 : hasDFLegs ? 1.30 : 1.4;
     this.mesh.position.set(this.position.x, this.position.y - groundEyeOffset, this.position.z);
 
     // Update facing rotation to match movement / camera
@@ -431,11 +429,12 @@ class RobloxCharacter {
     const sinYaw = Math.sin(yaw);
     const cosYaw = Math.cos(yaw);
     const flat = Math.cos(pitch);
+    const distance = window.game?.enemies?.isBossActive && window.game.enemies.activeBoss?.type === 'dragon' ? 6.6 : this.cameraDistance;
     this.cameraTarget.copy(playerController.position);
     this._desiredCamPos.copy(this.cameraTarget);
-    this._desiredCamPos.x += sinYaw * flat * this.cameraDistance + cosYaw * 1.22;
-    this._desiredCamPos.y -= Math.sin(pitch) * this.cameraDistance - 0.38;
-    this._desiredCamPos.z += cosYaw * flat * this.cameraDistance - sinYaw * 1.22;
+    this._desiredCamPos.x += sinYaw * flat * distance + cosYaw * 1.22;
+    this._desiredCamPos.y -= Math.sin(pitch) * distance - 0.38;
+    this._desiredCamPos.z += cosYaw * flat * distance - sinYaw * 1.22;
 
     window.game?.world?.clipCameraRay(this.cameraTarget, this._desiredCamPos, 0.3);
     const reach = this._desiredCamPos.distanceTo(this.cameraTarget);

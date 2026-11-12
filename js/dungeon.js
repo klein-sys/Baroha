@@ -1,9 +1,9 @@
 /** Authored dungeon floors. Bounds are [left, right, north, south]. */
 const dungeonFloors = [
-  { name: 'The Cursed Forest', rooms: ['Forest Sanctuary', 'Rift Grove', 'Root Vault', 'Morgathia’s Arena', 'Canopy Cache'], color: 0x304936, wall: 0x33443a, width: 11, side: 1, traps: 1, boss: 'Morgathia' },
-  { name: 'The Forgotten Kingdom', rooms: ['Crypt Landing', 'Burial Chamber', 'Bone Gallery', 'Vorthak’s Throne', 'Reliquary'], color: 0x3c4443, wall: 0x444650, width: 10, side: -1, traps: 2, boss: 'Vorthak' },
-  { name: 'The Celestial Depths', rooms: ['Stargazer’s Rest', 'Shattered Observatory', 'Orbits Gallery', 'Sentinel’s Ring', 'Astral Archive'], color: 0x383456, wall: 0x3b3558, width: 12, side: 1, traps: 3, boss: 'the Harmonic Sentinel' },
-  { name: 'Beyond Infinity', rooms: ['The Last Refuge', 'Fractured Limit', 'Gauntlet of Infinity', 'Azrael’s Sanctum', 'The Hidden Axiom'], color: 0x502e43, wall: 0x483449, width: 13, side: -1, traps: 4, boss: 'Azrael' }
+  { name: 'The Cursed Forest', rooms: ['Rootward Sanctuary', 'Rift Chamber', 'Root Vault', 'Morgathia’s Arena', 'Rootward Cache'], color: 0x304936, wall: 0x46564a, width: 11, side: 1, traps: 1, boss: 'Morgathia' },
+  { name: 'The Forgotten Kingdom', rooms: ['Crypt Landing', 'Burial Chamber', 'Bone Gallery', 'Vorthak’s Throne', 'Reliquary'], color: 0x3c4443, wall: 0x515050, width: 10, side: -1, traps: 2, boss: 'Vorthak' },
+  { name: 'The Celestial Depths', rooms: ['Stargazer’s Rest', 'Shattered Observatory', 'Orbits Gallery', 'Sentinel’s Ring', 'Astral Archive'], color: 0x383456, wall: 0x3d4859, width: 12, side: 1, traps: 3, boss: 'the Harmonic Sentinel' },
+  { name: 'Beyond Infinity', rooms: ['The Last Refuge', 'Fractured Limit', 'Gauntlet of Infinity', 'Azrael’s Sanctum', 'The Hidden Axiom'], color: 0x502e43, wall: 0x504039, width: 13, side: -1, traps: 4, boss: 'Azrael' }
 ];
 
 function dungeonStoneTexture(paving, level) {
@@ -26,10 +26,10 @@ function dungeonStoneTexture(paving, level) {
     for (let column = -1; column < columns; column++) {
       const x = column * width + (row % 2 ? width / 2 : 0);
       const y = row * height;
-      const tone = Math.floor(172 + random() * 44);
+      const tone = Math.floor(144 + random() * 59);
       context.fillStyle = `rgb(${tone},${tone - 3},${tone - 4})`;
       context.fillRect(x + 2, y + 2, width - 3, height - 3);
-      context.fillStyle = '#e8e0d7';
+      context.fillStyle = 'rgba(232,224,215,.42)';
       context.fillRect(x + 3, y + 3, width - 5, 2);
     }
   }
@@ -89,7 +89,8 @@ function buildDungeonFloor(world) {
   };
   const stone = world.getSharedMat('dungeon_stone', () => new THREE.MeshStandardMaterial({ color: floor.color, roughness: 0.92, map: dungeonStoneTexture(true, level) }));
   const wallMaterial = world.getSharedMat('dungeon_wall', () => new THREE.MeshStandardMaterial({ color: floor.wall, roughness: 0.82, map: dungeonStoneTexture(false, level) }));
-  const trim = world.getSharedMat('dungeon_trim', () => new THREE.MeshStandardMaterial({ color: 0x242233, metalness: 0.15, roughness: 0.83 }));
+  const trim = world.getSharedMat('dungeon_trim', () => new THREE.MeshStandardMaterial({ color: [0x232821, 0x302820, 0x26313a, 0x332526][level - 1], metalness: 0.23, roughness: 0.82 }));
+  const copper = world.getSharedMat('ward_hardware', () => new THREE.MeshStandardMaterial({ color: 0x7d573d, metalness: 0.53, roughness: 0.57 }));
   const lamp = world.getSharedMat('dungeon_lamp', () => new THREE.MeshBasicMaterial({ color: [0x81bd9c, 0x95d7bd, 0x9c83e7, 0xf4a77a][world.currentRealm - 1] }));
   const details = new Map();
   const detailBox = (x, y, z, width, height, depth, material, angle = 0) => {
@@ -145,17 +146,19 @@ function buildDungeonFloor(world) {
   for (const [index, room] of world.rooms.entries()) {
     const { bounds: [left, right, north, south], entry, exit, annex } = room;
     wallHeight = heights[index];
-    const sky = level === 1 && (index === 1 || index === 3) || level === 3 && index === 2;
-    if (sky) {
-      ceiling(left, left + 2, north, south, wallHeight);
-      ceiling(right - 2, right, north, south, wallHeight);
-      for (let z = north + 2; z < south - 1; z += 6) {
-        detailBox((left + right) / 2, wallHeight, z, right - left, 0.38, 0.5, trim);
+    ceiling(left, right, north, south, wallHeight);
+    for (let z = north + 1.8; z < south - 1; z += level === 2 ? 3.5 : 5.5) {
+      detailBox((left + right) / 2, wallHeight - 0.24, z, right - left, 0.48, 0.4, trim);
+      if (level === 4 && index === 3) {
+        const inner = (right - left) * 0.38;
+        for (const sign of [-1, 1]) {
+          detailBox(sign * inner, wallHeight - 2.0, z, 7.2, 0.65, 1.1, trim, -sign * 0.54);
+          detailBox(sign * (inner + 2.7), wallHeight - 4.2, z, 3.3, 0.45, 1.1, copper, -sign * 0.89);
+        }
       }
-    } else {
-      ceiling(left, right, north, south, wallHeight);
-      for (let z = north + 1.8; z < south - 1; z += level === 2 ? 3.5 : 5.5) {
-        detailBox((left + right) / 2, wallHeight - 0.24, z, right - left, 0.48, 0.4, trim);
+      if (level === 1 && index === 3) {
+        detailBox(left + 3, wallHeight - 1.05, z, 5, 0.36, 0.54, trim, 0.28);
+        detailBox(right - 3, wallHeight - 1.05, z, 5, 0.36, 0.54, trim, -0.28);
       }
     }
     if (entry) {
@@ -168,6 +171,7 @@ function buildDungeonFloor(world) {
     for (let z = north + 2.8; z < south - 2; z += 5.5) {
       for (const x of [left + 0.42, right - 0.42]) {
         detailBox(x, (wallHeight - 0.2) / 2, z, 0.68, wallHeight - 0.2, 0.88, trim);
+        detailBox(x, 0.45, z, 0.92, 0.9, 1.17, trim);
         if (z + 5.5 >= south - 2) detailBox(x, 2.7, z, 0.72, 0.39, 0.72, lamp);
         if (level === 2 && index !== 4) {
           detailBox((x + (left + right) / 2) / 2, wallHeight - 0.8, z, (right - left) / 2 + 0.25, 0.38, 0.54, trim, x < 0 ? 0.10 : -0.10);
@@ -179,6 +183,9 @@ function buildDungeonFloor(world) {
       if (opening) {
         wall(left, -opening, z - 0.35, z + 0.35);
         wall(opening, right, z - 0.35, z + 0.35);
+        box(0, (wallHeight + 4.2) / 2, z, opening * 2, wallHeight - 4.2, 0.7, wallMaterial);
+        world.addBoxCollider(-opening, 4.2, z - 0.35, opening, wallHeight, z + 0.35,
+          { tag: 'ward_transom', isCeiling: true, blocksHorizontal: false });
       } else {
         wall(left, right, z - 0.35, z + 0.35);
       }
@@ -187,6 +194,9 @@ function buildDungeonFloor(world) {
       if (annex === direction) {
         wall(x - 0.35, x + 0.35, north, -38.6);
         wall(x - 0.35, x + 0.35, -33.4, south);
+        box(x, (wallHeight + 3.6) / 2, -36, 0.7, wallHeight - 3.6, 5.2, wallMaterial);
+        world.addBoxCollider(x - 0.35, 3.6, -38.6, x + 0.35, wallHeight, -33.4,
+          { tag: 'ward_transom', isCeiling: true, blocksHorizontal: false });
       } else {
         wall(x - 0.35, x + 0.35, north, south);
       }
@@ -201,7 +211,8 @@ function buildDungeonFloor(world) {
   for (const [z, width] of [[4, 3], [-17, 2.3], [-28, 2.3], [-46, 3]]) {
     for (const x of [-width, width]) {
       detailBox(x, 2.8, z, 0.72, 5.6, 0.95, trim);
-      detailBox(x, 3.6, z + 0.52, 0.2, 0.6, 0.1, lamp);
+      detailBox(x, 3.57, z + 0.52, 0.26, 0.83, 0.12, copper);
+      detailBox(x, 3.6, z + 0.59, 0.13, 0.47, 0.12, lamp);
     }
   }
   let arenaLight;
@@ -214,22 +225,83 @@ function buildDungeonFloor(world) {
     world.worldObjects.push(light);
   }
 
+  const encloseCrossing = (left, right, north, south, headroom, recoveries) => {
+    ceiling(left, right, north, south, headroom);
+    const bottom = -4.5;
+    box((left + right) / 2, bottom - 0.28, (north + south) / 2, right - left, 0.56, south - north, stone);
+    for (const x of [left, right]) {
+      box(x, (headroom + bottom) / 2, (north + south) / 2, 0.65, headroom - bottom, south - north, wallMaterial);
+      world.addBoxCollider(x - 0.325, bottom, north, x + 0.325, headroom, south, { tag: 'crossing_wall' });
+    }
+    for (const z of [north, south]) box((left + right) / 2, bottom / 2, z, right - left, -bottom, 0.45, wallMaterial);
+    world.crossingPits.push({ bounds: [left, right, north, south], recoveries });
+  };
+
+  // The continuity gallery runs north–south. Its two side walls rise all the way from the pit floor.
+  encloseCrossing(-3.25, 3.25, -28, -17, 5.7, [[0, -14.2]]);
+  const spike = world.getSharedGeom('wardPitSpike', () => new THREE.ConeGeometry(0.21, 1.15, 6));
+  const iron = world.getSharedMat('pit_iron', () => new THREE.MeshStandardMaterial({ color: 0x8c6a55, metalness: 0.62, roughness: 0.48 }));
+  for (const x of [-2.2, -1.1, 0, 1.1, 2.2]) {
+    for (const z of [-26.8, -24.8, -22.8, -20.8, -18.8]) {
+      const tooth = new THREE.Mesh(spike, iron);
+      tooth.position.set(x, -3.92, z);
+      world.scene.add(tooth);
+      world.worldObjects.push(tooth);
+    }
+  }
+  for (const x of [-1.35, 1.35]) {
+    detailBox(x, 0.016, -14.2, 0.1, 0.031, 0.85, lamp);
+  }
+  const pitLight = new THREE.PointLight(0xf0a36a, 0.85, 14);
+  pitLight.position.set(0, -1.1, -22.5);
+  world.scene.add(pitLight);
+  world.worldObjects.push(pitLight);
+  detailBox(0, 0.025, -16.55, 4.1, 0.05, 0.14, lamp);
+
   const sealX = [-5.5, 5.5, -5.5, 5.5][level - 1];
   world.spawnRiftSeal(sealX, -8, state);
   world.spawnPiecewiseBridge(0, -22.5, state);
-  // Each lift crosses the void between the gallery and its optional side chamber.
-  world.spawnOscillatingPlatform(annexEdge + side * gap / 2, -36, 0.9 + level * 0.15, 0.9 + level * 0.12, -0.25);
-  if (level >= 3) {
-    world.oscillatingPlatforms[0].mesh.position.x = annexEdge + side * 2.35;
-    world.spawnOscillatingPlatform(annexEdge + side * (gap - 2.35), -36, 1.05, 0.9 + level * 0.12, -0.2, Math.PI);
+  const annexLeft = Math.min(annexEdge, annexInner);
+  const annexRight = Math.max(annexEdge, annexInner);
+  ceiling(annexLeft, annexRight, -38.65, -33.35, 4.4);
+  box((annexLeft + annexRight) / 2, -4.8, -36, gap, 0.6, 5.3, stone);
+  for (const z of [-38.6, -33.4]) {
+    box((annexLeft + annexRight) / 2, -0.05, z, gap, 8.9, 0.52, wallMaterial);
+    world.addBoxCollider(annexLeft, -4.5, z - 0.26, annexRight, 4.4, z + 0.26, { tag: 'lift_shaft' });
   }
+  for (const x of [annexEdge, annexInner]) {
+    box(x, -2.25, -36, 0.38, 4.5, 5.2, wallMaterial);
+  }
+  const docks = [annexEdge - side * 1.45, annexInner + side * 1.45];
+  world.crossingPits.push({ bounds: [annexLeft, annexRight, -38.6, -33.4], recoveries: docks.map(x => [x, -36]) });
+  world.spawnOscillatingPlatform(annexEdge, annexInner, -36, docks, 0.95 + level * 0.06);
   world.spawnManaWell(5.5, 10);
   if (world.currentRealm === 1) {
-    world.spawnVillageHouse(0, 25, true, Math.PI);
-    world.spawnTrainingDummy(5, 16);
-    for (const [x, z] of [[-7, 15], [7, 16], [-9, -13], [9, -11], [-9, -34], [8, -41], [-12, -62], [12, -60]]) {
-      world.spawnGothicTree(x, z);
+    // The rear wall is the sanctuary itself. Steps and a cot are built into its recess.
+    const brass = world.getSharedMat('ward_brass', () => new THREE.MeshStandardMaterial({ color: 0x9a643f, metalness: 0.63, roughness: 0.54 }));
+    box(0, 0.11, 26, 9, 0.22, 6, stone);
+    world.addWalkableSurface(-4.5, 4.5, 23, 29, 0.22);
+    box(0, 3.15, 28.7, 9.2, 0.6, 1.1, trim);
+    for (const x of [-4.5, 4.5]) {
+      box(x, 1.65, 26.2, 0.6, 3.3, 4.5, wallMaterial);
+      world.addBoxCollider(x - 0.3, 0, 24, x + 0.3, 3.3, 28.4, { tag: 'sanctuary_recess' });
+      detailBox(x, 2.75, 24, 0.74, 0.3, 0.72, brass);
     }
+    for (const x of [-8.4, 8.4]) {
+      for (let index = 0; index < 3; index++) {
+        detailBox(x, 1.7 + index * 1.25, 17.6 + index * 1.2, 0.38, 2.4, 0.7, trim, x > 0 ? -0.24 : 0.24);
+      }
+    }
+    const restLight = new THREE.PointLight(0xffb474, 1.12, 10);
+    restLight.position.set(0, 2.7, 26);
+    world.scene.add(restLight);
+    world.worldObjects.push(restLight);
+    for (const x of [-3, 3]) {
+      detailBox(x, 2.7, 28.8, 0.44, 0.68, 0.28, brass);
+      detailBox(x, 2.73, 28.58, 0.22, 0.39, 0.18, lamp);
+    }
+    world.spawnBed(0, 0.22, 27, Math.PI);
+    world.spawnTrainingDummy(5, 16);
     world.spawnNPC(-3.8, 0, 9, 'Aster, the Last Guardian', 'Wizard of the Broken Threshold');
     world.spawnPracticeSeal(-6, 13);
   } else {
@@ -344,6 +416,12 @@ function buildDungeonFloor(world) {
     }
   };
   world.interactables.push(portalTarget);
+  const portalRing = new THREE.TorusGeometry(2.38, 0.085, 8, 32, Math.PI - 0.17);
+  for (const turn of [0, Math.PI]) {
+    const half = new THREE.Mesh(portalRing, trim);
+    half.rotation.z = turn;
+    portal.add(half);
+  }
   const lanterns = [];
   const rings = [];
   if (level === 1) {

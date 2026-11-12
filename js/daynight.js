@@ -209,9 +209,9 @@ class DayNightManager {
     }
 
     const dungeon = Boolean(window.game?.world?.floor);
-    this.hemiLight.intensity = hemiIntensity * (dungeon ? 0.62 : 1);
-    this.sunLight.intensity = sunIntensity * (dungeon ? 0.24 : 1);
-    this.moonLight.intensity = moonIntensity * (dungeon ? 0.42 : 1);
+    this.hemiLight.intensity = hemiIntensity * (dungeon ? 0.44 : 1);
+    this.sunLight.intensity = sunIntensity * (dungeon ? 0.14 : 1);
+    this.moonLight.intensity = moonIntensity * (dungeon ? 0.35 : 1);
   }
 
   handleDayNightTransition(isNight) {

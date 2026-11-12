@@ -12,8 +12,10 @@ class WorldManager {
     this.interactables = [];
     this.collectibles = [];
     this.animatedLights = [];
+    this.mentorPose = null;
     this.oscillatingPlatforms = [];
     this.solidBridges = [];
+    this.crossingPits = [];
 
     // Collision & Interactive Doors Subsystems
     this.colliders = [];
@@ -108,8 +110,10 @@ class WorldManager {
       }
     });
     this.solidBridges = [];
+    this.crossingPits = [];
 
     this.animatedLights = [];
+    this.mentorPose = null;
     this.colliders = [];
     this.walkableSurfaces = [];
     this.animatedDoors = [];
@@ -1188,32 +1192,24 @@ class WorldManager {
     group.add(head);
 
     const mentor = name.startsWith('Aster');
-    if (mentor) {
-      bodyMat.color.setHex(0x27344c);
-      headMat.color.setHex(0xf0c496);
-      const cloth = new THREE.MeshStandardMaterial({ color: 0x454968, roughness: 0.85 });
-      const wood = new THREE.MeshStandardMaterial({ color: 0x725037, roughness: 0.85 });
-      const gold = new THREE.MeshBasicMaterial({ color: 0xf7cc7d });
-      const part = (geometry, material, x, y, z) => {
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(x, y, z);
-        group.add(mesh);
-        return mesh;
+    if (mentor && typeof WardArt !== 'undefined') {
+      WardArt.clear(group);
+      const { arm, rings } = WardArt.mentor(group);
+      let time = 0;
+      this.mentorPose = delta => {
+        time += delta;
+        arm.rotation.z = 0.04 + Math.sin(time * 1.6) * 0.055;
+        rings.forEach((ring, index) => {
+          ring.rotation.z += delta * (index % 2 === 0 ? 0.62 : -0.86);
+        });
       };
-      part(new THREE.CylinderGeometry(0.58, 0.65, 0.12, 10), cloth, 0, 2.14, 0);
-      part(new THREE.ConeGeometry(0.44, 0.66, 9), cloth, 0, 2.49, 0).rotation.z = 0.14;
-      part(new THREE.CylinderGeometry(0.42, 0.45, 0.08, 8), gold, 0, 2.22, 0);
-      part(new THREE.ConeGeometry(0.27, 0.6, 7), new THREE.MeshStandardMaterial({ color: 0xd5d4ca }), 0, 1.67, 0.25).rotation.x = Math.PI;
-      part(new THREE.CylinderGeometry(0.06, 0.08, 2.18, 7), wood, 0.71, 1.12, 0.35);
-      const focus = part(new THREE.OctahedronGeometry(0.18), gold, 0.71, 2.33, 0.35);
-      this.animatedLights.push({ mesh: focus, speed: 1.2 });
       group.rotation.y = 0.65;
     }
 
     // Magical Aura Ring
     const auraGeom = new THREE.RingGeometry(0.8, 1.0, 16);
     auraGeom.rotateX(-Math.PI / 2);
-    const auraMat = new THREE.MeshBasicMaterial({ color: 0x00d4ff, side: THREE.DoubleSide });
+    const auraMat = new THREE.MeshBasicMaterial({ color: 0x91b9a8, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
     const aura = new THREE.Mesh(auraGeom, auraMat);
     aura.position.y = 0.05;
     group.add(aura);
@@ -1232,6 +1228,8 @@ class WorldManager {
       radius: 3.2,
       interact: () => {
         if (window.interfaceManager) {
+          const player = window.game?.player;
+          if (mentor && player) group.rotation.y = Math.atan2(player.position.x - x, player.position.z - z);
           window.interfaceManager.showNpcDialogue(name, role);
         }
       }
@@ -1339,7 +1337,7 @@ class WorldManager {
           riftObj.promptText = 'Rift Seal stable';
           window.soundEngine?.playMathCorrect();
           window.game?.player.addXp(150);
-          window.game?.autoSaveProgress();
+          window.game?.autoSaveProgress?.();
           window.interfaceManager?.updateQuestHUD();
         } else if (result.isHole) window.soundEngine?.playMathError();
         else window.soundEngine?.playMagicBolt();
@@ -1358,56 +1356,45 @@ class WorldManager {
     const group = new THREE.Group();
     group.position.set(x, groundY, z);
 
-    // Ravine marker
     const bridgeLength = 12;
     const bridgeWidth = 4;
-
-    // Bridge stone slabs (flickering when discontinuous, solid when continuous)
-    const slabGeom = new THREE.BoxGeometry(bridgeWidth, 0.5, bridgeLength);
     const slabMat = new THREE.MeshStandardMaterial({
-      color: 0x4a4e69,
-      transparent: true,
-      opacity: 0.35,
-      roughness: 0.7
+      color: 0x514a3e, emissive: 0x261f16, emissiveIntensity: 0.22, roughness: 0.78
     });
-    const bridgeMesh = new THREE.Mesh(slabGeom, slabMat);
-    bridgeMesh.position.set(0, 0.25, 0);
-    group.add(bridgeMesh);
-
-    // Rune Tuning Pedestal
-    const pedGeom = new THREE.CylinderGeometry(0.6, 0.8, 1.8, 8);
-    const pedMat = new THREE.MeshStandardMaterial({ color: 0x22223b, roughness: 0.5 });
-    const pedestal = new THREE.Mesh(pedGeom, pedMat);
-    pedestal.position.set(0, 1.4, 7.5);
+    const slabs = [];
+    for (let index = 0; index < 8; index++) {
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(bridgeWidth, 0.5, bridgeLength / 8), slabMat);
+      slab.receiveShadow = true;
+      slabs.push(slab);
+      group.add(slab);
+    }
+    const copper = new THREE.MeshStandardMaterial({ color: 0x976542, metalness: 0.58, roughness: 0.44 });
+    const glass = new THREE.MeshStandardMaterial({ color: 0xbac8b4, emissive: 0xd08f53, emissiveIntensity: 0.65, roughness: 0.29 });
+    const pedestalX = -1.6;
+    const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.65, 1.25, 12), copper);
+    pedestal.position.set(pedestalX, 1.125, 8.25);
     group.add(pedestal);
-
-    // Glowing Rune Dial
-    const dialGeom = new THREE.BoxGeometry(0.4, 0.4, 0.4);
-    const dialMat = new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0xffaa00, emissiveIntensity: 0.5 });
-    const dial = new THREE.Mesh(dialGeom, dialMat);
-    dial.position.set(0, 2.5, 7.5);
-    group.add(dial);
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 18, 12), glass);
+    orb.position.set(pedestalX, 2.03, 8.25);
+    group.add(orb);
+    const halves = [0, 1].map(() => {
+      const half = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.034, 8, 20, Math.PI - 0.15), copper);
+      half.position.copy(orb.position);
+      group.add(half);
+      return half;
+    });
 
     this.scene.add(group);
     this.worldObjects.push(group);
-    this.addCylinderCollider(x, z + 7.5, 0.65, 0, 2.2, { tag: 'bridge_pedestal', blocksSight: false });
+    this.addCylinderCollider(x + pedestalX, z + 8.25, 0.65, 0, 1.5, { tag: 'bridge_pedestal', blocksSight: false });
     const bridgeCollision = {
-      x: x,
-      z: z,
-      y: groundY + 0.5,
-      halfWidth: bridgeWidth / 2,
-      halfLength: bridgeLength / 2,
+      x, z, y: 0, halfWidth: bridgeWidth / 2, halfLength: bridgeLength / 2,
       isSolid: Boolean(state.bridge)
     };
     this.solidBridges.push(bridgeCollision);
-    const makeSolid = () => {
-      bridgeCollision.isSolid = true;
-      slabMat.opacity = 0.95;
-      slabMat.color.setHex(0xd4af37);
-      slabMat.emissive.setHex(0xffaa00);
-      slabMat.emissiveIntensity = 0.4;
-    };
-    if (state.bridge) makeSolid();
+    let assembly = state.bridge ? 1 : 0;
+    let building = false;
+    let elapsed = 0;
 
     const boundary = this.currentRealm + 1;
     const required = window.calculusEngine.evalPiecewiseBridge(0, boundary).requiredK;
@@ -1418,15 +1405,15 @@ class WorldManager {
     const bridgeInteract = {
       type: 'calculus_bridge',
       name: 'Continuity Bridge',
-      promptText: state.bridge ? 'Bridge stable' : 'Adjust bridge rune',
-      position: new THREE.Vector3(x, 1.25, z + 7.5),
+      promptText: state.bridge ? 'Bridge stable' : 'Steady the crossing',
+      position: new THREE.Vector3(x + pedestalX, 1.25, z + 8.25),
       radius: 3.5,
       getTelemetry: () => {
         const result = evaluate();
         return {
           title: 'Continuity Bridge',
           func: `kx + 3 (x ≤ ${boundary}) · x² + 1 (x > ${boundary})`,
-          details: state.bridge ? 'The limits match. The crossing is solid.' : 'Match the limits to lock the crossing.',
+          details: state.bridge ? 'The limits match. The crossing is solid.' : building ? 'The crossing is locking into place.' : 'Match the limits to lock the crossing.',
           metrics: [
             { label: 'Rune k', val: result.k.toFixed(2) },
             { label: 'Left', val: result.leftLimit.toFixed(2) },
@@ -1440,27 +1427,53 @@ class WorldManager {
         `Set k to ${required.toFixed(2)} to make both sides equal ${boundary * boundary + 1}.`
       ][Math.min(hint++, 2)],
       reset: () => {
-        if (state.bridge) return false;
+        if (state.bridge || building) return false;
         kIndex = 0;
         hint = 0;
         return true;
       },
       interact: () => {
-        if (state.bridge) return;
+        if (state.bridge || building) return;
         kIndex = (kIndex + 1) % kValues.length;
-        if (!evaluate().isContinuous) {
-          window.soundEngine?.playMagicBolt();
-          return;
-        }
-        makeSolid();
-        state.bridge = true;
+        if (evaluate().isContinuous) {
+          building = true;
+          bridgeInteract.promptText = 'Crossing assembling';
+          window.soundEngine?.playMathCorrect();
+        } else window.soundEngine?.playMagicBolt();
+      }
+    };
+    bridgeCollision.update = delta => {
+      elapsed += delta;
+      const result = evaluate();
+      const error = Math.min(1, result.jump / (2 * boundary));
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if (building) assembly = Math.min(1, assembly + delta / (reduceMotion ? 0.35 : 1.4));
+      if (building && assembly === 1) {
+        building = false;
+        state.bridge = bridgeCollision.isSolid = true;
         bridgeInteract.promptText = 'Bridge stable';
-        window.soundEngine?.playMathCorrect();
         window.interfaceManager?.showToast('The crossing has locked into place.', 'success');
         window.interfaceManager?.updateQuestHUD();
         window.game?.autoSaveProgress();
       }
+      glass.emissive.setHex(state.bridge ? 0x65d8be : 0xd08f53);
+      glass.emissiveIntensity = 0.62 + (reduceMotion ? 0 : Math.sin(elapsed * (1.5 + error * 5)) * error * 0.29);
+      halves.forEach((half, index) => {
+        half.position.x = pedestalX + (index === 0 ? -1 : 1) * error * 0.19;
+        half.rotation.z = index * Math.PI + (reduceMotion ? 0 : Math.sin(elapsed * 2) * error * 0.28);
+      });
+      slabs.forEach((slab, index) => {
+        const fromBank = Math.min(index, slabs.length - 1 - index);
+        const settled = state.bridge ? 1 : Math.max(0, Math.min(1, assembly * 1.6 - fromBank * 0.2));
+        const offset = 0.46 + error * 0.52;
+        slab.visible = settled > 0 || fromBank <= 1;
+        slab.position.set((index % 2 ? 1 : -1) * offset * (1 - settled), 0.25 - (1.12 + error * 0.45) * (1 - settled),
+          -bridgeLength / 2 + (index + 0.5) * bridgeLength / slabs.length);
+        slab.rotation.x = (index < slabs.length / 2 ? 1 : -1) * 0.34 * (1 - settled);
+        slab.rotation.z = (index % 2 ? 1 : -1) * 0.18 * (1 - settled);
+      });
     };
+    bridgeCollision.update(0);
     this.interactables.push(bridgeInteract);
   }
 
@@ -1564,63 +1577,93 @@ class WorldManager {
 
   // =========================================================================
   // CALCULUS MECHANIC 4: HARMONIC OSCILLATING PLATFORM
-  // y(t) = A*sin(w*t), v(t) = A*w*cos(w*t), a(t) = -A*w^2*sin(w*t)
+  // Each trip runs from one harmonic turning point to the other.
   // =========================================================================
-  spawnOscillatingPlatform(x, z, A = 3.5, omega = 1.2, y0 = 1.0, phase = 0) {
-    const group = new THREE.Group();
-    group.position.set(x, y0, z);
-
-    // Platform Slab
-    const slabGeom = new THREE.CylinderGeometry(2.2, 2.4, 0.6, 16);
+  spawnOscillatingPlatform(near, far, z, docks, omega) {
+    const mesh = new THREE.Group();
     const slabMat = new THREE.MeshStandardMaterial({
-      color: 0x1d3557,
-      emissive: 0x457b9d,
-      emissiveIntensity: 0.3,
-      metalness: 0.7,
-      roughness: 0.3
+      color: 0x554d49, emissive: 0x364b50, emissiveIntensity: 0.3, metalness: 0.65, roughness: 0.45
     });
-    const slab = new THREE.Mesh(slabGeom, slabMat);
-    group.add(slab);
-
-    // Glowing core crystal underneath
-    const crystalGeom = new THREE.OctahedronGeometry(0.5);
-    const crystalMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
-    const crystal = new THREE.Mesh(crystalGeom, crystalMat);
-    crystal.position.y = -0.5;
-    group.add(crystal);
-
-    this.scene.add(group);
-    this.worldObjects.push(group);
-
-    const platformObj = {
-      mesh: group,
-      material: slabMat,
-      A: A,
-      omega: omega,
-      y0: y0,
-      phase,
-      radius: 2.2,
-      update: (t) => {
-        const y = A * Math.sin(omega * t + phase);
-        const v = A * omega * Math.cos(omega * t + phase);
-        const a = -A * omega * omega * Math.sin(omega * t + phase);
-        platformObj.previousY = group.position.y;
-        group.position.y = y0 + y;
-
-        // Visual telegraph: green when v ≈ 0 (safe peak)
-        const isSafePeak = Math.abs(v) < 0.35;
-        if (isSafePeak) {
-          slabMat.emissive.setHex(0x00ff88);
-          slabMat.emissiveIntensity = 0.8;
-        } else {
-          slabMat.emissive.setHex(0x457b9d);
-          slabMat.emissiveIntensity = 0.2;
-        }
-
-        return { y, v, a, isSafePeak };
-      }
+    mesh.add(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.32, 0.6, 20), slabMat));
+    const trim = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.045, 8, 32),
+      new THREE.MeshBasicMaterial({ color: 0xddb077 }));
+    trim.rotation.x = -Math.PI / 2;
+    trim.position.y = 0.31;
+    mesh.add(trim);
+    mesh.position.set(near, -0.3, z);
+    this.scene.add(mesh);
+    const lift = {
+      mesh, radius: 2.2, mode: 'parked', dock: 0, previousX: near, previousY: -0.3,
+      velocity: 0, acceleration: 0, elapsed: 0, from: 0
     };
-    this.oscillatingPlatforms.push(platformObj);
+    const ends = [near, far];
+    const duration = Math.PI / omega;
+    const getTelemetry = () => ({
+      title: 'Harmonic lift',
+      func: 'x(t) = midpoint − signed amplitude × cos(ωt)',
+      details: lift.mode === 'boarding' ? 'Board now. The lift will leave shortly.'
+        : lift.mode === 'moving' ? 'The lift slows before its turning point.' : 'Parked. Use a dock lever to move the lift.',
+      metrics: [
+        { label: 'Position x', val: mesh.position.x.toFixed(2) },
+        { label: 'Velocity', val: lift.velocity.toFixed(2) + ' m/s' },
+        { label: 'Acceleration', val: lift.acceleration.toFixed(2) + ' m/s²' }
+      ]
+    });
+    lift.getTelemetry = getTelemetry;
+    const controls = docks.map((x, dock) => {
+      const marker = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.33, 0.9, 10),
+        new THREE.MeshStandardMaterial({ color: 0xa6734e, emissive: 0x534026, emissiveIntensity: 0.45 }));
+      marker.position.set(x, 0.45, z + 0.8);
+      this.scene.add(marker);
+      this.worldObjects.push(marker);
+      const target = {
+        type: 'lift_control', name: 'Ward lift lever', position: marker.position, radius: 2.0, getTelemetry,
+        interact: () => {
+          if (lift.mode !== 'parked') return;
+          lift.elapsed = 0;
+          lift.from = lift.dock;
+          lift.mode = lift.dock === dock ? 'boarding' : 'moving';
+          window.soundEngine?.playDoorToggle(true);
+        }
+      };
+      this.interactables.push(target);
+      return { target, marker };
+    });
+    lift.update = delta => {
+      lift.previousX = mesh.position.x;
+      lift.previousY = mesh.position.y;
+      if (lift.mode === 'boarding') {
+        lift.elapsed += delta;
+        if (lift.elapsed >= 2.2) {
+          lift.mode = 'moving';
+          lift.elapsed = 0;
+        }
+      } else if (lift.mode === 'moving') {
+        lift.elapsed = Math.min(duration, lift.elapsed + delta);
+        const from = ends[lift.from];
+        const to = ends[1 - lift.from];
+        const amplitude = (to - from) / 2;
+        const angle = omega * lift.elapsed;
+        mesh.position.x = (from + to) / 2 - amplitude * Math.cos(angle);
+        lift.velocity = amplitude * omega * Math.sin(angle);
+        lift.acceleration = amplitude * omega * omega * Math.cos(angle);
+        if (lift.elapsed === duration) {
+          lift.mode = 'parked';
+          lift.dock = 1 - lift.from;
+          lift.velocity = lift.acceleration = 0;
+          window.soundEngine?.playDoorToggle(false);
+        }
+      }
+      controls.forEach(({ target, marker }, dock) => {
+        const here = lift.mode === 'parked' && lift.dock === dock;
+        target.promptText = lift.mode === 'parked' ? (here ? 'Board and send lift' : 'Recall lift')
+          : lift.mode === 'boarding' ? 'Lift boarding' : 'Lift in transit';
+        marker.material.emissiveIntensity = here ? 1 : 0.3;
+      });
+      slabMat.emissiveIntensity = lift.mode === 'moving' ? 0.35 : 0.75;
+    };
+    lift.update(0);
+    this.oscillatingPlatforms.push(lift);
   }
 
   // =========================================================================
@@ -1651,6 +1694,11 @@ class WorldManager {
       interact: () => {
         dial = (dial + 1) % samples.length;
         crystal.material.color.setHex(dial === 3 ? 0xffb972 : 0x72bcff);
+        const progress = this.dungeonProgress[this.currentRealm];
+        if (!progress.practiced) {
+          progress.practiced = true;
+          window.game?.autoSaveProgress?.();
+        }
       }
     });
   }
@@ -1738,9 +1786,11 @@ class WorldManager {
     // 2. Update Oscillating Platforms
     if (this.oscillatingPlatforms) {
       for (let i = 0; i < this.oscillatingPlatforms.length; i++) {
-        this.oscillatingPlatforms[i].update(t);
+        this.oscillatingPlatforms[i].update(delta);
       }
     }
+
+    for (const bridge of this.solidBridges) bridge.update(delta);
 
     const player = window.game?.player;
     for (const trap of this.traps || []) {
@@ -1766,6 +1816,7 @@ class WorldManager {
     }
 
     // 4. Animate celestial rings
+    this.mentorPose?.(delta);
     for (let i = 0; i < this.animatedLights.length; i++) {
       const lightObj = this.animatedLights[i];
       if (lightObj.mesh) {

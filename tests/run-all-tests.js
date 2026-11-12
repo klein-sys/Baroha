@@ -249,7 +249,7 @@ try {
   assert(typeof global.BossesManager === 'function', 'BossesManager class defined');
   const bm = new global.BossesManager(new global.THREE.Scene());
   const witch = bm.spawnDarkWitch();
-  assert(witch.name === 'The Dark Witch', 'Dark witch spawned');
+  assert(witch.name === 'Morgathia · The Dark Witch', 'Dark witch spawned');
   // Check realmId property
   assert(witch.realmId === 1, 'Dark Witch has realmId === 1');
   const lich = bm.spawnLich();
@@ -377,8 +377,8 @@ try {
   wm.loadRealm(1);
 
   assert(wm.colliders.length > 50, `World generated ${wm.colliders.length} physical colliders`);
-  assert(wm.walkableSurfaces.length >= 6, 'Rooms, connector, and sanctuary house registered walkable surfaces');
-  assert(wm.animatedDoors.length === 1, 'The sanctuary house registered its hinged door');
+  assert(wm.walkableSurfaces.length >= 6, 'Rooms, connector, and sanctuary alcove registered walkable surfaces');
+  assert(wm.animatedDoors.length === 0 && !wm.worldObjects.some(object => object.userData?.houseWalls), 'The sanctuary is built into the dungeon wall');
 
   assert(wm.rooms.length === 5, 'Floor 1 contains authored rooms');
   assert(wm.colliders.some(c => c.tag === 'dungeon_ceiling' && c.isCeiling && c.minY === 7.5),
@@ -387,10 +387,38 @@ try {
   const bridge = wm.interactables.find(item => item.type === 'calculus_bridge');
   bridge.interact();
   bridge.interact();
-  assert(wm.getTerrainHeight(0, -22.5) === 0, 'Solving continuity creates a walkable bridge');
+  assert(wm.getTerrainHeight(0, -22.5) === -100, 'Bridge stays non-walkable during assembly');
+  wm.update(1.5);
+  assert(wm.getTerrainHeight(0, -22.5) === 0, 'Completed bridge is walkable');
   wm.unlockDescent();
   wm.loadRealm(1);
   assert(wm.getTerrainHeight(0, -22.5) === 0 && wm.dungeonProgress[1].defeated, 'Reloading preserves bridge and portal progress');
+
+  const lift = wm.oscillatingPlatforms[0];
+  const [near, far] = wm.interactables.filter(item => item.type === 'lift_control');
+  const startX = lift.mesh.position.x;
+  wm.update(30);
+  assert(lift.mesh.position.x === startX && lift.velocity === 0, 'Lift stays parked until called');
+  near.interact();
+  wm.update(1);
+  assert(lift.mode === 'boarding' && lift.mesh.position.x === startX, 'Lift waits for boarding');
+  wm.update(1.3);
+  wm.update(1);
+  assert(lift.mode === 'moving' && lift.mesh.position.x !== startX && lift.velocity !== 0, 'Lift uses harmonic motion during travel');
+  wm.update(3);
+  assert(lift.dock === 1 && lift.mode === 'parked' && lift.velocity === 0, 'Lift arrives at the far dock at rest');
+  near.interact();
+  wm.update(4);
+  assert(lift.dock === 0 && lift.mesh.position.x === startX, 'Lift can be recalled to the near dock');
+  far.interact();
+  wm.update(4);
+  assert(lift.dock === 1 && lift.velocity === 0, 'Lift can be recalled from either end');
+
+  assert(wm.interactables.some(item => item.type === 'bed'), 'Rest alcove preserves the cot');
+  assert(wm.crossingPits.some(pit => pit.recoveries.length === 1), 'Continuity pit has one marked near-bank recovery');
+  // Exercise legacy hinges separately from the authored dungeon.
+  wm.interactables = wm.interactables.filter(item => item.type !== 'bed');
+  wm.spawnVillageHouse(0, 25, true, Math.PI);
 
   // Test solid house wall collision (Inn at 0, 25; side wall at x = ±3.11)
   const wallProbe = new global.THREE.Vector3(3.05, 1.8, 25.0);

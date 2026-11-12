@@ -111,3 +111,67 @@ body:has(#boss-intro:not([hidden])) :is(#game-hud, #mobile-controls, #crosshair,
 .attack-diagram[data-kind="ring"] { background: none; border-width: 6px; }
 .attack-diagram[data-kind="lane"] { border-radius: 3px; transform: scaleX(.6) rotate(18deg); }
 .hud-room-name { color: #c6b6e0; font-size: 10px; text-transform: uppercase; letter-spacing: .09em; margin-bottom: 3px; }
+
+/* Wardworks panels share the materials of the dungeon's fittings. */
+:root {
+  --ward-iron: #141b1e;
+  --ward-stone: #20292a;
+  --ward-copper: #997455;
+  --ward-text: #f3e5ce;
+  --ward-glass: #a9d2bf;
+}
+
+:is(.roblox-player-frame, .realm-badge, .quest-tracker-card, #calculus-live-hud,
+    .roblox-time-badge, .btn-roblox-tool, .fantasy-panel, #interact-prompt, .spell-hotbar) {
+  background: linear-gradient(145deg, rgba(29, 39, 41, .96), rgba(15, 19, 22, .96));
+  border-color: var(--ward-copper);
+  border-radius: 5px;
+  color: var(--ward-text);
+  box-shadow: 0 3px 10px #050a0b80;
+}
+
+.fantasy-panel-header {
+  background: var(--ward-stone);
+  border-bottom: 1px solid var(--ward-copper);
+}
+.fantasy-panel .panel-title, .quest-tracker-title, .calc-hud-title { color: #e2bb91; }
+.fantasy-panel :is(.tab-btn, .dialogue-choice-btn, .btn-close-modal) {
+  color: var(--ward-text);
+  border-color: var(--ward-copper);
+}
+.fantasy-panel :is(.tab-btn.active, .dialogue-choice-btn:hover) { background: #44382d; }
+.fantasy-panel.dev-panel :is(.dev-btn, .tab-content > p) { color: var(--ward-text); }
+#dev-console-modal .fantasy-panel { max-height: calc(100dvh - 24px); overflow-y: auto; }
+#dev-console-modal .panel-title { display: flex; align-items: center; flex-wrap: wrap; }
+#dev-tab-teleport button { background: #212929; border-color: var(--ward-copper); color: var(--ward-text); }
+#main-menu, #pause-menu { background: radial-gradient(ellipse at 50% 30%, #243231 0%, #131b1ef5 50%, #090f12 100%); }
+.screen-overlay .btn-fantasy-cta {
+  background: #1a2225;
+  border-color: var(--ward-copper);
+  color: var(--ward-text);
+}
+.screen-overlay .btn-fantasy-cta.primary, #btn-continue-game:not(:disabled) {
+  background: #56402e;
+  border-color: #e1b58e;
+  color: #fff1dc;
+}
+#main-menu .menu-actions-stack { display: flex; flex-direction: column; }
+#btn-continue-game:not(:disabled) { order: -1; }
+.roblox-dev-btn, .hud-bottom-nav { display: none; }
+.calc-hud-summary { color: #e8dcc7; font-size: 12px; margin: 4px 0; }
+.calc-hud-detail > summary { color: var(--ward-glass); cursor: pointer; padding: 5px 0; font-size: 12px; }
+.calc-hud-detail > summary:focus-visible { outline: 2px solid var(--ward-glass); }
+.calc-pill-metric { color: var(--ward-glass); border-color: #456760; background: #203432; }
+body:has(#boss-banner.active) #calculus-live-hud { display: none !important; }
+@media (max-width: 520px), (max-height: 520px) {
+  #dev-tab-teleport .dev-actions-grid { grid-template-columns: repeat(auto-fit, minmax(142px, 1fr)); }
+  .calc-hud-summary { font-size: 11px; }
+}
+
+@media (min-width: 650px) and (min-height: 521px) {
+  #boss-banner { top: 13px; }
+}
+@media (max-width: 649px) and (orientation: portrait) {
+  body:has(#boss-banner.active) .quest-objective { display: none; }
+  #boss-banner { top: 172px; }
+}

@@ -434,35 +434,9 @@ class GameEngine {
       } else window.interfaceManager.hideCalculusTelemetry();
     } else if (window.interfaceManager) {
       window.interfaceManager.hideInteractPrompt();
-      // Check if near an oscillating platform
-      let nearPlatform = false;
-      if (this.world && this.world.oscillatingPlatforms) {
-        for (let i = 0; i < this.world.oscillatingPlatforms.length; i++) {
-          const p = this.world.oscillatingPlatforms[i];
-          if (p.mesh && this.player.position.distanceTo(p.mesh.position) < 6.5) {
-            nearPlatform = true;
-            const t = (this.world._elapsed ?? 0) + p.phase / p.omega;
-            const calc = window.calculusEngine ? window.calculusEngine.evalOscillatingPlatform(t, p.A, p.omega) : null;
-            if (calc) {
-              window.interfaceManager.renderCalculusTelemetry({
-                title: 'HARMONIC OSCILLATING PLATFORM',
-                func: `y(t) = ${p.A}·sin(${p.omega}t)`,
-                details: `v(t) = y'(t) = ${(p.A * p.omega).toFixed(1)}·cos(${p.omega}t). Critical leap peak at v(t) ≈ 0!`,
-                metrics: [
-                  { label: 'Elevation y(t)', val: `${(p.y0 + calc.y).toFixed(2)}m` },
-                  { label: 'Velocity v(t)', val: `${calc.v.toFixed(2)}m/s` },
-                  { label: 'Acceleration a(t)', val: `${calc.a.toFixed(2)}m/s²` },
-                  { label: 'Platform Leap State', val: calc.isAtPeak ? 'SAFE (STATIONARY PEAK)' : 'ACTIVE (v ≠ 0)' }
-                ]
-              });
-            }
-            break;
-          }
-        }
-      }
-      if (!nearPlatform) {
-        window.interfaceManager.hideCalculusTelemetry();
-      }
+      const lift = this.world.oscillatingPlatforms.find(platform => this.player.position.distanceTo(platform.mesh.position) < 4.2);
+      if (lift) window.interfaceManager.renderCalculusTelemetry(lift.getTelemetry());
+      else window.interfaceManager.hideCalculusTelemetry();
     }
   }
 

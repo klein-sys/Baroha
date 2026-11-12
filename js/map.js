@@ -128,7 +128,8 @@ class WorldMapManager {
 
     rectangle(-3, 3, 1, 4, '#566877');
     const state = world.dungeonProgress[world.currentRealm];
-    rectangle(-2, 2, -28, -17, state.bridge ? '#82ceaa' : '#6b547e');
+    for (const pit of world.crossingPits) rectangle(...pit.bounds, '#33282a');
+    if (state.bridge) rectangle(-2, 2, -28, -17, '#82ceaa');
     for (const { mesh: { position: lift } } of world.oscillatingPlatforms) {
       rectangle(lift.x - 2.3, lift.x + 2.3, lift.z - 2.2, lift.z + 2.2, '#9875ce');
     }

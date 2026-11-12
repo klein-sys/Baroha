@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>The Forbidden Realm: The Trials of Knowledge - 3D Calculus RPG</title>
+  <title>Baroha — The Buried Wardworks</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/dungeon.css">
 </head>
@@ -193,10 +193,14 @@
       <!-- Real-Time Calculus Telemetry & Active Mechanic Panel -->
       <div id="calculus-live-hud" class="calculus-live-hud" style="display: none;">
         <div class="calc-hud-header">
-          <span class="calc-hud-badge">📐 CALCULUS TELEMETRY</span>
+          <span class="calc-hud-badge">Ward readout</span>
           <span class="calc-hud-title" id="calc-hud-title">ACTIVE HARMONIC FLUX</span>
         </div>
-        <div class="calc-hud-body" id="calc-hud-body"></div>
+        <div class="calc-hud-summary" id="calc-hud-summary"></div>
+        <details class="calc-hud-detail">
+          <summary>Equation and values</summary>
+          <div class="calc-hud-body" id="calc-hud-body"></div>
+        </details>
         <div class="puzzle-tools" id="puzzle-tools" hidden>
           <button type="button" id="puzzle-hint">Hint <kbd>G</kbd></button>
           <button type="button" id="puzzle-reset">Reset <kbd>R</kbd></button>
@@ -218,8 +222,6 @@
       <div class="hud-bottom-nav">
         <button class="btn-nav-pill" id="nav-pill-journal">[TAB] Quest Journal</button>
         <button class="btn-nav-pill" id="nav-pill-inventory">[I] Inventory</button>
-        <button class="btn-nav-pill" id="nav-pill-codex">[M] Calculus Codex</button>
-        <button class="btn-nav-pill" id="nav-pill-status">[C] Character Status</button>
         <button class="btn-nav-pill" id="nav-pill-controls">[H] Controls Guide</button>
         <button class="btn-nav-pill" id="nav-pill-settings">[O] Settings</button>
       </div>
@@ -272,7 +274,7 @@
               <path d="M14 60c0-16 36-16 36 0" fill="#454968"/>
               <path d="M20 33h24l-4 15-8 8-8-8z" fill="#d5d4ca"/>
               <path d="M23 28h18v13H23z" fill="#f0c496"/>
-              <path d="M10 30l14-5 8-19 10 17 14 7z" fill="#52567e" stroke="#f7cc7d" stroke-width="2"/>
+              <path d="M14 42V28c0-13 8-20 18-20s18 7 18 20v14l-7-4V28c0-6-5-10-11-10s-11 4-11 10v10z" fill="#494761" stroke="#a57b58" stroke-width="2"/>
               <path d="M26 35h3m6 0h3" stroke="#182335" stroke-width="2"/>
             </svg>
           </div>
@@ -934,13 +936,14 @@
         <button class="btn-close-modal">✕</button>
       </div>
       <div class="fantasy-panel-body" style="text-align: center;">
-        <h2 style="font-family: var(--font-title); color: #ffd978; margin-bottom: 8px;">THE FORBIDDEN REALM: THE TRIALS OF KNOWLEDGE</h2>
+        <h2 style="font-family: var(--font-title); color: #ffd978; margin-bottom: 8px;">THE FORBIDDEN REALM: THE BURIED WARDWORKS</h2>
         <p style="font-size: 15px; color: #c2b59b; margin-bottom: 14px;">A 3D Fantasy Adventure RPG Featuring Differential Calculus</p>
         <div style="background: #110e16; padding: 16px; border-radius: 6px; border: 1px solid #44321c; text-align: left; max-width: 500px; margin: 0 auto;">
           <p><strong>Institution:</strong> Batangas State University - The National Engineering University</p>
           <p><strong>Course:</strong> MATH 101 – Differential Calculus</p>
           <p><strong>Facilitators:</strong> Engr. Hilarion S. Aquino III & Engr. James Marvin C. Gatdula</p>
           <p><strong>Technologies:</strong> HTML5, CSS3, JavaScript (ES6+), Three.js (WebGL), Web Audio API</p>
+          <p><strong>Game art</strong> Baroha’s Wardworks models, materials, and remaining generated environment assets. Three.js is distributed under the MIT license.</p>
         </div>
       </div>
     </div>
@@ -952,16 +955,16 @@
   <div class="modal-backdrop" id="world-map-modal">
     <div class="fantasy-panel map-panel-container" style="max-width: 720px;">
       <div class="fantasy-panel-header">
-        <div class="panel-title"><span>🗺️ NUMERIA REALM MAP [T]</span></div>
+        <div class="panel-title"><span>Dungeon Map [T]</span></div>
         <button class="btn-close-modal" id="btn-close-map">✕</button>
       </div>
       <div class="fantasy-panel-body" style="padding: 14px; display: flex; flex-direction: column; align-items: center;">
         <canvas id="world-map-canvas" width="620" height="380" class="world-map-canvas"></canvas>
         <div class="world-map-legend">
-          <div class="legend-item"><span class="dot safe"></span> Safe Village & Bed</div>
-          <div class="legend-item"><span class="dot quest"></span> NPCs & Quests</div>
-          <div class="legend-item"><span class="dot danger"></span> Danger Gates</div>
-          <div class="legend-item"><span class="dot boss"></span> 3 Boss Domains</div>
+          <div class="legend-item"><span class="dot safe"></span> Sanctuary and cot</div>
+          <div class="legend-item"><span class="dot quest"></span> Characters and wards</div>
+          <div class="legend-item"><span class="dot danger"></span> Gates and traps</div>
+          <div class="legend-item"><span class="dot boss"></span> Boss chamber</div>
           <div class="legend-item"><span class="dot treasure"></span> Sacred Relics</div>
         </div>
         <div class="map-shortcut-hint" style="margin-top: 10px; font-size: 12px; color: var(--gold-glow);">
@@ -983,7 +986,7 @@
       <div class="fantasy-panel-body" style="padding: 26px 24px;">
         <div id="sleep-visual-icon" style="font-size: 44px; margin-bottom: 12px; transition: transform 0.5s ease;">🌙 ➔ ☀️</div>
         <h3 id="sleep-modal-heading" style="font-family: var(--font-title); color: #ffd978; font-size: 22px; margin-bottom: 10px;">REST UNTIL MORNING?</h3>
-        <p id="sleep-current-time" style="font-size: 14px; color: #a8dadc; margin-bottom: 14px;">Current Time: 10:45 PM (Dangerous Night)</p>
+        <p id="sleep-current-time" style="font-size: 14px; color: #d5c1a5; margin-bottom: 14px;">Current Time: 10:45 PM (Dangerous Night)</p>
         <p id="sleep-modal-desc" style="font-size: 13px; color: #c2b59b; line-height: 1.6; margin-bottom: 22px;">
           Sleeping will safely skip the perilous night, clear out aggressive monsters, restore your <strong>HP and Mana to 100%</strong>, and advance time directly to <strong>6:00 AM Sunrise</strong>!
         </p>
@@ -1009,9 +1012,9 @@
        ========================================================================= -->
   <div class="modal-backdrop" id="dev-console-modal">
     <div class="fantasy-panel dev-panel" style="max-width: 860px; width: 95vw;">
-      <div class="fantasy-panel-header" style="border-bottom: 2px solid #00d4ff;">
-        <div class="panel-title" style="color: #00d4ff;">
-          <span>🛠️ DEVELOPER CONSOLE & GOD SUITE</span>
+      <div class="fantasy-panel-header">
+        <div class="panel-title">
+          <span>Developer Console</span>
           <span style="font-size: 11px; color: #a8dadc; margin-left: 10px; font-family: var(--font-mono); font-weight: normal;">[F1 / ~ to Toggle]</span>
         </div>
         <button class="btn-close-modal" id="btn-close-dev">✕</button>
@@ -1021,7 +1024,7 @@
         <!-- Tabs Header -->
         <div class="tabs-header dev-tabs" style="margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 8px;">
           <button class="tab-btn active" data-tab="dev-tab-god">⚡ God & Stats</button>
-          <button class="tab-btn" data-tab="dev-tab-teleport">🗺️ Teleport & Realms</button>
+          <button class="tab-btn" data-tab="dev-tab-teleport">Floor Teleports</button>
           <button class="tab-btn" data-tab="dev-tab-boss">👑 Boss Controls</button>
           <button class="tab-btn" data-tab="dev-tab-calculus">📐 Calculus Suite</button>
           <button class="tab-btn" data-tab="dev-tab-items">🎒 Items & Spells</button>
@@ -1045,14 +1048,14 @@
 
         <!-- Tab 2: Teleport & Realms -->
         <div class="tab-content" id="dev-tab-teleport">
-          <p style="font-size: 13px; color: #a8dadc; margin-bottom: 12px;">Instant warp across realms and combat arenas:</p>
+          <p style="font-size: 13px; color: #a8dadc; margin-bottom: 12px;">Jump to a dungeon floor or checkpoint.</p>
           <div class="dev-actions-grid">
             <button class="btn-dev-action" onclick="dev.loadRealm(1)">Switch to Floor 1 · Forest</button>
             <button class="btn-dev-action" onclick="dev.loadRealm(2)">Switch to Floor 2 · Kingdom</button>
             <button class="btn-dev-action" onclick="dev.loadRealm(3)">Switch to Floor 3 · Celestial Depths</button>
             <button class="btn-dev-action" onclick="dev.loadRealm(4)">Switch to Floor 4 · Beyond Infinity</button>
-            <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, 25)">🏡 Teleport: Starter Village Inn Bed</button>
-            <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, 12)">🌲 Teleport: Forest Entrance</button>
+            <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, 25)">Teleport: Sanctuary Rest Alcove</button>
+            <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, 12)">Teleport: Rootward Sanctuary</button>
             <button class="btn-dev-action" onclick="dev.teleport(0, 2.5, -44)">Teleport: Arena Gate</button>
           </div>
         </div>
@@ -1132,8 +1135,8 @@
       <div class="hero-academics">Batangas State University • MATH 101 Semestral Project</div>
     </div>
     <div class="menu-actions-stack">
-      <button class="btn-fantasy-cta primary" id="btn-start-game">▶ START ADVENTURE</button>
-      <button class="btn-fantasy-cta" id="btn-continue-game" disabled>CONTINUE QUEST</button>
+      <button class="btn-fantasy-cta primary" id="btn-start-game">New Game</button>
+      <button class="btn-fantasy-cta" id="btn-continue-game" disabled>Continue</button>
       <button class="btn-fantasy-cta" id="btn-how-to-play">HOW TO PLAY / CONTROLS</button>
       <button class="btn-fantasy-cta" id="btn-settings">⚙️ SETTINGS & GRAPHICS</button>
       <button class="btn-fantasy-cta" id="btn-codex">CALCULUS CODEX & REPORT</button>
@@ -1146,11 +1149,13 @@
   <div class="screen-overlay hidden" id="pause-menu">
     <h2 style="font-family: var(--font-title); color: #ffd978; font-size: 38px; margin-bottom: 20px;">GAME PAUSED</h2>
     <div class="menu-actions-stack">
-      <button class="btn-fantasy-cta primary" id="btn-pause-resume">RESUME PLAY</button>
+      <button class="btn-fantasy-cta primary" id="btn-pause-resume">Resume</button>
       <button class="btn-fantasy-cta" id="btn-pause-restart">RESTART FLOOR</button>
       <button class="btn-fantasy-cta" id="btn-pause-journal">JOURNAL</button>
       <button class="btn-fantasy-cta" id="btn-pause-inventory">INVENTORY</button>
-      <button class="btn-fantasy-cta" id="btn-pause-controls">🎮 CONTROLS GUIDE</button>
+      <button class="btn-fantasy-cta" id="nav-pill-codex">Calculus Codex</button>
+      <button class="btn-fantasy-cta" id="nav-pill-status">Character Status</button>
+      <button class="btn-fantasy-cta" id="btn-pause-controls">Controls</button>
       <button class="btn-fantasy-cta" id="btn-pause-settings">⚙️ GRAPHICS & SETTINGS</button>
       <button class="btn-fantasy-cta dev-highlight" id="btn-pause-dev">🛠️ DEVELOPER CONSOLE [F1]</button>
       <button class="btn-fantasy-cta" id="btn-pause-mainmenu">MAIN MENU</button>
@@ -1235,6 +1240,7 @@
   <script src="js/audio.js"></script>
   <script src="js/calculus.js"></script>
   <script src="js/daynight.js"></script>
+  <script src="js/ward-art.js"></script>
   <script src="js/player.js"></script>
   <script src="js/character.js"></script>
   <script src="js/abilities.js"></script>

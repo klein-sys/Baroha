@@ -230,7 +230,7 @@ class InterfaceManager {
       const name = state.defeated ? 'Portal open' : active ? 'Boss encounter' : 'Reach the arena';
       const objective = state.defeated ? 'Use the portal at the back of the arena.'
         : active ? `Defeat ${world.floor.boss}.`
-        : !state.rift ? 'Tune the Rift Seal near the grove or chamber entrance.'
+        : !state.rift ? 'Tune the Rift Seal in the next chamber.'
         : !state.bridge ? 'Tune the bridge rune until both limits match.'
         : `Cross the gallery and enter ${world.floor.rooms[3]}.`;
       document.getElementById('hud-quest-name').textContent = name;
@@ -547,6 +547,10 @@ class InterfaceManager {
     hud.style.display = 'block';
     const titleEl = document.getElementById('calc-hud-title');
     const bodyEl = document.getElementById('calc-hud-body');
+    const summary = document.getElementById('calc-hud-summary');
+    const detail = bodyEl?.parentElement;
+    if (summary) summary.textContent = data.details || '';
+    if (detail) detail.hidden = !data.html && !data.func && !data.metrics?.length;
     if (titleEl) titleEl.innerText = data.title || 'ACTIVE HARMONIC FLUX';
     if (bodyEl) {
       if (typeof data.html === 'string') {
@@ -554,7 +558,6 @@ class InterfaceManager {
       } else {
         bodyEl.innerHTML = `
           <div style="font-family: var(--font-mono); font-size: 13px; color: ${data.isWarning ? '#ff4b4b' : '#ffd166'}; margin-bottom: 4px;">${data.func || ''}</div>
-          <div style="font-size: 12px; color: #e0e0e0; margin-bottom: 6px;">${data.details || ''}</div>
           ${data.metrics ? `
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top: 4px;">
               ${data.metrics.map(m => `<span class="calc-pill-metric"><strong>${m.label}:</strong> ${m.val}</span>`).join('')}
@@ -593,12 +596,16 @@ class InterfaceManager {
       const game = window.game;
       const state = game.world.dungeonProgress[1];
       speechText.innerText = state.defeated
-        ? 'The forest can breathe again. Take the open portal and look for the names Vorthak buried.'
-        : state.rift
-          ? 'You held the seal steady. Now listen to both sides of the bridge. They must agree before you cross.'
-          : game.player.hearts < game.player.maxHearts
-            ? 'Sit a moment. The sanctuary is safe. The practice dial can help you see what the seal is doing.'
-            : 'I’m Aster. Numeria cracked where its wards should have joined. Morgathia guards the first fracture. Try my practice seal beside us, then follow the lanterns to the grove.';
+        ? 'The first ward holds. Take the open portal to the crypts. Read the names carved by their doors.'
+        : game.player.hearts < game.player.maxHearts
+          ? 'Use the cot and catch your breath. The last crossing you stabilized will hold.'
+          : state.bridge
+            ? 'The halves have joined. Cross the bridge and follow the iron ribs to Morgathia’s door.'
+            : state.rift
+              ? 'The seal holds. At the bridge, turn the dial until both sides approach the same value.'
+              : state.practiced
+                ? 'You saw the value the practice seal approaches. Use that same value at the Rift Chamber.'
+                : 'I kept these wards before they failed. Try the practice seal beside me, then follow the lanterns to the Rift Chamber.';
       const option = (label, action) => {
         const button = document.createElement('button');
         button.className = 'dialogue-choice-btn';
@@ -607,12 +614,12 @@ class InterfaceManager {
         choices.appendChild(button);
       };
       option('What should I watch on the dial?', () => {
-        speechText.innerText = 'Watch the output from either side of the gap. It approaches six even though the expression is undefined at three. Try the blue crystal by my side before you head north.';
+        speechText.innerText = 'Watch the output from either side of the gap. It approaches six even though the expression is undefined at three. Try the glass seal beside my staff.';
       });
       option('What happened to the wards?', () => {
         speechText.innerText = 'Four guardians once kept their wards in balance. Read the records you find near each refuge. They tell us what each guardian tried to protect.';
       });
-      option('I’ll head to the grove.', () => {
+      option('I’ll head to the Rift Chamber.', () => {
         this.closeAllModals();
         this.resumePointerLockIfActive();
       });

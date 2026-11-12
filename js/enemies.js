@@ -136,10 +136,14 @@ class EnemiesManager {
       group.add(shield);
       group.userData.shield = shield;
     }
-    this.scene.add(group);
-    if (type === 'knight' || type === 'scholar') {
+    if (typeof WardArt !== 'undefined') {
+      WardArt.clear(group);
+      WardArt.creature(group, type);
+    } else if (type === 'knight' || type === 'scholar') {
       applyRealmModel(type, group, [body, eyeL, eyeR], 1.8);
     }
+
+    this.scene.add(group);
 
     const enemy = {
       type: type,
@@ -218,10 +222,9 @@ class EnemiesManager {
 
     // Update Boss UI
     if (window.interfaceManager) {
-      const sub = realmId === 1 ? 'Lv. 50' : (realmId === 2 ? 'Lv. 100' : 'Lv. 1000 (Final Boss)');
+      const sub = bossData.subtitle || (realmId === 3 ? 'Observatory Guardian' : bossData.level ? `Lv. ${bossData.level}` : '');
       window.interfaceManager.showBossBar(bossData.name, sub, 1.0, theme);
       window.interfaceManager.updateRobloxObjective(objectiveText, '0 / 1');
-      window.interfaceManager.showToast(`BOSS BATTLE: ${bossData.name} emerges!`, 'error');
     }
   }
 
@@ -450,10 +453,16 @@ class EnemiesManager {
     const distance = Math.hypot(dx, dz);
     const visible = () => !world || world.hasLineOfSight(enemy.position, player.position);
     const visual = enemy.mesh.userData.darkFantasyVisual || enemy.mesh.userData.realmModel;
+    const wardVisual = enemy.mesh.userData.wardVisual;
+    const animate = pose => {
+      if (wardVisual) WardArt.animateCreature(wardVisual, enemy.animationTime, pose);
+    };
+    enemy.animationTime = (enemy.animationTime || 0) + delta;
     if (enemy.strike) {
       const strike = enemy.strike;
       strike.time -= delta;
       if (strike.time > 0) {
+        animate('windup');
         if (visual) visual.rotation.x = -0.18;
         strike.marker.material.opacity = 0.30 + 0.33 * (1 - strike.time / pattern.windup);
         return;
@@ -466,6 +475,7 @@ class EnemiesManager {
         const lateral = dx * strike.z - dz * strike.x;
         const inZone = pattern.kind === 'circle' ? distance < pattern.reach
           : forward > 0 && forward < pattern.reach && Math.abs(lateral) < pattern.width / 2;
+        animate('strike');
         if (visual) visual.rotation.x = 0.22;
         if (inZone && player.position.y - enemy.position.y < player.height + 1 && visible()) {
           player.takeDamage(enemy.attackPower);
@@ -478,6 +488,7 @@ class EnemiesManager {
       }
       return;
     }
+    animate('idle');
     if (enemy.recovery > 0) {
       enemy.recovery -= delta;
       return;
@@ -502,6 +513,7 @@ class EnemiesManager {
     }
     const x = enemy.position.x;
     const z = enemy.position.z;
+    animate('moving');
     const step = Math.min(distance, enemy.speed * delta) / distance;
     enemy.position.x += dx * step;
     enemy.position.z += dz * step;

@@ -183,6 +183,7 @@
 
   // ===== PLAYABLE CHARACTER: use the existing swing/walk/jump pivots =====
   wrap(RobloxCharacter.prototype, 'buildRobloxBody', function () {
+    if (this.mesh?.userData.wardrunner) return;
     const torso = this.torso;
     const belt = torso.children.find(c => c.isMesh && c !== this.cape && c !== this.head);
     attach('hero_torso', torso, [torso,belt]);
@@ -199,7 +200,7 @@
   // animations by attaching a scaled replacement inside the existing swordGroup.
   if (typeof PlayerController !== 'undefined') {
     wrap(PlayerController.prototype, 'createViewmodel', function () {
-      if (this.swordMesh) {
+      if (this.swordMesh && !this.swordMesh.userData.wardrunner) {
         attach('hero_runeblade', this.swordMesh, this.swordMesh.children.slice(), {
           scale: [.60, .60, .60]
         });
@@ -214,27 +215,28 @@
   });
   wrap(EnemiesManager.prototype, 'spawnEnemy', function (enemy, args) {
     const name = enemyModels[args[0]];
-    if (enemy && name) attach(name, enemy.mesh, enemy.mesh.children.filter(c => c.isMesh), { enemyMotion: true });
+    if (enemy && name && !enemy.mesh.userData.wardVisual) attach(name, enemy.mesh, enemy.mesh.children.filter(c => c.isMesh), { enemyMotion: true });
   });
 
   // ===== BOSSES: preserve orbiting props and animated body subgroups =====
   wrap(BossesManager.prototype, 'spawnDarkWitch', function (boss) {
-    if (!boss) return;
+    if (!boss || boss.mesh.userData.wardGuardian) return;
     const animated = new Set([boss.magicCircle].concat(boss.spellbooks));
     attach('dark_witch', boss.mesh, boss.mesh.children.filter(c => !animated.has(c)), {position:[0,-.35,0]});
   });
   wrap(BossesManager.prototype, 'spawnLich', function (boss) {
-    if (!boss || boss.type === 'sentinel') return;
+    if (!boss || boss.type === 'sentinel' || boss.mesh.userData.wardGuardian) return;
     const animated = new Set([boss.staff].concat(boss.runeCards));
     attach('lich_king', boss.mesh, boss.mesh.children.filter(c => !animated.has(c)), {position:[0,-.18,0]});
   });
   wrap(BossesManager.prototype, 'spawnSkeletonWarrior', function (_result,_args,before) {
     this.summonedSkeletons.slice(before.skel).forEach(s => {
+      if (s.mesh.userData.wardVisual) return;
       attach('summoned_skeleton', s.mesh, s.mesh.children.slice(), {position:[0,-.45,0]});
     });
   });
   wrap(BossesManager.prototype, 'spawnEternalDragon', function (boss) {
-    if (!boss) return;
+    if (!boss || boss.mesh.userData.wardGuardian) return;
     attach('dragon_body', boss.mesh, boss.mesh.children.filter(c => c !== boss.head && c !== boss.wings));
     attach('dragon_head', boss.head, boss.head.children.filter(c => c !== boss.halo));
     boss.wings.children.forEach((wing,i) => {
@@ -362,9 +364,7 @@
 
   // ===== CALCULUS WORLD OBJECTS: preserve visuals that signal puzzle state =====
   worldGroup('spawnRiftSeal','rift_seal_obelisks',(c,i)=>i>=4); // animated ring, reactive crystal
-  worldGroup('spawnPiecewiseBridge','piecewise_bridge_pedestal',(c,i)=>i!==1); // transparent bridge + rune dial
   worldGroup('spawnLeylineShrine','leyline_shrine',(c,i)=>i===1); // rotating needle
-  worldGroup('spawnOscillatingPlatform','oscillating_platform',()=>true); // keep slab status colors & crystal
   worldGroup('spawnManaWell','mana_well',(c,i)=>i===1); // preserve animated water surface
 
   console.info('[Dark Fantasy] Overhaul installed: player, minions, bosses, world props and loot.');

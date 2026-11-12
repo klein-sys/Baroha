@@ -171,6 +171,7 @@ class PlayerController {
     orbGroup.add(ring);
     this.manaOrbMesh = orbGroup;
     this.viewmodelRoot.add(this.manaOrbMesh);
+    if (typeof WardArt !== 'undefined') WardArt.viewmodel(this);
   }
 
   setupInputs() {
@@ -591,8 +592,9 @@ class PlayerController {
       const feet = this.position.y - this.height;
       for (const platform of world.oscillatingPlatforms) {
         const p = platform.mesh.position;
-        if (Math.hypot(this.position.x - p.x, this.position.z - p.z) <= platform.radius
+        if (Math.hypot(this.position.x - platform.previousX, this.position.z - p.z) <= platform.radius
           && Math.abs(feet - platform.previousY - 0.3) < 0.06) {
+          this.position.x += p.x - platform.previousX;
           this.position.y += p.y - platform.previousY;
           break;
         }
@@ -639,6 +641,24 @@ class PlayerController {
       world.checkCeilingCollision(this.position, this.velocity, this.position.y + 0.1);
     }
 
+    if (!isNoclip && world && this.position.y - this.height < -3.05) {
+      const pit = world.crossingPits.find(({ bounds: [left, right, north, south] }) =>
+        this.position.x >= left && this.position.x <= right && this.position.z >= north && this.position.z <= south);
+      if (pit) {
+        const [x, z] = pit.recoveries.reduce((nearest, next) =>
+          Math.hypot(this.position.x - next[0], this.position.z - next[1])
+            < Math.hypot(this.position.x - nearest[0], this.position.z - nearest[1]) ? next : nearest);
+        this.takeDamage(18 + world.currentRealm * 4);
+        // A lethal hit already uses the regular checkpoint and life system.
+        if (this.position.y - this.height < -3.05 && this.hearts > 0) {
+          this.position.set(x, world.getTerrainHeight(x, z) + this.height + 0.1, z);
+          this.velocity.set(0, 0, 0);
+          window.interfaceManager?.showToast('The pit ward pulled you back to the ledge.', 'warning');
+        }
+        return;
+      }
+    }
+
     const outsideWorld = world && (Math.abs(this.position.x) > world.terrainWidth / 2
       || Math.abs(this.position.z) > world.terrainDepth / 2);
     if (this.position.y < -12) {
@@ -679,7 +699,7 @@ class PlayerController {
     if (!this.swordMesh) return;
 
     // Arcane mana orb idle breathing & rotation
-    if (this.manaOrbMesh) {
+    if (this.manaOrbMesh && !this.swordMesh.userData.wardrunner) {
       this.manaOrbMesh.rotation.z += 1.5 * delta;
       this.manaOrbMesh.rotation.x += 0.8 * delta;
       const pulse = 1 + Math.sin(Date.now() * 0.004) * 0.08;
@@ -693,24 +713,24 @@ class PlayerController {
 
     if (this.isBlocking) {
       // Raise sword horizontally for blocking
-      this.swordMesh.position.set(0.15, -0.15, -0.45);
+      this.swordMesh.position.set(0.22, -0.28, -0.63);
       this.swordMesh.rotation.set(0.6, -0.8, 1.2);
     } else if (this.isAttacking) {
       // Slash animation swing
       if (this.attackProgress < 0.3) {
         // Wind-up: pull back up right
         const t = this.attackProgress / 0.3;
-        this.swordMesh.position.set(0.45 + t * 0.1, -0.2 + t * 0.15, -0.5);
+        this.swordMesh.position.set(0.4 + t * 0.1, -0.34 + t * 0.17, -0.65);
         this.swordMesh.rotation.set(0.3 - t * 0.4, -0.3 + t * 0.2, -0.2);
       } else if (this.attackProgress < 0.7) {
         // Swing forward and down diagonal slash
         const t = (this.attackProgress - 0.3) / 0.4;
-        this.swordMesh.position.set(0.55 - t * 0.85, -0.05 - t * 0.4, -0.65);
+        this.swordMesh.position.set(0.5 - t * 0.78, -0.17 - t * 0.34, -0.65);
         this.swordMesh.rotation.set(-0.1 + t * 1.4, -0.1 - t * 1.2, -0.2 + t * 1.6);
       } else if (this.attackProgress < 1.0) {
         // Recovery back to rest position
         const t = (this.attackProgress - 0.7) / 0.3;
-        this.swordMesh.position.set(-0.3 + t * 0.68, -0.45 + t * 0.13, -0.65 + t * 0.05);
+        this.swordMesh.position.set(-0.28 + t * 0.63, -0.51 + t * 0.09, -0.65 - t * 0.05);
         this.swordMesh.rotation.set(1.3 - t * 1.2, -1.3 + t * 1.1, 1.4 - t * 1.4);
       } else {
         this.isAttacking = false;
@@ -718,7 +738,7 @@ class PlayerController {
       }
     } else {
       // Rest / Idle position
-      this.swordMesh.position.set(0.38 + idleX, -0.32 + idleY, -0.6);
+      this.swordMesh.position.set(0.35 + idleX, -0.42 + idleY, -0.7);
       this.swordMesh.rotation.set(0.1, -0.2, 0);
     }
   }

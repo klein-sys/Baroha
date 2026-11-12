@@ -17,11 +17,15 @@ class BossesManager {
     this.clearAttack();
     if (this.activeBoss && this.activeBoss.mesh) {
       this.scene.remove(this.activeBoss.mesh);
+      window.game?.world?.disposeHierarchy?.(this.activeBoss.mesh);
       this.activeBoss = null;
     }
     this.summonedSkeletons.forEach(s => {
       window.game?.enemies?.clearStrike(s);
-      if (s.mesh) this.scene.remove(s.mesh);
+      if (s.mesh) {
+        this.scene.remove(s.mesh);
+        window.game?.world?.disposeHierarchy?.(s.mesh);
+      }
     });
     this.summonedSkeletons = [];
     this.bossProjectiles.forEach(p => {
@@ -133,12 +137,19 @@ class BossesManager {
       spellbooks.push(bookGroup);
     }
 
+    if (typeof WardArt !== 'undefined') {
+      group.remove(magicCircle, ...spellbooks);
+      WardArt.clear(group);
+      WardArt.guardian(group, 'witch');
+      group.add(magicCircle, ...spellbooks);
+      group.userData.wardGuardian = true;
+    }
     this.scene.add(group);
 
     this.activeBoss = {
       type: 'witch',
       realmId: 1,
-      name: 'The Dark Witch',
+      name: 'Morgathia · The Dark Witch',
       level: 50,
       mesh: group,
       position: group.position,
@@ -246,12 +257,19 @@ class BossesManager {
       runeCards.push(card);
     }
 
+    if (!sentinel && typeof WardArt !== 'undefined') {
+      group.remove(staffGroup, ...runeCards);
+      WardArt.clear(group);
+      WardArt.guardian(group, 'lich');
+      group.add(staffGroup, ...runeCards);
+      group.userData.wardGuardian = true;
+    }
     this.scene.add(group);
 
     this.activeBoss = {
       type: sentinel ? 'sentinel' : 'lich',
       realmId: sentinel ? 3 : 2,
-      name: sentinel ? 'The Harmonic Sentinel' : 'The Lich – Undead King',
+      name: sentinel ? 'The Harmonic Sentinel' : 'Vorthak · The Undead King',
       level: 100,
       mesh: group,
       position: group.position,
@@ -275,7 +293,7 @@ class BossesManager {
           window.game?.world.disposeHierarchy(part);
         }
       }
-      const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.89), trim);
+      const core = new THREE.Mesh(new THREE.SphereGeometry(0.89, 20, 16), trim);
       core.scale.set(1.12, 1.85, 0.78);
       core.position.y = 1.64;
       group.add(core);
@@ -283,6 +301,11 @@ class BossesManager {
         new THREE.MeshBasicMaterial({ color: 0x91b3ff }));
       halo.position.y = 2.28;
       group.add(halo);
+      const frame = new THREE.Mesh(new THREE.TorusGeometry(1.57, 0.074, 12, 36), trim);
+      frame.position.copy(halo.position);
+      group.add(frame);
+      this.activeBoss.sentinelHalo = halo;
+      this.activeBoss.sentinelFrame = frame;
     }
     // Spawn initial Skeleton Warriors flanking the Lich (Image 2)
     if (!sentinel) {
@@ -327,6 +350,11 @@ class BossesManager {
     sword.position.set(0.55, 0.9, 0.3);
     group.add(sword);
 
+    if (typeof WardArt !== 'undefined') {
+      WardArt.clear(group);
+      WardArt.creature(group, 'summoned');
+      group.position.y = 0;
+    }
     this.scene.add(group);
 
     const skeleton = {
@@ -340,7 +368,8 @@ class BossesManager {
       speed: 3.5,
       attackCooldown: 1.8,
       attackTimer: 0,
-      isDead: false
+      isDead: false,
+      emerging: group.userData.wardVisual ? 0.52 : 0
     };
 
     this.summonedSkeletons.push(skeleton);
@@ -352,104 +381,29 @@ class BossesManager {
   spawnEternalDragon(x = 0, z = -30) {
     this.clearBoss();
     const group = new THREE.Group();
-    group.position.set(x, 6.0, z);
-
-    // Massive Golden Body Torso
-    const bodyGeom = new THREE.ConeGeometry(3.5, 9.0, 8);
-    bodyGeom.rotateX(Math.PI / 2.5);
-    const goldMat = new THREE.MeshStandardMaterial({
-      color: 0xffd166,
-      emissive: 0xffaa00,
-      emissiveIntensity: 0.4,
-      metalness: 0.9,
-      roughness: 0.2
-    });
-    const body = new THREE.Mesh(bodyGeom, goldMat);
-    group.add(body);
-
-    // Colossal Dragon Head with Sharp Horns
-    const headGroup = new THREE.Group();
-    headGroup.position.set(0, 3.2, 4.2);
-
-    const skullGeom = new THREE.ConeGeometry(1.6, 3.6, 6);
-    skullGeom.rotateX(-Math.PI / 2.2);
-    const dragonSkull = new THREE.Mesh(skullGeom, goldMat);
-    headGroup.add(dragonSkull);
-
-    // Glowing Golden Eyes
-    const eyeGeom = new THREE.SphereGeometry(0.28, 8, 8);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const eyeL = new THREE.Mesh(eyeGeom, eyeMat);
-    eyeL.position.set(-0.7, 0.6, 0.8);
-    headGroup.add(eyeL);
-    const eyeR = new THREE.Mesh(eyeGeom, eyeMat);
-    eyeR.position.set(0.7, 0.6, 0.8);
-    headGroup.add(eyeR);
-
-    // Golden Horns
-    for (let i = -1; i <= 1; i += 2) {
-      const hornGeom = new THREE.ConeGeometry(0.3, 2.2, 4);
-      const horn = new THREE.Mesh(hornGeom, goldMat);
-      horn.position.set(i * 0.9, 1.2, -0.6);
-      horn.rotation.set(-0.4, 0, i * 0.4);
-      headGroup.add(horn);
-    }
-
-    // Celestial Golden Halo Ring behind Head (Image 3)
-    const haloGeom = new THREE.TorusGeometry(3.2, 0.16, 12, 32);
-    const haloMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
-    const halo = new THREE.Mesh(haloGeom, haloMat);
-    halo.position.set(0, 1.2, -1.2);
-    headGroup.add(halo);
-
-    group.add(headGroup);
-
-    // Massive Golden Crystalline Wings (Image 3)
-    const wingsGroup = new THREE.Group();
-    for (let side = -1; side <= 1; side += 2) {
-      const wing = new THREE.Group();
-      wing.position.set(side * 2.2, 2.0, 0);
-
-      // Wing Arm Spar
-      const sparGeom = new THREE.BoxGeometry(0.5, 0.5, 8.5);
-      const spar = new THREE.Mesh(sparGeom, goldMat);
-      spar.rotation.y = side * 0.8;
-      wing.add(spar);
-
-      // Crystalline Wing Membrane Sheets
-      const sheetGeom = new THREE.BufferGeometry();
-      const vertices = new Float32Array([
-        0, 0, 0,
-        side * 9, 3.5, -4,
-        side * 11, -2.5, -2,
-        0, 0, 0,
-        side * 11, -2.5, -2,
-        side * 6, -5.0, 1
-      ]);
-      sheetGeom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-      sheetGeom.computeVertexNormals();
-
-      const wingMat = new THREE.MeshStandardMaterial({
-        color: 0xffc300,
-        emissive: 0xffb703,
-        emissiveIntensity: 0.35,
-        side: THREE.DoubleSide,
-        roughness: 0.3,
-        metalness: 0.8
-      });
-      const wingMesh = new THREE.Mesh(sheetGeom, wingMat);
-      wing.add(wingMesh);
-      wingsGroup.add(wing);
-    }
-    group.add(wingsGroup);
-
-    // Powerful Golden Claws
-    for (let side = -1; side <= 1; side += 2) {
-      const clawGeom = new THREE.ConeGeometry(0.8, 3.2, 5);
-      const claw = new THREE.Mesh(clawGeom, goldMat);
-      claw.position.set(side * 2.8, -3.2, 2.5);
-      claw.rotation.x = 0.4;
-      group.add(claw);
+    group.position.set(x, 2.45, z);
+    group.rotation.order = 'YXZ';
+    let dragon;
+    if (typeof WardArt !== 'undefined') {
+      dragon = WardArt.dragon(group);
+      group.userData.wardGuardian = true;
+    } else {
+      const head = new THREE.Group();
+      const halo = new THREE.Group();
+      const wings = new THREE.Group();
+      const bronze = new THREE.MeshStandardMaterial({ color: 0x956c4f });
+      const body = new THREE.Mesh(new THREE.SphereGeometry(1.5, 18, 12), bronze);
+      body.scale.z = 1.6;
+      head.position.set(0, 1.1, 2.1);
+      head.add(new THREE.Mesh(new THREE.SphereGeometry(0.64, 16, 12), bronze));
+      head.add(halo);
+      for (const side of [-1, 1]) {
+        const wing = new THREE.Group();
+        wing.position.x = side;
+        wings.add(wing);
+      }
+      group.add(body, head, wings);
+      dragon = { head, halo, wings };
     }
 
     this.scene.add(group);
@@ -457,16 +411,14 @@ class BossesManager {
     this.activeBoss = {
       type: 'dragon',
       realmId: 4,
-      name: 'Eternal Dragon',
+      name: 'Azrael · Eternal Dragon',
       subtitle: 'Lv. 1000 (Final Boss)',
       level: 1000,
       mesh: group,
       position: group.position,
       maxHp: 1500, // Extremely thick health bar
       hp: 1500,
-      wings: wingsGroup,
-      head: headGroup,
-      halo: halo,
+      ...dragon,
       phase: 1, // 1: Golden Awakening, 2: Divine Wrath, 3: Eternal Judgment
       attackCooldown: 3.5,
       attackTimer: 1.0,
@@ -495,7 +447,8 @@ class BossesManager {
       const orbit = boss.type === 'witch' || boss.type === 'sentinel';
       const x = orbit ? (attack.index % 2 === 0 ? -6 : 6) : playerPos.x;
       const z = orbit ? -63 : playerPos.z - 3;
-      const dx = THREE.MathUtils.clamp(x, -10, 10) - position.x;
+      const sideLimit = boss.type === 'dragon' ? 7.5 : 10;
+      const dx = THREE.MathUtils.clamp(x, -sideLimit, sideLimit) - position.x;
       const dz = THREE.MathUtils.clamp(z, -71, -53) - position.z;
       const distance = Math.hypot(dx, dz);
       if (distance > 0.1) {
@@ -513,8 +466,9 @@ class BossesManager {
       attack.x = ['sweep', 'dive', 'harmonic'].includes(attack.shape)
         ? THREE.MathUtils.clamp(playerPos.x, -12, 12) : position.x;
       attack.z = position.z;
+      attack.startX = position.x;
       attack.startZ = position.z;
-      attack.targetZ = playerPos.z > position.z ? -50 : -74;
+      attack.targetZ = position.z < -62 ? -53 : -71;
       attack.hit = false;
       attack.phase = 'warning';
       attack.time = boss.realmId < 3 ? 1.2 : 0.95;
@@ -529,19 +483,9 @@ class BossesManager {
       attack.marker.rotation.x = -Math.PI / 2;
       attack.marker.position.set(attack.x, 0.075, ring || area || attack.shape === 'pendulum' ? attack.z : -62.5);
       this.scene.add(attack.marker);
-      const tell = {
-        ring: 'Asymptote ring · stay clear of radius 4 m',
-        sweep: 'Sweep · step out of the marked lane',
-        summon: 'Summoning circle · keep clear',
-        slam: 'Staff slam · back away',
-        dive: 'Aerial pass · dodge sideways',
-        pendulum: 'Pendulum sweep · stay beyond the marked arc',
-        harmonic: 'Harmonic sweep · read the moving lane'
-      };
       const [label, kind, tip] = bossPatterns[attack.shape];
       recordAttack(label, kind, tip);
       window.interfaceManager?.showBossAttack(label, 'Prepare');
-      window.interfaceManager?.showToast(tell[attack.shape], 'warning');
       return;
     }
 
@@ -569,8 +513,9 @@ class BossesManager {
 
     if (attack.phase === 'active') {
       if (attack.shape === 'dive') {
-        position.x = attack.x;
-        position.z = THREE.MathUtils.lerp(attack.startZ, attack.targetZ, 1 - Math.max(0, attack.time) / 0.58);
+        const progress = 1 - Math.max(0, attack.time) / 0.58;
+        position.x = THREE.MathUtils.lerp(attack.startX, attack.x, Math.min(progress * 3, 1));
+        position.z = THREE.MathUtils.lerp(attack.startZ, attack.targetZ, progress);
       }
       const distance = Math.hypot(playerPos.x - attack.x, playerPos.z - attack.z);
       const dx = playerPos.x - attack.x;
@@ -607,27 +552,42 @@ class BossesManager {
     this.updateAttack(delta, player, boss);
     if (!this.activeBoss) return;
 
-    // Face player
-    boss.mesh.lookAt(player.position.x, boss.mesh.position.y, player.position.z);
-    boss.mesh.rotation.x = boss.attack.phase === 'recovery' ? 0.13 : boss.attack.phase === 'warning' ? -0.10 : 0;
+    const { mesh, attack } = boss;
+    const diving = boss.type === 'dragon' && attack.shape === 'dive' && attack.phase === 'active';
+    const yaw = diving ? (attack.targetZ < attack.startZ ? Math.PI : 0)
+      : Math.atan2(player.position.x - mesh.position.x, player.position.z - mesh.position.z);
+    mesh.rotation.order = 'YXZ';
+    const turn = Math.atan2(Math.sin(yaw - mesh.rotation.y), Math.cos(yaw - mesh.rotation.y));
+    mesh.rotation.y += turn * (1 - Math.exp(-(diving ? 16 : 7) * delta));
+    const pitch = diving ? 0.12 : attack.phase === 'warning' ? -0.08 : 0;
+    mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, pitch, 1 - Math.exp(-9 * delta));
+    boss.animationTime = (boss.animationTime || 0) + delta;
 
     if (boss.type === 'witch') {
       // Rotate magic circle
       if (boss.magicCircle) boss.magicCircle.rotation.z += 0.8 * delta;
 
       // Orbit 4 spellbooks around Witch
-      const t = Date.now() * 0.002;
+      const t = boss.animationTime * 2;
+      const orbitRadius = attack.phase === 'warning' ? 2.15 : 2.6;
       boss.spellbooks.forEach((book, i) => {
         const angle = t + (i * Math.PI) / 2;
-        book.position.x = Math.cos(angle) * 2.6;
-        book.position.z = Math.sin(angle) * 2.6;
+        book.position.x = Math.cos(angle) * orbitRadius;
+        book.position.z = Math.sin(angle) * orbitRadius;
         book.position.y = 2.4 + Math.sin(t * 2 + i) * 0.35;
         book.rotation.y = -angle;
       });
     } else if (boss.type === 'lich' || boss.type === 'sentinel') {
       // Bob staff and spin tarot runes
-      const t = Date.now() * 0.003;
-      boss.staff.position.y = 1.8 + Math.sin(t) * 0.15;
+      const t = boss.animationTime * 3;
+      const raisingStaff = attack.phase === 'warning';
+      const staffHeight = attack.phase === 'active' ? 1.36 : raisingStaff ? 2.38 : 1.8;
+      boss.staff.position.y = THREE.MathUtils.lerp(boss.staff.position.y, staffHeight + Math.sin(t) * 0.09, 1 - Math.exp(-12 * delta));
+      boss.staff.rotation.x = THREE.MathUtils.lerp(boss.staff.rotation.x, raisingStaff ? -0.27 : 0, 1 - Math.exp(-10 * delta));
+      if (boss.sentinelHalo) {
+        boss.sentinelHalo.rotation.y = attack.marker ? (attack.marker.position.x - attack.x) * 0.25 : t * 0.58;
+        boss.sentinelFrame.rotation.x = t * 0.37;
+      }
       boss.runeCards.forEach((card, i) => {
         const angle = t * 1.5 + (i * Math.PI * 2) / 3;
         card.position.set(Math.cos(angle) * 2.0, 2.8 + Math.sin(t * 2 + i) * 0.25, Math.sin(angle) * 2.0);
@@ -635,19 +595,24 @@ class BossesManager {
       });
 
       for (const skeleton of this.summonedSkeletons) {
+        if (skeleton.emerging > 0 && !skeleton.isDead) {
+          skeleton.emerging = Math.max(0, skeleton.emerging - delta);
+          skeleton.mesh.userData.wardVisual.position.y = -1.65 * (skeleton.emerging / 0.52) ** 2;
+          continue;
+        }
         window.game?.enemies.updateThreat(delta, player, skeleton);
         skeleton.position.x = THREE.MathUtils.clamp(skeleton.position.x, -14, 14);
         skeleton.position.z = THREE.MathUtils.clamp(skeleton.position.z, -76, -48);
       }
     } else if (boss.type === 'dragon') {
       // Flap massive wings
-      const t = Date.now() * 0.003;
+      const t = boss.animationTime * 3;
       boss.wings.children.forEach((wing, i) => {
         const side = i === 0 ? -1 : 1;
-        wing.rotation.z = Math.sin(t * 2) * 0.25 * side;
+        wing.rotation.z = Math.sin(t * 2) * (diving ? 0.24 : 0.10) * side;
       });
       boss.halo.rotation.z += 1.0 * delta;
-      const height = boss.attack.phase === 'recovery' ? 2.1 : 4.2;
+      const height = diving ? 4.65 : 2.45;
       boss.mesh.position.y = THREE.MathUtils.lerp(boss.mesh.position.y, height, 1 - Math.exp(-5 * delta));
     }
   }

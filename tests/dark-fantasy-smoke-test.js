@@ -69,7 +69,7 @@ const flush=async()=>{for(let i=0;i<6;i++)await Promise.resolve()};
   bossManager.spawnSkeletonWarrior();await flush();assert.ok(bossManager.summonedSkeletons[0].mesh.userData.darkFantasyVisual);
   const w=new WorldManager();w.spawnPiecewiseBridge();await flush();
   assert.equal(w.worldObjects[0].children[0].material.visible,true,'bridge status surface preserved');
-  assert.equal(w.worldObjects[0].children[1].material.visible,false,'pedestal replaced');
+  assert.equal(w.worldObjects[0].children[1].material.visible,true,'continuity orb and pedestal stay visible');
   assert.equal(w.worldObjects[0].children[2].material.visible,true,'dial remains');
   w.spawnRiftSeal();await flush();
   assert.equal(w.worldObjects[1].children[4].material.visible,true,'interactive ring preserved');
